@@ -1,5 +1,5 @@
 package com.gastromatch.controller;
 
-public class UserController {
-
+public class UsuarioController {
+    
 }

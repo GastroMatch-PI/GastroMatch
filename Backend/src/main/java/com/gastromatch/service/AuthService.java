@@ -1,5 +1,5 @@
 package com.gastromatch.service;
 
-public class UserService {
+public class AuthService {
 
 }
