@@ -1,5 +1,10 @@
 package com.gastromatch.exception;
 
-public class EmailJaCadastradoException {
-    
+import org.springframework.http.HttpStatus;
+
+public class EmailJaCadastradoException extends ApiException {
+
+    public EmailJaCadastradoException() {
+        super(HttpStatus.CONFLICT, "Email já cadastrado");
+    }
 }
