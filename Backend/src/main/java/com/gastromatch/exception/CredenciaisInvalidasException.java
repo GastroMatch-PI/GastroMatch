@@ -1,5 +1,9 @@
 package com.gastromatch.exception;
 
-public class CredenciaisInvalidasException {
-    
+import org.springframework.http.HttpStatus;
+
+public class CredenciaisInvalidasException extends ApiException {
+    public CredenciaisInvalidasException() {
+        super(HttpStatus.UNAUTHORIZED, "Credenciais inválidas");
+    }
 }
