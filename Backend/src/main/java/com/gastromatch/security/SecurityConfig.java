@@ -1,17 +1,16 @@
 package com.gastromatch.security;
 
+import org.springframework.security.config.Customizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.HttpMethod;
-import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.DefaultSecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-
+import org.springframework.http.HttpMethod;
 /*
  * Por que uma classe separada de configuração?
  * O BCryptPasswordEncoder é uma classe de biblioteca: não dá para anotá-la com
@@ -28,7 +27,7 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http, JwtAuthFilter jwtAuthFilter) throws Exception {
+    public DefaultSecurityFilterChain filterChain(HttpSecurity http, JwtAuthFilter jwtAuthFilter) throws Exception {
         http
             // CSRF protege sessões em cookie. Como usamos JWT no header, não se aplica.
             .csrf(AbstractHttpConfigurer::disable)
@@ -37,7 +36,7 @@ public class SecurityConfig {
             // Sem sessão no servidor: cada requisição se autentica pelo token.
             .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll() // preflight do CORS
+                .requestMatchers(String.valueOf(HttpMethod.OPTIONS), "/**").permitAll() // preflight do CORS
                 .requestMatchers("/auth/**").permitAll()
                 .anyRequest().authenticated())
             // Sem isso o padrão seria 403 para quem não enviou token. O correto é 401.
