@@ -74,4 +74,67 @@ Em desenvolvimento — fase de definição de escopo e modelagem das funcionalid
 
 ## Como Contribuir
 
-_(seção a ser preenchida conforme o fluxo de contribuição do time for definido — padrão de commits, setup do ambiente local, etc.)_
+O projeto segue um fluxo com duas branches permanentes e uma branch de trabalho por membro da equipe.
+
+| Branch | Para que serve | Regras |
+|---|---|---|
+| `main` | Versão estável, usada nas entregas | Protegida: só recebe código via PR com 1 aprovação |
+| `develop` | Integração do trabalho de todos | Protegida: só recebe código via PR com 1 aprovação |
+| `feature/<nome>` | Trabalho individual de cada membro | Livre: push direto liberado |
+
+Branches de cada membro: `feature/amos`, `feature/diogo`, `feature/fellipe`, `feature/gustavo` e `feature/vinicius`.
+
+```mermaid
+gitGraph
+    commit id: "início"
+    branch develop
+    checkout develop
+    commit id: "base"
+    branch feature/nome
+    checkout feature/nome
+    commit id: "commit 1"
+    commit id: "commit 2"
+    checkout develop
+    merge feature/nome id: "PR + 1 aprovação"
+    checkout main
+    merge develop id: "entrega"
+```
+
+### Passo a passo
+
+**1. Entre na sua branch** (ela já existe e saiu da `develop`):
+
+```bash
+git fetch origin
+git switch feature/seu-nome
+```
+
+**2. Trabalhe e suba suas alterações** quantas vezes quiser:
+
+```bash
+git add .
+git commit -m "feat: descrição do que foi feito"
+git push
+```
+
+Antes de abrir o PR, traga as novidades da `develop` para resolver conflitos na sua branch:
+
+```bash
+git pull origin develop
+```
+
+**3. Abra um Pull Request para a `develop`**
+
+- No GitHub, abra um PR com **base: `develop`** ← **compare: `feature/seu-nome`**.
+- Um colega precisa revisar e aprovar (o autor não pode aprovar o próprio PR).
+- Com a aprovação, faça o merge.
+
+**4. Entrega**
+
+Quando a `develop` estiver estável, abra um PR com **base: `main`** ← **compare: `develop`**, que também precisa de 1 aprovação.
+
+### Importante
+
+- A base do PR da sua feature é sempre a **`develop`**, nunca a `main`.
+- Push direto na `main` ou na `develop` é recusado pelo GitHub.
+- Depois do merge, continue usando a sua `feature/seu-nome`: rode `git pull origin develop` nela e siga para a próxima tarefa.
