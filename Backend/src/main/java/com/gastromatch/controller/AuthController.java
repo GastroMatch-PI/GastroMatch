@@ -7,8 +7,12 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.gastromatch.dto.AuthResponse;
 import com.gastromatch.dto.CadastroUsuarioRequest;
+import com.gastromatch.dto.LoginRequest;
+import com.gastromatch.dto.RefreshTokenRequest;
 import com.gastromatch.dto.UsuarioResponse;
+import com.gastromatch.service.AuthService;
 import com.gastromatch.service.UsuarioService;
 
 import jakarta.validation.Valid;
@@ -17,12 +21,12 @@ import jakarta.validation.Valid;
 @RequestMapping("/auth")
 public class AuthController {
 
-	//importanto e utilizando o service do usuário
     private final UsuarioService usuarioService;
+    private final AuthService authService;
 
-    //referenciando que esse controller utiliza do service
-    public AuthController(UsuarioService usuarioService) {
+    public AuthController(UsuarioService usuarioService, AuthService authService) {
         this.usuarioService = usuarioService;
+        this.authService = authService;
     }
 
     // Sem @Valid as anotações do DTO seriam ignoradas.
@@ -31,9 +35,20 @@ public class AuthController {
         UsuarioResponse response = usuarioService.cadastrar(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
+
+    @PostMapping("/login")
+    public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
+        return ResponseEntity.ok(authService.login(request));
+    }
+
+    @PostMapping("/refresh")
+    public ResponseEntity<AuthResponse> refresh(@Valid @RequestBody RefreshTokenRequest request) {
+        return ResponseEntity.ok(authService.refresh(request.refreshToken()));
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<Void> logout(@Valid @RequestBody RefreshTokenRequest request) {
+        authService.logout(request.refreshToken());
+        return ResponseEntity.noContent().build();
+    }
 }
-//    
-//    Por que uma classe separada, e não só organização? Há uma razão técnica:
-//    O BCryptPasswordEncoder é uma classe de biblioteca. Não dá para anotá-la com @Service ou @Component, então o Spring não sabe criá-la sozinho.
-//    @Bean dentro de @Configuration ensina o Spring a criar e guardar um objeto no contêiner. Esse objeto é então injetado onde for pedido.
-//    Se o service fizesse new BCryptPasswordEncoder(), ficaria preso a uma instância própria, e o AuthService do login teria de criar outra. Com o bean, há uma só, e trocar o algoritmo depois é mudar uma linha.

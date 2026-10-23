@@ -1,9 +1,8 @@
 package com.gastromatch.exception;
 
-import org.springframework.http.HttpStatus;
-
-public class CredenciaisInvalidasException extends ApiException {
+public class CredenciaisInvalidasException extends RuntimeException {
+    // Mensagem única para email inexistente e senha errada: não revela quais emails existem.
     public CredenciaisInvalidasException() {
-        super(HttpStatus.UNAUTHORIZED, "Credenciais inválidas");
+        super("Email ou senha inválidos");
     }
 }

@@ -13,6 +13,7 @@ import jakarta.persistence.Table;
  * Quem sai nas respostas é o UsuarioResponse.
  */
 @Entity
+@Table(name = "usuarios")
 public class Usuario {
 
     @Id
