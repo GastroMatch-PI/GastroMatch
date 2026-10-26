@@ -1,48 +1,71 @@
 @import "tailwindcss";
 
 @theme {
-  --font-display: "Epilogue", system-ui, sans-serif;
-  --font-body: "Be Vietnam Pro", system-ui, sans-serif;
+  --font-sans: "Poppins", ui-sans-serif, system-ui, sans-serif;
 
-  --color-cream: #fff6f2;
-  --color-peach: #fbe7df;
-  --color-peach-deep: #f6d3c5;
-  --color-ink: #2a1a14;
-  --color-ink-soft: #5b4a42;
-  --color-ink-faint: #8a7a72;
-  --color-line: #ecd9d0;
+  --color-ink: #1f1a17;
+  --color-soft: #5c544d;
+  --color-faint: #8a8179;
+  --color-line: #ebe5de;
+  --color-surface: #faf7f4;
 
-  --color-terra: #9a3a12;
-  --color-terra-dark: #7c2d0c;
-  --color-leaf: #3e6b4e;
-  --color-leaf-soft: #d9f0de;
-  --color-gold: #b7791f;
-  --color-gold-soft: #fde9c4;
+  --color-brand: #b4471d;
+  --color-brand-dark: #963a17;
+  --color-brand-tint: #fbefe9;
+
+  --color-leaf: #2f6f4a;
+  --color-leaf-tint: #e9f3ed;
+
+  --color-gold: #c28a1b;
   --color-alert: #b42318;
-  --color-alert-soft: #fde4e0;
 }
 
-body {
-  font-family: var(--font-body);
-  background: var(--color-cream);
-  color: var(--color-ink);
-  -webkit-font-smoothing: antialiased;
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    scroll-padding-top: 5rem;
+  }
+
+  body {
+    @apply bg-white font-sans text-[15px] leading-relaxed text-ink antialiased;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    @apply font-semibold tracking-tight;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-brand);
+    outline-offset: 2px;
+  }
 }
 
-h1, h2, h3, h4 {
-  font-family: var(--font-display);
-  letter-spacing: -0.01em;
-}
+@layer components {
+  .wrap {
+    @apply mx-auto w-full max-w-[1200px] px-5 sm:px-8;
+  }
 
-.btn-primary {
-  @apply inline-flex items-center justify-center gap-2 rounded-md bg-terra px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-terra-dark;
-}
-.btn-ghost {
-  @apply inline-flex items-center justify-center gap-2 rounded-md border border-line bg-white px-4 py-2.5 text-sm font-semibold text-ink transition hover:bg-peach;
-}
-.card {
-  @apply rounded-2xl border border-line bg-white shadow-sm;
-}
-.input {
-  @apply w-full rounded-md border border-line bg-cream px-3 py-2.5 text-sm outline-none focus:border-terra;
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg border border-transparent px-4 py-2.5 text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50;
+  }
+  .btn-primary {
+    @apply bg-brand text-white hover:bg-brand-dark;
+  }
+  .btn-outline {
+    @apply border-line bg-white text-ink hover:bg-surface;
+  }
+  .btn-sm {
+    @apply px-3 py-1.5 text-[13px];
+  }
+
+  .field {
+    @apply w-full rounded-lg border border-line bg-white px-3.5 py-2.5 text-sm text-ink outline-none transition-colors placeholder:text-faint focus:border-brand;
+  }
+
+  .card {
+    @apply rounded-xl border border-line bg-white;
+  }
 }

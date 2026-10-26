@@ -1,23 +1,25 @@
 import { Link } from 'react-router-dom'
+import Logo from './Logo'
 
 export default function Footer() {
   return (
-    <footer className="bg-peach">
-      <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-8 text-sm md:flex-row md:justify-between">
-        <div>
-          <p className="font-display text-lg font-extrabold text-terra">🍴 GastroMatch</p>
-          <p className="mt-1 max-w-sm text-ink-soft">
-            © 2024 GastroMatch. Alta gastronomia, culinária consciente e validação profissional.
-          </p>
+    <footer className="mt-24 border-t border-line bg-surface">
+      <div className="wrap flex flex-col gap-8 py-12 md:flex-row md:justify-between">
+        <div className="max-w-xs">
+          <Logo />
+          <p className="mt-3 text-sm text-soft">Receitas, chefs e nutricionistas em um só lugar.</p>
         </div>
-        <nav className="flex flex-wrap items-start gap-x-5 gap-y-2 text-xs font-medium text-ink-soft">
-          <span>Termos de Uso</span>
-          <span>Privacidade</span>
-          <Link to="/portal" className="text-terra">Portal Profissional</Link>
-          <span>Diretrizes Nutricionais</span>
-          <span>Imprensa</span>
-          <span>Suporte</span>
+        <nav aria-label="Rodapé" className="flex flex-col gap-2 text-sm text-soft">
+          <Link to="/" className="hover:text-ink">Receitas</Link>
+          <Link to="/profissionais" className="hover:text-ink">Chefs e restaurantes</Link>
+          <Link to="/portal" className="hover:text-ink">Portal do profissional</Link>
         </nav>
+      </div>
+      <div className="border-t border-line">
+        <div className="wrap flex flex-col gap-1 py-5 text-[13px] text-faint sm:flex-row sm:justify-between">
+          <span>© {new Date().getFullYear()} GastroMatch</span>
+          <span>Fotos: Unsplash</span>
+        </div>
       </div>
     </footer>
   )

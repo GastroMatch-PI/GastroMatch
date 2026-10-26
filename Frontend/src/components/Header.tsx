@@ -1,50 +1,106 @@
-import { NavLink, Link, useLocation } from 'react-router-dom'
+import { Menu, Search, X } from 'lucide-react'
+import { useState } from 'react'
+import type { FormEvent } from 'react'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
+import Logo from './Logo'
 
 const links = [
-  { to: '/', label: 'Explorar Receitas' },
-  { to: '/#geladeira', label: 'Na Geladeira' },
-  { to: '/profissionais', label: 'Chefs & Restaurantes' },
-  { to: '/#comunidade', label: 'Comunidade' },
-  { to: '/#listas', label: 'Minhas Listas' },
+  { to: '/', label: 'Receitas', active: (p: string) => p === '/' || p.startsWith('/receita') },
+  { to: '/#geladeira', label: 'Na geladeira', active: () => false },
+  { to: '/profissionais', label: 'Chefs e restaurantes', active: (p: string) => p.startsWith('/profissionais') },
+  { to: '/profissionais#reels', label: 'Comunidade', active: () => false },
+  { to: '/#listas', label: 'Minhas listas', active: () => false },
 ]
+
+function SearchBox({ className = '', onDone }: { className?: string; onDone?: () => void }) {
+  const navigate = useNavigate()
+  const [term, setTerm] = useState('')
+
+  const submit = (e: FormEvent) => {
+    e.preventDefault()
+    const q = term.trim()
+    navigate({ pathname: '/', search: q ? `?q=${encodeURIComponent(q)}` : '', hash: '#receitas' })
+    onDone?.()
+  }
+
+  return (
+    <form onSubmit={submit} role="search" className={`relative ${className}`}>
+      <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-faint" />
+      <input
+        value={term}
+        onChange={(e) => setTerm(e.target.value)}
+        placeholder="Buscar receitas"
+        aria-label="Buscar receitas ou ingredientes"
+        className="field py-2 pl-9"
+      />
+    </form>
+  )
+}
 
 export default function Header() {
   const { pathname } = useLocation()
-  const pro = pathname.startsWith('/portal')
+  const [open, setOpen] = useState(false)
+
   return (
-    <header className="sticky top-0 z-20 border-b border-line bg-cream/90 backdrop-blur">
-      <div className="mx-auto flex max-w-6xl items-center gap-4 px-4 py-3">
-        <Link to="/" className="flex items-center gap-1.5 font-display text-xl font-extrabold text-terra">
-          <span aria-hidden>🍴</span> GastroMatch
-        </Link>
-        {pro && (
-          <span className="hidden rounded-full bg-gold-soft px-3 py-1 text-xs font-semibold text-gold sm:inline">
-            Modo Profissional
-          </span>
-        )}
-        <input className="input hidden max-w-[220px] md:block" placeholder="Buscar prato, ingrediente..." />
-        <nav className="ml-auto hidden items-center gap-5 text-sm font-medium text-ink-soft lg:flex">
-          {links.map((l) =>
-            l.to.includes('#') ? (
-              <Link key={l.label} to={l.to} className="hover:text-terra">
-                {l.label}
-              </Link>
-            ) : (
-              <NavLink
+    <header className="sticky top-0 z-30 border-b border-line bg-white/95 backdrop-blur">
+      <div className="wrap flex h-16 items-center gap-8">
+        <Logo />
+
+        <nav aria-label="Principal" className="hidden items-center gap-7 lg:flex">
+          {links.map((l) => {
+            const active = l.active(pathname)
+            return (
+              <Link
                 key={l.label}
                 to={l.to}
-                end
-                className={({ isActive }) => (isActive ? 'border-b-2 border-terra text-terra' : 'hover:text-terra')}
+                className={`relative inline-flex h-16 items-center whitespace-nowrap text-sm transition-colors ${
+                  active
+                    ? 'font-medium text-ink after:absolute after:inset-x-0 after:-bottom-px after:h-0.5 after:bg-brand'
+                    : 'text-soft hover:text-ink'
+                }`}
               >
                 {l.label}
-              </NavLink>
-            ),
-          )}
+              </Link>
+            )
+          })}
         </nav>
-        <Link to="/portal" className="btn-primary ml-auto lg:ml-0">
-          🛡 Sou Profissional
-        </Link>
+
+        <div className="ml-auto flex items-center gap-3">
+          <SearchBox className="hidden w-64 xl:block" />
+          <Link to="/portal" className="btn btn-outline btn-sm hidden sm:inline-flex">
+            Sou profissional
+          </Link>
+          <button
+            type="button"
+            className="btn btn-outline btn-sm px-2.5 lg:hidden"
+            aria-label={open ? 'Fechar menu' : 'Abrir menu'}
+            aria-expanded={open}
+            onClick={() => setOpen(!open)}
+          >
+            {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </button>
+        </div>
       </div>
+
+      {open && (
+        <div className="border-t border-line bg-white lg:hidden">
+          <div className="wrap py-4">
+            <SearchBox className="mb-3" onDone={() => setOpen(false)} />
+            <nav aria-label="Menu" className="flex flex-col">
+              {[...links, { to: '/portal', label: 'Sou profissional', active: () => false }].map((l) => (
+                <Link
+                  key={l.label}
+                  to={l.to}
+                  onClick={() => setOpen(false)}
+                  className="rounded-lg px-3 py-2.5 text-[15px] text-soft hover:bg-surface hover:text-ink"
+                >
+                  {l.label}
+                </Link>
+              ))}
+            </nav>
+          </div>
+        </div>
+      )}
     </header>
   )
 }

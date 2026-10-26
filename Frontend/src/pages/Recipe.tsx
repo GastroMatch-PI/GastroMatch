@@ -1,306 +1,610 @@
+import {
+  ArrowLeft,
+  ArrowRight,
+  Bookmark,
+  Check,
+  Clock,
+  Lightbulb,
+  Minus,
+  Pause,
+  Play,
+  Plus,
+  RotateCcw,
+  ShoppingBasket,
+  ThumbsUp,
+  TriangleAlert,
+  X,
+} from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
-import Photo, { Avatar } from '../components/Photo'
+import type { FormEvent } from 'react'
+import { Link, useParams } from 'react-router-dom'
+import Avatar from '../components/Avatar'
+import Img from '../components/Img'
+import NotFound from '../components/NotFound'
 import Stars from '../components/Stars'
-import { baseIngredients, comments as seedComments, steps } from '../data/data'
-import { useLocalState } from '../hooks/useLocalState'
+import { photoUrl, recipes } from '../data/data'
+import type { Recipe as RecipeData } from '../data/data'
+import { comments as commentsStore } from '../lib/comments'
+import { clock, formatQty } from '../lib/format'
+import { addToShopping, checklists, clearChecked, saved, toggleChecked, toggleSaved } from '../lib/lists'
+import { useStore } from '../lib/store'
 
-const BASE_SERVINGS = 4
+// Valores diários de referência usados na tabela nutricional (dieta de 2.000 kcal).
+const daily = { carbs: 300, protein: 75, fat: 55, fiber: 25, sodium: 2000 }
 
-const fmt = (n: number) => String(Math.round(n * 100) / 100).replace('.', ',')
-const clock = (s: number) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`
-
-function StepTimer({ label, seconds }: { label: string; seconds: number }) {
+function StepTimer({ label, seconds, dark = false }: { label: string; seconds: number; dark?: boolean }) {
   const [left, setLeft] = useState(seconds)
   const [running, setRunning] = useState(false)
+  const ticking = running && left > 0
 
   useEffect(() => {
-    if (!running) return
-    const id = setInterval(() => setLeft((l) => (l <= 1 ? 0 : l - 1)), 1000)
+    if (!ticking) return
+    const id = setInterval(() => setLeft((l) => Math.max(0, l - 1)), 1000)
     return () => clearInterval(id)
-  }, [running])
+  }, [ticking])
 
-  const done = left === 0
+  const finished = left === 0
+
   return (
-    <div className="inline-flex flex-wrap items-center gap-2 rounded-lg border border-line bg-white px-3 py-1.5 text-xs">
-      <span aria-hidden>⏰</span>
-      {label}
-      <button
-        className="rounded bg-terra px-2 py-1 font-semibold text-white"
-        onClick={() => {
-          if (done) setLeft(seconds)
-          setRunning(!running || done)
-        }}
-      >
-        {done ? '↺ Reiniciar' : running ? `⏸ ${clock(left)}` : `▶ Iniciar Timer ${clock(left)}`}
-      </button>
+    <div
+      className={`inline-flex flex-wrap items-center gap-3 rounded-lg border px-3 py-2 text-sm ${
+        dark ? 'border-white/20' : 'border-line'
+      }`}
+    >
+      <span className={dark ? 'text-white/70' : 'text-soft'}>{label}</span>
+      <span className="font-medium tabular-nums">{finished ? 'Pronto' : clock(left)}</span>
+      {finished ? (
+        <button
+          type="button"
+          className="btn btn-primary btn-sm"
+          onClick={() => {
+            setLeft(seconds)
+            setRunning(false)
+          }}
+        >
+          <RotateCcw className="h-3.5 w-3.5" /> Reiniciar
+        </button>
+      ) : (
+        <button type="button" className="btn btn-primary btn-sm" onClick={() => setRunning(!running)}>
+          {running ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
+          {running ? 'Pausar' : left === seconds ? 'Iniciar' : 'Continuar'}
+        </button>
+      )}
     </div>
   )
 }
 
-export default function Recipe() {
-  const [servings, setServings] = useState(BASE_SERVINGS)
-  const [checked, setChecked] = useState<string[]>([])
-  const [doneSteps, setDoneSteps] = useState<number[]>([])
-  const [listed, setListed] = useState(false)
+function RecipeView({ recipe }: { recipe: RecipeData }) {
+  const [servings, setServings] = useState(recipe.servings)
+  const [done, setDone] = useState<number[]>([])
+  const [photo, setPhoto] = useState(0)
   const [following, setFollowing] = useState(false)
   const [guided, setGuided] = useState<number | null>(null)
-  const [thumb, setThumb] = useState(0)
-  const [comments, setComments] = useLocalState('gm-comments', seedComments)
+  const [listed, setListed] = useState(false)
   const [text, setText] = useState('')
   const [rating, setRating] = useState(0)
 
-  const factor = servings / BASE_SERVINGS
-  const toggle = <T,>(arr: T[], v: T) => (arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v])
+  const [savedIds] = useStore(saved)
+  const [checkLists] = useStore(checklists)
+  const [allComments, setAllComments] = useStore(commentsStore)
 
-  if (guided !== null) {
-    const s = steps[guided]
-    return (
-      <div className="fixed inset-0 z-30 flex flex-col bg-ink p-6 text-white">
-        <div className="flex items-center justify-between text-sm">
-          <span>Modo Cozinhar Guiado • Passo {guided + 1} de {steps.length}</span>
-          <button className="rounded bg-white/10 px-3 py-1.5" onClick={() => setGuided(null)}>✕ Sair</button>
-        </div>
-        <div className="mx-auto flex max-w-3xl flex-1 flex-col justify-center gap-6">
-          <h2 className="text-4xl font-extrabold">{s.title}</h2>
-          <p className="text-xl leading-relaxed text-white/85">{s.text}</p>
-          <div className="text-ink"><StepTimer key={guided} label={s.timer} seconds={s.seconds} /></div>
-        </div>
-        <div className="flex justify-between">
-          <button className="btn-ghost" disabled={guided === 0} onClick={() => setGuided(guided - 1)}>← Anterior</button>
-          {guided < steps.length - 1 ? (
-            <button className="btn-primary" onClick={() => setGuided(guided + 1)}>Próximo →</button>
-          ) : (
-            <button className="btn-primary" onClick={() => setGuided(null)}>Finalizar ✓</button>
-          )}
-        </div>
-      </div>
+  const checked = checkLists[recipe.id] ?? []
+  const factor = servings / recipe.servings
+  const isSaved = savedIds.includes(recipe.id)
+  const comments = allComments.filter((c) => c.recipeId === recipe.id)
+  const last = recipe.steps.length - 1
+  const guidedActive = guided !== null
+  const n = recipe.nutrition
+
+  // Participação de cada macronutriente nas calorias (4 kcal/g de carboidrato e proteína, 9 kcal/g de gordura).
+  const macros = [
+    { label: 'Carboidratos', kcal: n.carbs * 4, fill: 'fill-brand', dot: 'bg-brand' },
+    { label: 'Proteínas', kcal: n.protein * 4, fill: 'fill-leaf', dot: 'bg-leaf' },
+    { label: 'Gorduras', kcal: n.fat * 9, fill: 'fill-gold', dot: 'bg-gold' },
+  ]
+  const macroTotal = macros.reduce((sum, m) => sum + m.kcal, 0)
+  let offset = 0
+  const bars = macros.map((m) => {
+    const share = (m.kcal / macroTotal) * 100
+    const bar = { ...m, share, x: offset }
+    offset += share
+    return bar
+  })
+
+  const toggleIn = <T,>(list: T[], value: T) => (list.includes(value) ? list.filter((v) => v !== value) : [...list, value])
+
+  // Modo cozinhar: teclado para navegar, tela sempre acesa e sem rolagem ao fundo.
+  useEffect(() => {
+    if (!guidedActive) return
+
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setGuided(null)
+      if (e.key === 'ArrowRight') setGuided((g) => (g === null ? g : Math.min(g + 1, last)))
+      if (e.key === 'ArrowLeft') setGuided((g) => (g === null ? g : Math.max(g - 1, 0)))
+    }
+    window.addEventListener('keydown', onKey)
+    document.body.style.overflow = 'hidden'
+
+    let lock: WakeLockSentinel | undefined
+    navigator.wakeLock
+      ?.request('screen')
+      .then((l) => {
+        lock = l
+      })
+      .catch(() => {})
+
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      document.body.style.overflow = ''
+      lock?.release().catch(() => {})
+    }
+  }, [guidedActive, last])
+
+  const addIngredients = () => {
+    addToShopping(
+      recipe.ingredients
+        .filter((i) => i.qty !== undefined)
+        .map((i) => ({ name: i.name, qty: formatQty(i, factor) })),
     )
+    setListed(true)
   }
 
+  const publish = (e: FormEvent) => {
+    e.preventDefault()
+    const body = text.trim()
+    if (!body) return
+    setAllComments((prev) => [
+      {
+        id: Date.now(),
+        recipeId: recipe.id,
+        name: 'Você',
+        where: 'Neste navegador',
+        when: 'agora',
+        text: body,
+        rating: rating || 5,
+        useful: 0,
+      },
+      ...prev,
+    ])
+    setText('')
+    setRating(0)
+  }
+
+  const like = (id: number) =>
+    setAllComments((prev) =>
+      prev.map((c) => (c.id === id ? { ...c, liked: !c.liked, useful: c.useful + (c.liked ? -1 : 1) } : c)),
+    )
+
+  const rows = [
+    ['Carboidratos', n.carbs, 'g', daily.carbs],
+    ['Proteínas', n.protein, 'g', daily.protein],
+    ['Gorduras totais', n.fat, 'g', daily.fat],
+    ['Fibras', n.fiber, 'g', daily.fiber],
+    ['Sódio', n.sodium, 'mg', daily.sodium],
+  ] as const
+
   return (
-    <div className="space-y-8">
-      <nav className="text-xs text-ink-faint">
-        <Link to="/" className="hover:text-terra">Receitas</Link> › Pratos Principais › Risoto de Cogumelos Frescos
+    <div className="py-8 sm:py-10">
+      <nav aria-label="Você está em" className="text-[13px] text-faint">
+        <Link to="/" className="hover:text-ink">
+          Receitas
+        </Link>
+        <span className="mx-2">/</span>
+        <span>{recipe.collections[0]}</span>
       </nav>
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_380px]">
-        <div className="space-y-3">
-          <Photo emoji={steps[thumb % steps.length].emoji} seed={steps[thumb % steps.length].seed} className="aspect-video w-full rounded-2xl">
-            <span className="absolute left-3 top-3 rounded-full bg-black/55 px-2.5 py-1 text-xs text-white">
-              Hospedagem Nativa GastroMatch
-            </span>
-            <span className="flex h-14 w-14 items-center justify-center rounded-full bg-terra text-2xl text-white">▶</span>
-            <span className="absolute bottom-3 left-3 text-xs text-white drop-shadow">
-              ⏱ 04:12 / 10:45 • Capítulo: Refogando os Cogumelos
-            </span>
-          </Photo>
-          <div className="grid grid-cols-5 gap-2">
-            {[...steps.map((s, i) => ({ ...s, label: `P.${i + 1}` })), { emoji: '🍽️', seed: 4, label: 'Final' }].map((t, i) => (
-              <button
-                key={t.label}
-                onClick={() => setThumb(i)}
-                aria-label={`Ver ${t.label}`}
-                className={`overflow-hidden rounded-lg border-2 ${thumb === i ? 'border-terra' : 'border-transparent'}`}
-              >
-                <Photo emoji={t.emoji} seed={t.seed} className="aspect-[4/3] w-full [&>span]:text-2xl">
-                  <span className="absolute bottom-0.5 right-1 !text-[10px] font-bold text-white">{t.label}</span>
-                </Photo>
-              </button>
-            ))}
-          </div>
+      <div className="mt-6 grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] lg:gap-14">
+        <div>
+          <Img
+            src={photoUrl(recipe.photos[photo], 1200)}
+            alt={recipe.title}
+            priority
+            className="aspect-[4/3] w-full rounded-2xl"
+          />
+          {recipe.photos.length > 1 && (
+            <div className="mt-3 grid grid-cols-4 gap-3">
+              {recipe.photos.map((id, i) => (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => setPhoto(i)}
+                  aria-label={`Ver foto ${i + 1}`}
+                  aria-current={photo === i}
+                  className={`overflow-hidden rounded-lg border-2 transition-colors ${
+                    photo === i ? 'border-brand' : 'border-transparent hover:border-line'
+                  }`}
+                >
+                  <Img src={photoUrl(id, 300)} alt="" className="aspect-[4/3] w-full" />
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
-        <aside className="space-y-4">
-          <div className="card space-y-3 p-5">
-            <h1 className="text-2xl font-extrabold leading-tight">Risoto de Cogumelos Frescos com Azeite Trufado e Tomilho Limão</h1>
-            <p className="flex flex-wrap items-center gap-2 text-xs">
-              <Stars value={5} /> <b>4.9</b>
-              <span className="underline">182 avaliações da comunidade</span> • 🔖 1.4k salvos
-            </p>
-            <div className="flex items-center gap-2 rounded-xl bg-peach p-3 text-xs">
-              <Avatar emoji="👨‍🍳" className="h-9 w-9" />
-              <div className="flex-1">
-                <b>Chef Henrique Faria</b>{' '}
-                <span className="rounded bg-gold-soft px-1.5 py-0.5 text-[10px] text-gold">✪ Verificado</span>
-                <p className="text-ink-faint">Especialista em risotos e culinária mediterrânea</p>
-              </div>
-              <button className="btn-ghost !px-3 !py-1 text-xs" onClick={() => setFollowing(!following)}>
-                {following ? 'Seguindo' : 'Seguir'}
-              </button>
+        <div className="flex flex-col">
+          <h1 className="text-3xl leading-tight sm:text-4xl">{recipe.title}</h1>
+
+          <p className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-soft">
+            <Stars value={recipe.rating} />
+            <span className="font-medium text-ink">{recipe.rating.toLocaleString('pt-BR', { minimumFractionDigits: 1 })}</span>
+            <span>{recipe.reviews} avaliações</span>
+            <span>·</span>
+            <span>{recipe.saves} salvamentos</span>
+          </p>
+
+          <div className="mt-6 flex items-center gap-3 border-y border-line py-4">
+            <Avatar name={recipe.author.name} size={44} />
+            <div className="min-w-0 flex-1 text-sm">
+              <p className="font-medium">{recipe.author.name}</p>
+              <p className="text-[13px] text-faint">{recipe.author.role}</p>
             </div>
-            <div className="rounded-xl border border-line p-3 text-xs">
-              <p className="font-semibold text-terra">Foco Sem Distrações</p>
-              <p className="text-ink-soft">Mantém a tela sempre acesa, comandos de voz para avançar e cronômetros integrados.</p>
-            </div>
-            <button className="btn-primary w-full" onClick={() => setGuided(0)}>
-              Iniciar Modo Cozinhar Guiado →
+            <button type="button" onClick={() => setFollowing(!following)} className="btn btn-outline btn-sm">
+              {following ? 'Seguindo' : 'Seguir'}
             </button>
           </div>
-        </aside>
+
+          <dl className="mt-5 grid grid-cols-3 gap-4 text-sm">
+            <div>
+              <dt className="text-[13px] text-faint">Tempo</dt>
+              <dd className="mt-0.5 flex items-center gap-1.5 font-medium">
+                <Clock className="h-4 w-4 text-faint" />
+                {recipe.minutes} min
+              </dd>
+            </div>
+            <div>
+              <dt className="text-[13px] text-faint">Rendimento</dt>
+              <dd className="mt-0.5 font-medium">{recipe.servings} porções</dd>
+            </div>
+            <div>
+              <dt className="text-[13px] text-faint">Dificuldade</dt>
+              <dd className="mt-0.5 font-medium">{recipe.difficulty}</dd>
+            </div>
+          </dl>
+
+          <div className="mt-8 space-y-3">
+            <button type="button" className="btn btn-primary w-full py-3" onClick={() => setGuided(0)}>
+              Iniciar modo cozinhar <ArrowRight className="h-4 w-4" />
+            </button>
+            <button type="button" className="btn btn-outline w-full" onClick={() => toggleSaved(recipe.id)}>
+              <Bookmark className={`h-4 w-4 ${isSaved ? 'fill-brand text-brand' : ''}`} />
+              {isSaved ? 'Receita salva' : 'Salvar receita'}
+            </button>
+            <p className="text-[13px] text-faint">
+              Mostra um passo por vez, com cronômetro, e mantém a tela acesa enquanto você cozinha.
+            </p>
+          </div>
+        </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_380px]">
-        <section className="card space-y-3 p-5">
-          <div className="flex flex-wrap items-start justify-between gap-2">
-            <div>
-              <h2 className="text-xl font-bold">Ingredientes Frescos</h2>
-              <p className="text-xs text-ink-faint">Calibrado com precisão pelo Chef Henrique</p>
-            </div>
-            <div className="flex items-center gap-2 rounded-lg bg-peach px-2 py-1 text-xs">
-              Rendimento:
-              <button aria-label="Menos porções" className="h-6 w-6 rounded bg-white font-bold" onClick={() => setServings(Math.max(1, servings - 1))}>−</button>
-              <b className="text-terra">{servings}</b> porções
-              <button aria-label="Mais porções" className="h-6 w-6 rounded bg-white font-bold" onClick={() => setServings(Math.min(20, servings + 1))}>+</button>
-            </div>
-          </div>
-          <ul className="divide-y divide-line">
-            {baseIngredients.map((i) => (
-              <li key={i.name}>
-                <label className="flex cursor-pointer items-center gap-3 py-2.5 text-sm">
-                  <input type="checkbox" checked={checked.includes(i.name)} onChange={() => setChecked(toggle(checked, i.name))} />
-                  <span className={`flex-1 ${checked.includes(i.name) ? 'text-ink-faint line-through' : ''}`}>{i.name}</span>
-                  <b className="text-xs">{i.unit === 'maço' ? `${Math.max(1, Math.round(i.qty * factor))} maço` : `${fmt(i.qty * factor)}${i.unit}`}</b>
-                </label>
-              </li>
-            ))}
-          </ul>
-          <button
-            className="w-full rounded-lg bg-leaf-soft py-2.5 text-xs font-semibold text-leaf"
-            onClick={() => setListed(true)}
-          >
-            {listed ? '✓ Ingredientes adicionados à lista' : '🛒 Adicionar ingredientes à Minha Lista de Compras'}
-          </button>
-        </section>
-
-        <div className="space-y-4">
-          <section className="card space-y-3 p-5">
-            <div className="flex items-start justify-between gap-2">
-              <div>
-                <h2 className="text-lg font-bold">Tabela Nutricional</h2>
-                <p className="text-[11px] text-ink-faint">Estimativa por porção servida (~250g)</p>
+      <div className="mt-14 grid grid-cols-1 gap-12 lg:grid-cols-[360px_minmax(0,1fr)] lg:gap-16">
+        <aside className="space-y-6">
+          <section id="ingredientes" className="card p-6">
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="text-xl">Ingredientes</h2>
+              <div className="flex items-center gap-1 text-sm">
+                <button
+                  type="button"
+                  aria-label="Menos porções"
+                  onClick={() => setServings(Math.max(1, servings - 1))}
+                  className="flex h-8 w-8 items-center justify-center rounded-md border border-line hover:bg-surface"
+                >
+                  <Minus className="h-4 w-4" />
+                </button>
+                <span className="w-20 text-center tabular-nums">
+                  {servings} {servings === 1 ? 'porção' : 'porções'}
+                </span>
+                <button
+                  type="button"
+                  aria-label="Mais porções"
+                  onClick={() => setServings(Math.min(20, servings + 1))}
+                  className="flex h-8 w-8 items-center justify-center rounded-md border border-line hover:bg-surface"
+                >
+                  <Plus className="h-4 w-4" />
+                </button>
               </div>
-              <span className="rounded-full bg-leaf-soft px-2 py-1 text-[10px] font-semibold text-leaf">Validado por Nutricionista</span>
             </div>
-            <p className="flex items-center justify-between rounded-lg bg-peach px-3 py-2 text-sm">
-              Valor Energético Total <b className="font-display text-2xl text-terra">420 <small className="text-xs">kcal / porção</small></b>
+
+            <ul className="mt-4 divide-y divide-line">
+              {recipe.ingredients.map((ing) => (
+                <li key={ing.name}>
+                  <label className="flex cursor-pointer items-start gap-3 py-2.5 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={checked.includes(ing.name)}
+                      onChange={() => toggleChecked(recipe.id, ing.name)}
+                      className="mt-0.5 h-4 w-4 accent-brand"
+                    />
+                    <span className={`flex-1 ${checked.includes(ing.name) ? 'text-faint line-through' : ''}`}>
+                      {ing.name}
+                      {ing.note && <span className="text-faint">, {ing.note}</span>}
+                    </span>
+                    <span className="shrink-0 font-medium">{formatQty(ing, factor)}</span>
+                  </label>
+                </li>
+              ))}
+            </ul>
+
+            {checked.length > 0 && (
+              <button
+                type="button"
+                onClick={() => clearChecked(recipe.id)}
+                className="mt-3 text-[13px] text-brand hover:underline"
+              >
+                Limpar marcações
+              </button>
+            )}
+
+            <button type="button" onClick={addIngredients} className="btn btn-outline mt-5 w-full">
+              {listed ? <Check className="h-4 w-4 text-leaf" /> : <ShoppingBasket className="h-4 w-4" />}
+              {listed ? 'Adicionado à lista de compras' : 'Adicionar à lista de compras'}
+            </button>
+          </section>
+
+          <section className="card p-6">
+            <h2 className="text-xl">Tabela nutricional</h2>
+            <p className="text-[13px] text-faint">Por porção. Valores diários com base em uma dieta de 2.000 kcal.</p>
+            <p className="mt-4 flex items-baseline justify-between border-b border-line pb-3">
+              <span className="text-sm text-soft">Valor energético</span>
+              <span>
+                <span className="text-2xl font-semibold">{n.kcal}</span> <span className="text-sm text-soft">kcal</span>
+              </span>
             </p>
-            <div className="grid grid-cols-2 gap-2 text-xs">
-              {[
-                ['Carboidratos', '58g', 'bg-gold', 'w-3/5'],
-                ['Proteínas', '12g', 'bg-leaf', 'w-1/4'],
-                ['Gorduras Totais', '14g', 'bg-terra', 'w-1/3'],
-                ['Fibras Alimentares', '3.5g', 'bg-leaf', 'w-1/5'],
-              ].map(([n, v, c, w]) => (
-                <div key={n} className="rounded-lg border border-line p-2">
-                  <p className="flex justify-between"><span className="text-ink-soft">{n}</span><b>{v}</b></p>
-                  <div className="mt-1 h-1 rounded bg-peach"><div className={`h-1 rounded ${c} ${w}`} /></div>
+
+            <div className="border-b border-line py-4">
+              <p className="text-[13px] text-faint">Origem das calorias</p>
+              <svg
+                viewBox="0 0 100 4"
+                preserveAspectRatio="none"
+                className="mt-2 h-2 w-full overflow-hidden rounded-full"
+                role="img"
+                aria-label={bars.map((b) => `${b.label} ${Math.round(b.share)}%`).join(', ')}
+              >
+                {bars.map((b) => (
+                  <rect key={b.label} x={b.x} width={b.share} height="4" className={b.fill} />
+                ))}
+              </svg>
+              <ul className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[13px] text-soft">
+                {bars.map((b) => (
+                  <li key={b.label} className="inline-flex items-center gap-1.5">
+                    <span className={`h-2 w-2 rounded-full ${b.dot}`} />
+                    {b.label} {Math.round(b.share)}%
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <dl className="divide-y divide-line text-sm">
+              {rows.map(([label, value, unit, ref]) => (
+                <div key={label} className="flex items-center justify-between py-2.5">
+                  <dt className="text-soft">{label}</dt>
+                  <dd>
+                    <span className="font-medium">
+                      {value.toLocaleString('pt-BR')} {unit}
+                    </span>
+                    <span className="ml-3 inline-block w-10 text-right text-[13px] text-faint">
+                      {Math.round((value / ref) * 100)}%
+                    </span>
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          </section>
+        </aside>
+
+        <div className="min-w-0 space-y-14">
+          <section id="preparo" aria-label="Modo de preparo">
+            <div className="flex items-baseline justify-between gap-4">
+              <h2 className="text-2xl">Modo de preparo</h2>
+              <span className="text-sm text-faint">
+                {done.length} de {recipe.steps.length} passos
+              </span>
+            </div>
+
+            <ol className="mt-6 space-y-8">
+              {recipe.steps.map((step, i) => (
+                <li key={step.title} className="grid grid-cols-[2.25rem_minmax(0,1fr)] gap-4">
+                  <span
+                    className={`flex h-9 w-9 items-center justify-center rounded-full border text-sm font-medium ${
+                      done.includes(i) ? 'border-brand bg-brand text-white' : 'border-line text-soft'
+                    }`}
+                  >
+                    {done.includes(i) ? <Check className="h-4 w-4" /> : i + 1}
+                  </span>
+                  <div>
+                    <div className="flex items-start justify-between gap-4">
+                      <h3 className={`text-lg ${done.includes(i) ? 'text-faint line-through' : ''}`}>{step.title}</h3>
+                      <label className="flex shrink-0 cursor-pointer items-center gap-2 pt-1 text-[13px] text-faint">
+                        <input
+                          type="checkbox"
+                          checked={done.includes(i)}
+                          onChange={() => setDone(toggleIn(done, i))}
+                          className="h-4 w-4 accent-brand"
+                        />
+                        Feito
+                      </label>
+                    </div>
+                    <p className="mt-2 text-soft">{step.text}</p>
+                    {step.timer && (
+                      <div className="mt-3">
+                        <StepTimer label={step.timer.label} seconds={step.timer.seconds} />
+                      </div>
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ol>
+          </section>
+
+          <section aria-label="Dicas do chef">
+            <h2 className="text-2xl">Dicas de {recipe.author.role === 'Chef' ? 'chef' : 'nutricionista'}</h2>
+            <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
+              {recipe.tips.map((tip) => (
+                <div
+                  key={tip.title}
+                  className={`rounded-lg border-l-2 bg-surface p-4 ${tip.kind === 'erro' ? 'border-alert' : 'border-gold'}`}
+                >
+                  <p
+                    className={`flex items-center gap-2 text-sm font-medium ${
+                      tip.kind === 'erro' ? 'text-alert' : 'text-ink'
+                    }`}
+                  >
+                    {tip.kind === 'erro' ? (
+                      <TriangleAlert className="h-4 w-4" />
+                    ) : (
+                      <Lightbulb className="h-4 w-4 text-gold" />
+                    )}
+                    {tip.title}
+                  </p>
+                  <p className="mt-1.5 text-sm text-soft">{tip.text}</p>
                 </div>
               ))}
             </div>
-            <p className="flex justify-between text-[10px] text-ink-faint"><span>Sódio: 410mg</span><span>Cálcio: 110mg</span><span>Índice Glicêmico: Médio</span></p>
           </section>
 
-          <section className="card space-y-3 p-5">
-            <h2 className="text-lg font-bold">💡 Dicas do Chef & Segredos</h2>
-            <div className="rounded-lg border-l-4 border-alert bg-alert-soft p-3 text-xs">
-              <p className="font-bold text-alert">⚠ Alerta de Erro Comum</p>
-              <p><b>Nunca utilize caldo em temperatura ambiente ou gelado.</b> O choque térmico paralisa a liberação de amido do arroz, resultando em grãos empapados por fora e crus por dentro.</p>
-            </div>
-            <div className="rounded-lg border-l-4 border-gold bg-gold-soft p-3 text-xs">
-              <p className="font-bold text-gold">💡 O Ponto do Mantecare</p>
-              <p>Desligue o fogo 1 minuto antes do grão ficar al dente. A manteiga precisa estar bem gelada para emulsificar com o amido e garantir a cremosidade <i>all’onda</i>.</p>
-            </div>
+          <section id="avaliacoes" aria-label="Avaliações">
+            <h2 className="text-2xl">Avaliações da comunidade</h2>
+            <p className="mt-1 text-soft">Conte como ficou e se você mudou alguma coisa.</p>
+
+            <form onSubmit={publish} className="mt-6 flex gap-3">
+              <Avatar name="Você" size={40} />
+              <div className="flex-1 space-y-3">
+                <textarea
+                  className="field h-24 resize-y"
+                  placeholder="Você fez essa receita? Escreva aqui como ficou."
+                  aria-label="Sua avaliação"
+                  value={text}
+                  onChange={(e) => setText(e.target.value)}
+                />
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex items-center gap-2 text-sm text-soft">
+                    Sua nota
+                    <span className="inline-flex gap-0.5">
+                      {[1, 2, 3, 4, 5].map((v) => (
+                        <button
+                          key={v}
+                          type="button"
+                          aria-label={`${v} ${v === 1 ? 'estrela' : 'estrelas'}`}
+                          aria-pressed={rating === v}
+                          onClick={() => setRating(v)}
+                          className={v <= rating ? 'text-gold' : 'text-line hover:text-gold/60'}
+                        >
+                          <StarIcon />
+                        </button>
+                      ))}
+                    </span>
+                  </div>
+                  <button type="submit" className="btn btn-primary btn-sm" disabled={!text.trim()}>
+                    Publicar avaliação
+                  </button>
+                </div>
+              </div>
+            </form>
+
+            <ul className="mt-8 divide-y divide-line">
+              {comments.map((c) => (
+                <li key={c.id} className="flex gap-3 py-5">
+                  <Avatar name={c.name} size={40} />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center justify-between gap-x-4">
+                      <p className="text-sm font-medium">
+                        {c.name} <span className="font-normal text-faint">· {c.where} · {c.when}</span>
+                      </p>
+                      <Stars value={c.rating} size={13} />
+                    </div>
+                    <p className="mt-1.5 text-sm text-soft">{c.text}</p>
+                    <button
+                      type="button"
+                      onClick={() => like(c.id)}
+                      aria-pressed={!!c.liked}
+                      className={`mt-2 inline-flex items-center gap-1.5 text-[13px] ${
+                        c.liked ? 'text-brand' : 'text-faint hover:text-ink'
+                      }`}
+                    >
+                      <ThumbsUp className="h-3.5 w-3.5" /> Útil ({c.useful})
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+            {comments.length === 0 && <p className="mt-8 text-sm text-faint">Ainda não há avaliações. Seja a primeira pessoa a comentar.</p>}
           </section>
         </div>
       </div>
 
-      <section className="card space-y-4 p-5">
-        <div className="flex flex-wrap items-end justify-between gap-2">
-          <div>
-            <p className="text-[10px] font-bold uppercase text-terra">Execução Profissional</p>
-            <h2 className="text-2xl font-bold">Passo a Passo Guiado</h2>
+      {guided !== null && (
+        <div className="fixed inset-0 z-50 flex flex-col bg-ink text-white" role="dialog" aria-modal="true" aria-label="Modo cozinhar">
+          <div className="flex items-center justify-between gap-4 px-5 py-4 text-sm text-white/70 sm:px-8">
+            <span className="truncate">
+              {recipe.title} · passo {guided + 1} de {recipe.steps.length}
+            </span>
+            <button
+              type="button"
+              onClick={() => setGuided(null)}
+              className="inline-flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 hover:bg-white/10"
+            >
+              <X className="h-4 w-4" /> Sair
+            </button>
           </div>
-          <p className="text-xs text-leaf">✔ {doneSteps.length}/{steps.length} etapas • Marque os passos concluídos</p>
-        </div>
-        {steps.map((s, i) => (
-          <article key={s.title} className={`grid gap-4 rounded-xl border border-line bg-cream p-4 md:grid-cols-[1fr_160px] ${doneSteps.includes(i) ? 'opacity-60' : ''}`}>
-            <div className="space-y-2">
-              <div className="flex items-start gap-3">
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-terra text-sm font-bold text-white">{i + 1}</span>
-                <h3 className="flex-1 text-base font-bold">{s.title}</h3>
-                <label className="flex items-center gap-1 text-[11px] text-ink-faint">
-                  <input type="checkbox" checked={doneSteps.includes(i)} onChange={() => setDoneSteps(toggle(doneSteps, i))} /> Concluído
-                </label>
-              </div>
-              <p className="text-sm text-ink-soft">{s.text}</p>
-              <StepTimer label={s.timer} seconds={s.seconds} />
-            </div>
-            <Photo emoji={s.emoji} seed={s.seed} className="h-28 w-full rounded-lg md:h-full" />
-          </article>
-        ))}
-      </section>
-
-      <section className="card space-y-4 p-5">
-        <div className="flex flex-wrap items-start justify-between gap-2">
-          <div>
-            <h2 className="text-2xl font-bold">Comentários e Avaliações da Comunidade</h2>
-            <p className="text-xs text-ink-faint">Compartilhe suas adaptações, fotos e experiências de preparo</p>
-          </div>
-          <button className="btn-primary text-xs" onClick={() => document.getElementById('novo-comentario')?.focus()}>
-            ✎ Avaliar Receita
-          </button>
-        </div>
-        <form
-          className="flex gap-3"
-          onSubmit={(e) => {
-            e.preventDefault()
-            if (!text.trim()) return
-            setComments([{ name: 'Você', where: 'Neste navegador', when: 'Agora', text: text.trim(), useful: 0 }, ...comments])
-            setText('')
-            setRating(0)
-          }}
-        >
-          <Avatar emoji="EU" className="h-9 w-9 text-xs font-bold text-terra" />
-          <div className="flex-1 space-y-2">
-            <textarea
-              id="novo-comentario"
-              className="input h-20"
-              placeholder="Você fez essa receita? Conte para o Chef Henrique e para a comunidade como ficou..."
-              value={text}
-              onChange={(e) => setText(e.target.value)}
+          <div className="h-1 bg-white/10">
+            <div
+              className="h-1 bg-brand transition-all"
+              style={{ width: `${((guided + 1) / recipe.steps.length) * 100}%` }}
             />
-            <div className="flex items-center justify-between text-xs">
-              <span className="flex items-center gap-1">
-                Sua nota:
-                {[1, 2, 3, 4, 5].map((n) => (
-                  <button key={n} type="button" aria-label={`${n} estrelas`} onClick={() => setRating(n)} className={n <= rating ? 'text-gold' : 'text-line'}>★</button>
-                ))}
-              </span>
-              <button className="btn-ghost !py-1.5 text-xs">Publicar Avaliação</button>
-            </div>
           </div>
-        </form>
-        {comments.map((c, i) => (
-          <article key={`${c.name}-${i}`} className="rounded-xl border border-line bg-cream p-4 text-sm">
-            <div className="flex items-center gap-3">
-              <Avatar emoji="🙂" className="h-9 w-9" />
-              <div className="flex-1 text-xs">
-                <b className="text-sm">{c.name}</b>
-                <p className="text-ink-faint">{c.where} • {c.when}</p>
+
+          <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col justify-center gap-6 overflow-y-auto px-5 py-8 sm:px-8">
+            <h2 className="text-3xl font-semibold leading-tight text-white sm:text-5xl">{recipe.steps[guided].title}</h2>
+            <p className="text-lg leading-relaxed text-white/80 sm:text-2xl">{recipe.steps[guided].text}</p>
+            {recipe.steps[guided].timer && (
+              <div>
+                <StepTimer
+                  key={guided}
+                  dark
+                  label={recipe.steps[guided].timer.label}
+                  seconds={recipe.steps[guided].timer.seconds}
+                />
               </div>
-              <Stars value={5} className="text-xs" />
-            </div>
-            <p className="mt-2 text-ink-soft">{c.text}</p>
-            <p className="mt-2 flex gap-4 text-[11px] text-ink-faint">
-              <button onClick={() => setComments(comments.map((x, j) => (j === i ? { ...x, useful: x.useful + 1 } : x)))}>
-                👍 Útil ({c.useful})
+            )}
+          </div>
+
+          <div className="flex justify-between gap-3 px-5 py-5 sm:px-8">
+            <button
+              type="button"
+              className="btn border-white/20 bg-transparent text-white hover:bg-white/10"
+              disabled={guided === 0}
+              onClick={() => setGuided(guided - 1)}
+            >
+              <ArrowLeft className="h-4 w-4" /> Anterior
+            </button>
+            {guided < last ? (
+              <button type="button" className="btn btn-primary" onClick={() => setGuided(guided + 1)}>
+                Próximo <ArrowRight className="h-4 w-4" />
               </button>
-              <span>↩ Responder</span>
-            </p>
-          </article>
-        ))}
-      </section>
+            ) : (
+              <button type="button" className="btn btn-primary" onClick={() => setGuided(null)}>
+                Concluir <Check className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
+}
+
+function StarIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true">
+      <path d="M12 2.5l2.9 6 6.6.9-4.8 4.6 1.2 6.5L12 17.4 6.1 20.5l1.2-6.5L2.5 9.4l6.6-.9z" />
+    </svg>
+  )
+}
+
+export default function Recipe() {
+  const { id } = useParams()
+  const recipe = recipes.find((r) => r.id === id)
+  if (!recipe) {
+    return <NotFound title="Receita não encontrada" text="O link pode estar errado ou a receita foi removida." />
+  }
+  return <RecipeView key={recipe.id} recipe={recipe} />
 }
