@@ -1,16 +1,29 @@
-# React + Vite
+# GastroMatch — Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Interface web do GastroMatch em **React 19 + Vite + TypeScript**, estilizada com **Tailwind CSS 4** e roteada com **React Router**.
+Baseada no design do Stitch ("GastroMatch Culinary Discovery Platform").
 
-Currently, two official plugins are available:
+## Telas
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+| Rota | Tela |
+|---|---|
+| `/` | Home & Descoberta — busca por ingredientes da geladeira, coleções, receitas em destaque, listas locais e cardápio da semana |
+| `/profissionais` | Diretório de Chefs, Nutricionistas & Restaurantes — filtros, kits, mini mapa e reels |
+| `/portal` | Portal & Onboarding do Profissional — status da conta, métricas e edição de perfil |
+| `/receita/:id` | Detalhe da Receita — ajuste de porções, passo a passo com timers, Modo Cozinhar Guiado e comentários |
 
-## React Compiler
+## Como rodar
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+```bash
+npm install
+npm run dev
+```
 
-## Expanding the ESLint configuration
+Outros comandos: `npm run build` (checa os tipos e gera `dist/`) e `npm run preview`.
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## Observações
+
+- As listas (compras e cardápio), o perfil do profissional e os comentários ficam no `localStorage` do navegador, sem login.
+- Os dados de receitas e profissionais são mockados em `src/data/data.ts`; ainda não há integração com o Backend.
+- As fotos são placeholders (gradiente + emoji) até as imagens reais estarem disponíveis.
+- `vercel.json` redireciona todas as rotas para `index.html`, necessário para o roteamento no deploy.
