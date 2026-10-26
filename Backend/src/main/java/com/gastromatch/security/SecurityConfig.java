@@ -36,7 +36,7 @@ public class SecurityConfig {
             // Sem sessão no servidor: cada requisição se autentica pelo token.
             .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers(String.valueOf(HttpMethod.OPTIONS), "/**").permitAll() // preflight do CORS
+                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll() // preflight do CORS
                 .requestMatchers("/auth/**").permitAll()
                 .anyRequest().authenticated())
             // Sem isso o padrão seria 403 para quem não enviou token. O correto é 401.
