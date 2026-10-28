@@ -72,11 +72,6 @@ public class JwtService {
         }
     }
 
-    /** Devolve o id do usuário se o token for válido; senão, vazio. */
-    public Optional<Integer> extrairUsuarioId(String token) {
-        return validar(token).map(TokenValido::usuarioId);
-    }
-
     public long getAccessExpirationSeconds() {
         return accessExpirationSeconds;
     }
