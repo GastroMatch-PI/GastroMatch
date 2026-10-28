@@ -74,14 +74,14 @@ A versão do Lombok normalmente é gerenciada pelo parent do Spring Boot, mas **
 
 ```java
 @Entity
-@Table(name = "usuarios")
+@Table(name = "usuario")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Usuario {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;                       // sem @Setter: o id vem do banco
+    private Integer id;                     // sem @Setter: o id vem do banco
 
     @Setter
     @Column(nullable = false, unique = true, length = 255)

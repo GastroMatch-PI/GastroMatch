@@ -21,7 +21,7 @@ public class UsuarioController {
 
     // O JwtAuthFilter coloca o id do usuário como principal; o Spring o injeta aqui.
     @GetMapping("/me")
-    public ResponseEntity<UsuarioResponse> perfil(@AuthenticationPrincipal Long usuarioId) {
+    public ResponseEntity<UsuarioResponse> perfil(@AuthenticationPrincipal Integer usuarioId) {
         return ResponseEntity.ok(usuarioService.buscarPorId(usuarioId));
     }
 }
