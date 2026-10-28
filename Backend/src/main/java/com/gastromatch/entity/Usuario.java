@@ -1,5 +1,7 @@
 package com.gastromatch.entity;
 
+import java.time.Instant;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -13,12 +15,12 @@ import jakarta.persistence.Table;
  * Quem sai nas respostas é o UsuarioResponse.
  */
 @Entity
-@Table(name = "usuarios")
+@Table(name = "usuario")
 public class Usuario {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY) // AUTO_INCREMENT do MySQL
-    private Long id;
+    private Integer id; // INT no SQL
 
     // unique no banco é a última barreira contra emails duplicados,
     // inclusive em cadastros simultâneos que passariam pela checagem do service.
@@ -37,11 +39,31 @@ public class Usuario {
     @Column(length = 500)
     private String capa;
 
+    // Liga a conta ao perfil profissional (chef, nutricionista, restaurante).
+    // NULL = conta comum. Por enquanto é só o número: a entidade Profissional
+    // ainda não existe (bloco 1).
+    private Integer idProfissional;
+
+    // Momento da última troca de senha. O JwtAuthFilter vai recusar tokens
+    // emitidos antes dele.
+    private Instant senhaAlteradaEm;
+
+    // NULL = email ainda não verificado.
+    private Instant emailVerificadoEm;
+
+    // Preenchidos pelo próprio banco (DEFAULT CURRENT_TIMESTAMP), por isso o
+    // Hibernate não os envia no INSERT nem no UPDATE.
+    @Column(insertable = false, updatable = false)
+    private Instant criadoEm;
+
+    @Column(insertable = false, updatable = false)
+    private Instant atualizadoEm;
+
     // O JPA exige construtor sem argumentos para instanciar a entidade.
     public Usuario() {
     }
 
-    public Long getId() {
+    public Integer getId() {
         return id;
     }
 
@@ -75,5 +97,37 @@ public class Usuario {
 
     public void setCapa(String capa) {
         this.capa = capa;
+    }
+
+    public Integer getIdProfissional() {
+        return idProfissional;
+    }
+
+    public void setIdProfissional(Integer idProfissional) {
+        this.idProfissional = idProfissional;
+    }
+
+    public Instant getSenhaAlteradaEm() {
+        return senhaAlteradaEm;
+    }
+
+    public void setSenhaAlteradaEm(Instant senhaAlteradaEm) {
+        this.senhaAlteradaEm = senhaAlteradaEm;
+    }
+
+    public Instant getEmailVerificadoEm() {
+        return emailVerificadoEm;
+    }
+
+    public void setEmailVerificadoEm(Instant emailVerificadoEm) {
+        this.emailVerificadoEm = emailVerificadoEm;
+    }
+
+    public Instant getCriadoEm() {
+        return criadoEm;
+    }
+
+    public Instant getAtualizadoEm() {
+        return atualizadoEm;
     }
 }

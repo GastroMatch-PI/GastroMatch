@@ -48,14 +48,14 @@ public class JwtService {
     }
 
     /** Devolve o id do usuário se o token for válido (assinatura e validade); senão, vazio. */
-    public Optional<Long> extrairUsuarioId(String token) {
+    public Optional<Integer> extrairUsuarioId(String token) {
         try {
             Claims claims = Jwts.parser()
                     .verifyWith(key)
                     .build()
                     .parseSignedClaims(token)
                     .getPayload();
-            return Optional.of(Long.valueOf(claims.getSubject()));
+            return Optional.of(Integer.valueOf(claims.getSubject()));
         } catch (JwtException | IllegalArgumentException e) {
             return Optional.empty();
         }

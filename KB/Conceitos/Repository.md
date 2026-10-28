@@ -44,7 +44,7 @@ public class UsuarioRepositoryManual {
 Com o Spring Data, você declara só o contrato:
 
 ```java
-public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
+public interface UsuarioRepository extends JpaRepository<Usuario, Integer> {
     Optional<Usuario> findByEmail(String email);
     boolean existsByEmail(String email);
     boolean existsByUsername(String username);
@@ -81,16 +81,16 @@ sequenceDiagram
 
 **Ponto de atenção:** se a interface estiver fora de `com.gastromatch` (ou de seus subpacotes), o Spring não a encontra, e o bean não existe.
 
-## 4. O que é `JpaRepository<Usuario, Long>`
+## 4. O que é `JpaRepository<Usuario, Integer>`
 
 `JpaRepository` é uma interface do Spring Data que traz um conjunto pronto de operações. Os dois tipos entre `< >` são:
 
 | Parâmetro | Significado | Aqui |
 |---|---|---|
 | 1º | A **entidade** gerenciada | `Usuario` |
-| 2º | O **tipo do `@Id`** da entidade | `Long` |
+| 2º | O **tipo do `@Id`** da entidade | `Integer` |
 
-Tipo de id errado (por exemplo, `Integer` com `@Id Long`) causa erros em operações como `findById`.
+Tipo de id errado (por exemplo, `Long` com `@Id Integer`) causa erros em operações como `findById`.
 
 Estrutura simplificada da herança (confira a real na sua IDE: Ctrl+clique em `JpaRepository`):
 
@@ -178,7 +178,7 @@ Com `spring.jpa.show-sql=true` no `application.properties`, o console mostra o S
 
 1. uma consulta de existência pelo email;
 2. uma consulta de existência pelo username;
-3. um `insert into usuarios ...`.
+3. um `insert into usuario ...`.
 
 Anote qual método do service gerou cada uma.
 
