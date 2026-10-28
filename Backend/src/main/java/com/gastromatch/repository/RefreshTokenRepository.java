@@ -10,7 +10,7 @@ import org.springframework.data.repository.query.Param;
 import com.gastromatch.entity.RefreshToken;
 import com.gastromatch.entity.Usuario;
 
-public interface RefreshTokenRepository extends JpaRepository<RefreshToken, Long> {
+public interface RefreshTokenRepository extends JpaRepository<RefreshToken, Integer> {
 
     Optional<RefreshToken> findByTokenHash(String tokenHash);
 

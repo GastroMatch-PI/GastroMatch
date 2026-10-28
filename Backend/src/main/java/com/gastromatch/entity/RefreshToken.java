@@ -17,19 +17,19 @@ import jakarta.persistence.Table;
  * se o banco vazar, os tokens não podem ser usados.
  */
 @Entity
-@Table(name = "refresh_tokens")
+@Table(name = "refresh_token")
 public class RefreshToken {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private Integer id;
 
     // SHA-256 em hexadecimal = 64 caracteres. unique também cria o índice de busca.
     @Column(nullable = false, unique = true, length = 64)
     private String tokenHash;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "usuario_id", nullable = false)
+    @JoinColumn(name = "id_usuario", nullable = false)
     private Usuario usuario;
 
     @Column(nullable = false)
@@ -47,7 +47,7 @@ public class RefreshToken {
         this.expiraEm = expiraEm;
     }
 
-    public Long getId() { return id; }
+    public Integer getId() { return id; }
     public String getTokenHash() { return tokenHash; }
     public Usuario getUsuario() { return usuario; }
     public Instant getExpiraEm() { return expiraEm; }
