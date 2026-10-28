@@ -1,6 +1,8 @@
 # Fundamentação da Arquitetura em Camadas (Package by Layer)
 
-A decisão de adotar a Arquitetura em Camadas (*Package by Layer*), estruturada com componentes de suporte (Mappers, DTOs, Security, Exception Handler e Audit), é uma escolha clássica, amplamente estabelecida na indústria para aplicações corporativas.
+> Para rodar o backend no seu PC (banco no Docker, variáveis de ambiente), veja [SETUP-BANCO.md](SETUP-BANCO.md).
+
+A decisão de adotar a Arquitetura em Camadas (*Package by Layer*), estruturada com componentes de suporte (DTOs, Security e Exception Handler), é uma escolha clássica, amplamente estabelecida na indústria para aplicações corporativas.
 
 Abaixo está a fundamentação detalhada do motivo pelo qual essa organização foi definida e por que ela é uma das melhores e mais eficientes formas de se trabalhar.
 
@@ -10,30 +12,29 @@ Abaixo está a fundamentação detalhada do motivo pelo qual essa organização 
 
 A organização foi projetada seguindo dois pilares centrais do desenvolvimento de software profissional: o **Princípio da Responsabilidade Única** (SRP — *Single Responsibility Principle*) e a **Separação de Conceitos** (SoC — *Separation of Concerns*).
 
-Em aplicações reais, misturar dados de banco, regras de negócio e contratos de API na mesma classe gera o que chamamos de **código espaguete**. A estrutura proposta resolve isso criando fronteiras claras:
+Em aplicações reais, misturar dados de banco, regras de negócio e contratos de API na mesma classe gera o que chamamos de **código espaguete**. A estrutura adotada resolve isso criando fronteiras claras:
 
 ```
-com.gastromatch.api/
-├── config/       <-- Infraestrutura global e políticas
-├── security/     <-- Filtros, tokens e regras de acesso
+com.gastromatch/
+├── config/       <-- Infraestrutura global (CORS)
+├── security/     <-- Filtro JWT, geração de tokens e regras de acesso
 ├── controller/   <-- Porta de entrada HTTP (Entrada/Saída)
 ├── dto/          <-- Contratos de dados expostos (Request/Response)
-├── mapper/       <-- Tradutores entre API e Banco
 ├── service/      <-- O "Coração" da aplicação (Regras de Negócio)
 ├── entity/       <-- Mapeamento do Banco de Dados
 ├── repository/   <-- Comunicação direta com a base de dados
-├── exception/    <-- Padronização e tratamento centralizado de erros
-├── audit/        <-- Rastreabilidade automatizada
-└── validation/   <-- Validações customizadas reusáveis
+└── exception/    <-- Padronização e tratamento centralizado de erros
 ```
+
+Pastas como `mapper/` (tradução entre entidade e DTO), `audit/` e `validation/` **ainda não existem**: hoje a conversão está em `UsuarioResponse.de(...)` e a validação está nas anotações dos DTOs (`@NotBlank`, `@Email`, `@Size`). Elas só entram quando houver necessidade real.
 
 ### Por que cada camada existe na prática?
 
-- **`controller/` + `dto/`:** o `UserController` não sabe como a tabela de usuários é modelada, nem como a senha é criptografada. Ele apenas recebe um `RegisterRequestDTO`, delega para a Service e devolve um `UserResponseDTO`. Isso garante que informações sensíveis (como hashes de senhas ou dados internos) jamais vazem para a API.
-- **`mapper/`:** evita a poluição de métodos como `toEntity()` ou `toDTO()` dentro do Service ou do Controller. O Mapper é uma ferramenta puramente funcional e isolada para conversão.
-- **`service/`:** é onde reside o valor real do sistema. O `UserService` e o `AuthService` executam a lógica de negócio (validar e-mail único, chamar o BCrypt, interagir com o `RefreshTokenService`) sem saber se a chamada veio de um controller REST, de uma fila Kafka ou de uma CLI.
-- **`repository/` + `entity/`:** a camada de persistência (`User`, `UserRepository`) fica totalmente encapsulada. Se amanhã o banco mudar de PostgreSQL para MongoDB, apenas o modelo de dados interno muda, sem quebrar o contrato dos DTOs ou a lógica do controller.
-- **`security/` + `exception/`:** funcionam como *Cross-Cutting Concerns* (preocupações transversais). Tratam autenticação/autorização e erros de forma global, liberando os serviços para focarem estritamente na regra de negócio.
+- **`controller/` + `dto/`:** o `UsuarioController` não sabe como a tabela de usuários é modelada, nem como a senha é criptografada. O `AuthController` recebe um `CadastroUsuarioRequest`, delega para a Service e devolve um `UsuarioResponse`. Isso garante que informações sensíveis (como o hash da senha) jamais vazem para a API.
+- **Conversão entidade → DTO:** fica no próprio `UsuarioResponse.de(...)`, o que evita métodos como `toEntity()` ou `toDTO()` espalhados pelo Service ou pelo Controller. Se a conversão crescer, ela ganha uma pasta `mapper/` própria.
+- **`service/`:** é onde reside o valor real do sistema. O `UsuarioService` e o `AuthService` executam a lógica de negócio (validar e-mail único, chamar o BCrypt, emitir e girar o refresh token) sem saber se a chamada veio de um controller REST, de uma fila ou de uma linha de comando.
+- **`repository/` + `entity/`:** a camada de persistência (`Usuario`, `UsuarioRepository`) fica encapsulada. Se amanhã o banco mudar do MySQL para outro, apenas o modelo de dados interno muda, sem quebrar o contrato dos DTOs ou a lógica do controller. O esquema do banco é definido pelo SQL em `Data/Modelagem`, e o Hibernate só confere se as entidades batem com ele (`ddl-auto=validate`).
+- **`security/` + `exception/`:** funcionam como *Cross-Cutting Concerns* (preocupações transversais). Tratam autenticação e erros de forma global, liberando os serviços para focarem estritamente na regra de negócio.
 
 ---
 
@@ -43,8 +44,8 @@ com.gastromatch.api/
 
 Com cada componente isolado e dependendo de abstrações/interfaces, escrever testes se torna simples e direto:
 
-- **Testes Unitários:** o `UserService` pode ser testado isoladamente, mockando o `UserRepository` e o `PasswordEncoder`.
-- **Testes de Integração:** o `UserController` pode ser testado com `@WebMvcTest`, verificando validações de DTOs e retornos HTTP sem precisar subir a base de dados inteira.
+- **Testes Unitários:** o `UsuarioService` pode ser testado isoladamente, mockando o `UsuarioRepository` e o `PasswordEncoder`.
+- **Testes de Integração:** o `UsuarioController` pode ser testado com `@WebMvcTest`, verificando validações de DTOs e retornos HTTP sem precisar subir a base de dados inteira. É o que o `SecurityConfigTest` já faz para as regras de acesso.
 
 ### B. Curva de Aprendizado e Padronização
 
@@ -55,9 +56,10 @@ O *Package by Layer* é o padrão de arquitetura mais reconhecido por desenvolve
 
 ### C. Segurança por Design (*Security by Default*)
 
-Ao forçar a existência das camadas `security/`, `dto/` e `validation/`:
+Ao forçar a existência das camadas `security/` e `dto/`:
 
-- **Mitigação de Mass Assignment:** o cliente não consegue alterar campos protegidos (como `role` ou `isVerified`) injetando JSONs extras, pois o DTO aceita apenas o que foi explicitamente declarado.
+- **Mitigação de Mass Assignment:** o cliente não consegue alterar campos protegidos (como `id` ou `idProfissional`) injetando JSONs extras, pois o DTO aceita apenas o que foi explicitamente declarado.
+- **Token verificado no banco:** o `JwtAuthFilter` não confia só na assinatura do token. Ele confere se o usuário ainda existe e se a senha não foi trocada depois da emissão do token.
 - **Erros padronizados:** o `GlobalExceptionHandler` intercepta qualquer falha inesperada e responde com um JSON amigável (sem vazar a *stack trace* nem detalhes de infraestrutura para atacantes).
 
 ### D. Manutenibilidade e Baixo Acoplamento
@@ -72,7 +74,7 @@ Atualmente existem duas grandes correntes de organização:
 
 | Abordagem | Como agrupa o código | Quando é excelente |
 |---|---|---|
-| **Package by Layer** (escolha atual) | Pela função técnica (controllers, services, repositories) | Projetos de porte pequeno a médio, times onde a padronização técnica é prioridade, ou quando a API possui domínios muito interconectados (como `User` e `Auth`) |
-| **Package by Feature** | Pelo domínio de negócio (`user/`, `auth/`, `receita/`) | Sistemas monolíticos muito grandes, com múltiplos times trabalhando em domínios completamente isolados |
+| **Package by Layer** (escolha atual) | Pela função técnica (controllers, services, repositories) | Projetos de porte pequeno a médio, times onde a padronização técnica é prioridade, ou quando a API possui domínios muito interconectados (como `Usuario` e `Auth`) |
+| **Package by Feature** | Pelo domínio de negócio (`usuario/`, `auth/`, `receita/`) | Sistemas monolíticos muito grandes, com múltiplos times trabalhando em domínios completamente isolados |
 
-Para o escopo do GastroMatch, focado na construção de um módulo sólido de usuários e autenticação profissional, a organização em *Package by Layer* atende perfeitamente aos requisitos de mercado, com altíssimo nível de legibilidade e segurança.
+Para o escopo do GastroMatch, que começa pelo módulo de usuários e autenticação e segue para receitas e perfis profissionais, a organização em *Package by Layer* atende perfeitamente aos requisitos, com alto nível de legibilidade e segurança.
