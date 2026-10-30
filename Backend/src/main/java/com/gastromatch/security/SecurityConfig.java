@@ -38,6 +38,10 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll() // preflight do CORS
                 .requestMatchers("/auth/**").permitAll()
+                // Leitura pública: só GET e só estas rotas. Escrever exige login.
+                .requestMatchers(HttpMethod.GET, "/receitas", "/receitas/*", "/ingredientes").permitAll()
+                // Swagger: só existe quando habilitado (profile dev); em produção dá 404.
+                .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                 .anyRequest().authenticated())
             // Sem isso o padrão seria 403 para quem não enviou token. O correto é 401.
             .exceptionHandling(e -> e.authenticationEntryPoint((req, res, ex) -> {
