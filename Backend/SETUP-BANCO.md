@@ -66,6 +66,16 @@ A API fica em http://localhost:8080 e o Swagger em http://localhost:8080/swagger
 
 Use o `down -v` sempre que o `GastroDB_v1.0.0.sql` mudar: o script só roda quando o banco é criado.
 
+## Dados de exemplo
+
+O banco nasce também com 18 ingredientes e 5 receitas de exemplo (`Data/Modelagem/GastroDB_dados_exemplo.sql`), para testar `GET /receitas` sem cadastrar nada. O chef de exemplo não tem conta, então ninguém loga como ele.
+
+Se o seu banco já existia antes disso, carregue os dados sem apagar nada (o script pode rodar mais de uma vez):
+
+```powershell
+Get-Content -Raw -Encoding UTF8 ..\Data\Modelagem\GastroDB_dados_exemplo.sql | docker exec -i gastromatch-mysql mysql -uroot -p"SUA_SENHA" --default-character-set=utf8mb4
+```
+
 ## Problemas comuns
 
 - **`JAVA_HOME environment variable is not defined correctly`**: aponte para a pasta do seu JDK no terminal aberto, por exemplo `$env:JAVA_HOME = "C:\Users\SEU_USUARIO\.jdks\openjdk-26.0.2"` (use o caminho do JDK instalado no seu PC).
