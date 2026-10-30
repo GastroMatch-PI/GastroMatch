@@ -1,0 +1,64 @@
+name: CI
+
+# Roda os testes do backend em todo PR para develop/main e a cada push nelas.
+on:
+  pull_request:
+    branches: [develop, main]
+  push:
+    branches: [develop, main]
+
+# O workflow só lê o repositório; não precisa de nenhuma permissão de escrita.
+permissions:
+  contents: read
+
+# Um push novo no mesmo PR cancela a rodada anterior, que já está velha.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  testes-backend:
+    name: Testes do backend
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    defaults:
+      run:
+        working-directory: Backend
+
+    # MySQL descartável, só para esta rodada. O ApplicationTests sobe a aplicação inteira
+    # e o Hibernate (ddl-auto=validate) confere as entidades com o esquema do SQL do projeto.
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: senha-so-do-ci
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -psenha-so-do-ci"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: maven
+
+      - name: Criar o esquema do banco
+        run: mysql -h 127.0.0.1 -uroot -psenha-so-do-ci --default-character-set=utf8mb4 < ../Data/Modelagem/GastroDB_v1.0.0.sql
+
+      - name: Rodar os testes
+        env:
+          DB_PASSWORD: senha-so-do-ci
+        run: |
+          # Segredo JWT gerado na hora, só para esta rodada.
+          export JWT_SECRET="$(openssl rand -base64 48 | tr -d '\n')"
+          # O mvnw foi versionado sem permissão de execução.
+          chmod +x mvnw
+          ./mvnw -B test
