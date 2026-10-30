@@ -19,12 +19,16 @@ import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 
 import com.gastromatch.config.CorsConfig;
+import com.gastromatch.controller.ComentarioController;
+import com.gastromatch.controller.FavoritoController;
 import com.gastromatch.controller.IngredienteController;
 import com.gastromatch.controller.ReceitaController;
 import com.gastromatch.dto.PaginaResponse;
 import com.gastromatch.exception.GlobalExceptionHandler;
 import com.gastromatch.exception.ReceitaNaoEncontradaException;
 import com.gastromatch.repository.UsuarioRepository;
+import com.gastromatch.service.ComentarioService;
+import com.gastromatch.service.FavoritoService;
 import com.gastromatch.service.IngredienteService;
 import com.gastromatch.service.ReceitaService;
 
@@ -32,7 +36,8 @@ import com.gastromatch.service.ReceitaService;
  * Garante o contrato de acesso: leitura de receitas e ingredientes é pública (só GET),
  * e qualquer outra coisa continua exigindo login.
  */
-@WebMvcTest({ReceitaController.class, IngredienteController.class})
+@WebMvcTest({ReceitaController.class, IngredienteController.class, ComentarioController.class,
+        FavoritoController.class})
 @Import({SecurityConfig.class, JwtAuthFilter.class, JwtService.class, CorsConfig.class,
         GlobalExceptionHandler.class})
 @TestPropertySource(properties = {
@@ -49,6 +54,12 @@ class RotasPublicasTest {
 
     @MockBean
     private IngredienteService ingredienteService;
+
+    @MockBean
+    private ComentarioService comentarioService;
+
+    @MockBean
+    private FavoritoService favoritoService;
 
     @MockBean
     private UsuarioRepository usuarioRepository;
@@ -91,6 +102,23 @@ class RotasPublicasTest {
         mockMvc.perform(put("/receitas/1").contentType("application/json").content("{}"))
                 .andExpect(status().isUnauthorized());
         mockMvc.perform(delete("/receitas/1")).andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void lerComentariosSemTokenDeveRetornar200() throws Exception {
+        mockMvc.perform(get("/receitas/1/comentarios")).andExpect(status().isOk());
+    }
+
+    @Test
+    void comentarEFavoritarSemTokenDeveRetornar401() throws Exception {
+        mockMvc.perform(post("/receitas/1/comentarios").contentType("application/json").content("{}"))
+                .andExpect(status().isUnauthorized());
+        mockMvc.perform(put("/comentarios/1").contentType("application/json").content("{}"))
+                .andExpect(status().isUnauthorized());
+        mockMvc.perform(delete("/comentarios/1")).andExpect(status().isUnauthorized());
+        mockMvc.perform(put("/receitas/1/favorito")).andExpect(status().isUnauthorized());
+        mockMvc.perform(delete("/receitas/1/favorito")).andExpect(status().isUnauthorized());
+        mockMvc.perform(get("/usuarios/me/favoritos")).andExpect(status().isUnauthorized());
     }
 
     @Test
