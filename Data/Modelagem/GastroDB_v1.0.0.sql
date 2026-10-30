@@ -190,6 +190,9 @@ CREATE TABLE IF NOT EXISTS `receita` (
   `nome`           VARCHAR(150)  NOT NULL,
   `descricao`      VARCHAR(1000) NULL,
   `imagem`         VARCHAR(500)  NULL,
+  -- [ADIÇÃO] link do YouTube; o backend só aceita URL de youtube.com / youtu.be.
+  -- O front monta o iframe com /embed/<id>?start=<etapa_receita.timestamp_video>.
+  `video_url`      VARCHAR(500)  NULL,
   `n_porcoes`      INT           NOT NULL,
   `dificuldade`    ENUM('FACIL','MEDIO','DIFICIL') NOT NULL,
   `tipo`           ENUM('CAFE_DA_MANHA','ALMOCO','JANTAR','LANCHE','SOBREMESA') NOT NULL,
