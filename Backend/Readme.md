@@ -68,7 +68,46 @@ Alterar uma regra de negócio (como mudar a política de expiração do JWT de 1
 
 ---
 
-## 3. Package by Layer vs. Package by Feature
+## 3. Rotas da API
+
+Erros seguem sempre o formato `{ "status": 400, "mensagem": "...", "erros": { "campo": "..." } }` (`erros` só em validação). Listas devolvem `{ conteudo, pagina, tamanho, totalElementos, totalPaginas }` (`pagina` começa em 0; `tamanho` máximo 50).
+
+**Públicas (sem login, só GET):**
+
+| Rota | O que faz |
+|---|---|
+| `GET /receitas` | Lista com filtros opcionais: `texto`, `tempoMax` (min), `dificuldade`, `tipo`, `ocasiao`, `perfil`, `metodo`, `ingredientes=1,2,3` (ids que a pessoa TEM: só voltam receitas feitas inteiramente com eles), `pagina`, `tamanho` |
+| `GET /receitas/{id}` | Receita completa: ingredientes, etapas (em ordem) e dicas de cada etapa |
+| `GET /receitas/{id}/comentarios` | Comentários da receita, do mais recente ao mais antigo |
+| `GET /ingredientes` | Catálogo em ordem alfabética (`?nome=` filtra por trecho) |
+
+**Conta** (`/auth/**` é público):
+
+| Rota | O que faz |
+|---|---|
+| `POST /auth/cadastro`, `/auth/login`, `/auth/refresh`, `/auth/logout` | Cadastro e sessão (access token de 15 min + refresh token com rotação) |
+| `GET /usuarios/me` | Dados da conta logada |
+
+**Exigem login (`Authorization: Bearer <accessToken>`):**
+
+| Rota | O que faz |
+|---|---|
+| `POST /chefs`, `GET /chefs/me` | Cria / consulta o perfil de chef da conta (uma conta tem no máximo um perfil) |
+| `POST /receitas`, `PUT /receitas/{id}`, `DELETE /receitas/{id}` | Só chef, e só o chef **dono** edita ou apaga. O `PUT` troca os dados e a lista de ingredientes |
+| `POST /receitas/{id}/etapas`, `PUT`/`DELETE /receitas/{id}/etapas/{idEtapa}` | Etapas (sem `ordem`, entra no fim) |
+| `POST /receitas/{id}/etapas/{idEtapa}/dicas`, `PUT`/`DELETE .../dicas/{idDica}` | Dicas e erros comuns da etapa |
+| `POST /receitas/{id}/comentarios`, `PUT`/`DELETE /comentarios/{id}` | Comentar (texto + nota de 0 a 5, opcional); só o autor edita ou apaga |
+| `PUT`/`DELETE /receitas/{id}/favorito`, `GET /usuarios/me/favoritos` | Favoritar, desfavoritar (ambos idempotentes) e listar os favoritos |
+
+Códigos: `400` dados inválidos, `401` sem login, `403` logado mas sem permissão (não é chef / receita de outro chef), `404` não existe, `409` conflito (email ou username repetido, conta que já tem perfil).
+
+Vídeo da receita (`videoUrl`): só link do YouTube (`youtube.com/watch?v=ID`, `/embed/ID`, `/shorts/ID` ou `youtu.be/ID`). O front monta o iframe com `/embed/ID?start=<timestampVideo da etapa>`.
+
+Com o profile `dev`, o Swagger lista tudo em http://localhost:8080/swagger-ui.html.
+
+---
+
+## 4. Package by Layer vs. Package by Feature
 
 Atualmente existem duas grandes correntes de organização:
 
