@@ -10,6 +10,7 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import com.gastromatch.dto.ErroResponse;
 
@@ -55,9 +56,16 @@ public class GlobalExceptionHandler {
                 .body(new ErroResponse(401, ex.getMessage()));
     }
 
+    // 400: parâmetro com tipo errado (ex.: dificuldade=XYZ, id=abc)
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ErroResponse> handleParametroInvalido(MethodArgumentTypeMismatchException ex) {
+        return ResponseEntity.badRequest()
+                .body(new ErroResponse(400, "Valor inválido para o parâmetro '" + ex.getName() + "'"));
+    }
+
     // 404
-    @ExceptionHandler(UsuarioNaoEncontradoException.class)
-    public ResponseEntity<ErroResponse> handleNaoEncontrado(UsuarioNaoEncontradoException ex) {
+    @ExceptionHandler(RecursoNaoEncontradoException.class)
+    public ResponseEntity<ErroResponse> handleNaoEncontrado(RecursoNaoEncontradoException ex) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
                 .body(new ErroResponse(404, ex.getMessage()));
     }
