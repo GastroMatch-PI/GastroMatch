@@ -125,7 +125,7 @@ Resumo das barreiras: DTO (formato) → service (duplicidade com mensagem clara)
 **Cadastro feito no Postman e conferido no MySQL:**
 
 ```sql
-SELECT id, email, username, password FROM usuarios;
+SELECT id, email, username, password FROM usuario;
 ```
 
 Confira: o email está em minúsculas, o `password` começa com `$2a$10$` e tem 60 caracteres, e **não** é a senha digitada.
@@ -133,12 +133,12 @@ Confira: o email está em minúsculas, o `password` começa com `$2a$10$` e tem 
 > 📷 **[IMAGEM A ADICIONAR 1]** — arquivo sugerido: `img/mysql-usuarios-hash.png`
 > **O que capturar:** o resultado do `SELECT` acima, mostrando a coluna `password` com o hash.
 >
-> ![Tabela usuarios no MySQL com hash BCrypt](img/mysql-usuarios-hash.png)
+> ![Tabela usuario no MySQL com hash BCrypt](img/mysql-usuarios-hash.png)
 
 > 📷 **[IMAGEM A ADICIONAR 2]** — arquivo sugerido: `img/mysql-show-create-table.png`
-> **O que capturar:** o resultado de `SHOW CREATE TABLE usuarios;`, com os índices `UNIQUE` de `email` e `username`.
+> **O que capturar:** o resultado de `SHOW CREATE TABLE usuario;`, com os índices `UNIQUE` de `email` e `username`.
 >
-> ![SHOW CREATE TABLE usuarios](img/mysql-show-create-table.png)
+> ![SHOW CREATE TABLE usuario](img/mysql-show-create-table.png)
 
 **Experimento sobre o salt:** cadastre dois usuários diferentes com a **mesma senha** e compare os hashes no banco. Devem ser diferentes. Anote por quê.
 

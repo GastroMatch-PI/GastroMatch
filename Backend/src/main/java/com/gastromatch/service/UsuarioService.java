@@ -52,7 +52,7 @@ public class UsuarioService {
     }
 
     @Transactional(readOnly = true)
-    public UsuarioResponse buscarPorId(Long id) {
+    public UsuarioResponse buscarPorId(Integer id) {
         return usuarioRepository.findById(id)
                 .map(UsuarioResponse::de)
                 .orElseThrow(UsuarioNaoEncontradoException::new);

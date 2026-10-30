@@ -82,7 +82,7 @@ Dentro de uma transação (`@Transactional` no service), se você buscar um `Usu
 
 ```java
 @Transactional
-public void alterarUsername(Long id, String novoUsername) {
+public void alterarUsername(Integer id, String novoUsername) {
     Usuario u = usuarioRepository.findById(id).orElseThrow(...);
     u.setUsername(novoUsername);   // o UPDATE acontece ao fim da transação
 }
