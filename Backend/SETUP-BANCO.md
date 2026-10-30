@@ -33,6 +33,12 @@ docker compose ps
 
 O status deve ser `running`. Aguarde uns 20 segundos na primeira vez.
 
+O banco nasce com **13 tabelas**: as 12 do modelo (DER) mais a `refresh_token`, que guarda as sessões de login. Para conferir (use a senha do seu `.env`):
+
+```powershell
+docker exec gastromatch-mysql mysql -uroot -p"SUA_SENHA" -e "SHOW TABLES" gastromatch
+```
+
 ## 4. Subir a API
 
 Use **a mesma senha** do `.env` e gere um segredo JWT seu:

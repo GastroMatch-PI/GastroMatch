@@ -86,6 +86,26 @@ CREATE TABLE IF NOT EXISTS `usuario` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ---------------------------------------------------------------------
+-- 2.1 refresh_token (sessões de login)
+-- ---------------------------------------------------------------------
+-- [ADIÇÃO] Não existe no DER: é infraestrutura do login (RefreshToken.java).
+-- Guarda só o HASH SHA-256 do token (64 caracteres em hexadecimal); o valor
+-- puro fica apenas com o cliente. Se o banco vazar, os tokens não servem.
+-- `revogado` marca o token já usado (rotação) ou encerrado (logout).
+CREATE TABLE IF NOT EXISTS `refresh_token` (
+  `id`         INT         NOT NULL AUTO_INCREMENT,
+  `token_hash` VARCHAR(64) NOT NULL,
+  `id_usuario` INT         NOT NULL,
+  `expira_em`  DATETIME    NOT NULL,
+  `revogado`   TINYINT(1)  NOT NULL DEFAULT 0,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_refresh_token_token_hash` (`token_hash`),
+  CONSTRAINT `fk_refresh_token_usuario`
+    FOREIGN KEY (`id_usuario`) REFERENCES `usuario` (`id`)
+    ON DELETE CASCADE                                             -- excluir a conta apaga as sessões
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ---------------------------------------------------------------------
 -- 3. restaurante
 -- ---------------------------------------------------------------------
 -- [AJUSTE] A documentação define a relação restaurante (1,1) - (1,1) profissional,
@@ -330,7 +350,7 @@ CREATE TABLE IF NOT EXISTS `favorito` (
 -- SET FOREIGN_KEY_CHECKS = 0;
 -- DROP TABLE IF EXISTS `favorito`, `comentario`, `ingrediente_receita`,
 --   `ingrediente`, `dica`, `etapa_receita`, `receita`, `nutricionista`,
---   `chef`, `restaurante`, `usuario`, `profissional`;
+--   `chef`, `restaurante`, `refresh_token`, `usuario`, `profissional`;
 -- SET FOREIGN_KEY_CHECKS = 1;
 
 
