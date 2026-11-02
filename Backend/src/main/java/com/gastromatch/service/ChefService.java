@@ -1,16 +1,25 @@
 package com.gastromatch.service;
 
+import java.util.List;
+import java.util.Map;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.gastromatch.dto.CadastroChefRequest;
+import com.gastromatch.dto.ChefPerfilResponse;
 import com.gastromatch.dto.ChefResponse;
+import com.gastromatch.dto.PaginaResponse;
 import com.gastromatch.entity.Chef;
 import com.gastromatch.entity.Profissional;
 import com.gastromatch.entity.Usuario;
+import com.gastromatch.entity.enums.Especializacao;
 import com.gastromatch.entity.enums.RoleProfissional;
 import com.gastromatch.exception.AcessoNegadoException;
 import com.gastromatch.exception.ConflitoException;
+import com.gastromatch.exception.RecursoNaoEncontradoException;
 import com.gastromatch.exception.UsuarioNaoEncontradoException;
 import com.gastromatch.repository.ChefRepository;
 import com.gastromatch.repository.ProfissionalRepository;
@@ -75,5 +84,28 @@ public class ChefService {
             throw new AcessoNegadoException(SEM_PERFIL_DE_CHEF);
         }
         return chef;
+    }
+
+    /** Diretório público de chefs, com filtro opcional por especialização. */
+    @Transactional(readOnly = true)
+    public PaginaResponse<ChefPerfilResponse> listar(Especializacao especializacao, Pageable pageable) {
+        Page<Chef> pagina = (especializacao == null)
+                ? chefRepository.findAll(pageable)
+                : chefRepository.findByEspecializacao(especializacao, pageable);
+        Map<Integer, String> usernames = UsernamesPorProfissional.buscar(usuarioRepository,
+                pagina.getContent().stream().map(c -> c.getProfissional().getId()).toList());
+        return PaginaResponse.de(pagina.map(c ->
+                ChefPerfilResponse.de(c, usernames.get(c.getProfissional().getId()))));
+    }
+
+    /** Perfil público de um chef. */
+    @Transactional(readOnly = true)
+    public ChefPerfilResponse perfilPublico(Integer id) {
+        Chef chef = chefRepository.buscarComPerfil(id)
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Chef não encontrado"));
+        String username = UsernamesPorProfissional
+                .buscar(usuarioRepository, List.of(chef.getProfissional().getId()))
+                .get(chef.getProfissional().getId());
+        return ChefPerfilResponse.de(chef, username);
     }
 }

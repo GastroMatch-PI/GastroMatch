@@ -118,9 +118,16 @@ CREATE TABLE IF NOT EXISTS restaurante (
   bairro          VARCHAR(100) NULL,
   cidade          VARCHAR(100) NULL,
   estado          VARCHAR(50)  NULL,
+  -- [ADIÇÃO] posição no mapa (graus decimais). As duas juntas ou nenhuma.
+  -- Bancos que já existiam recebem estas colunas por GastroDB_v2.1.0_restaurante_localizacao.sql.
+  latitude        DOUBLE PRECISION NULL,
+  longitude       DOUBLE PRECISION NULL,
   id_profissional INT          NOT NULL,
   criado_em       TIMESTAMPTZ  NOT NULL DEFAULT now(),
   atualizado_em   TIMESTAMPTZ  NOT NULL DEFAULT now(),
+  CONSTRAINT chk_restaurante_latitude  CHECK (latitude  BETWEEN -90  AND 90),
+  CONSTRAINT chk_restaurante_longitude CHECK (longitude BETWEEN -180 AND 180),
+  CONSTRAINT chk_restaurante_posicao   CHECK ((latitude IS NULL) = (longitude IS NULL)),
   CONSTRAINT uq_restaurante_cnpj         UNIQUE (cnpj),
   CONSTRAINT uq_restaurante_profissional UNIQUE (id_profissional),
   CONSTRAINT fk_restaurante_profissional
