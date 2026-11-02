@@ -10,9 +10,10 @@ public record IngredienteDaReceitaResponse(
         float quantidade,
         UnidadeMedida unidadeMedida
 ) {
-    public static IngredienteDaReceitaResponse de(IngredienteReceita ir) {
+    /** "quantidade" já vem ajustada ao número de porções pedido. */
+    public static IngredienteDaReceitaResponse de(IngredienteReceita ir, float quantidade) {
         return new IngredienteDaReceitaResponse(
                 ir.getIngrediente().getId(), ir.getIngrediente().getNome(),
-                ir.getQuantidade(), ir.getUnidadeMedida());
+                quantidade, ir.getUnidadeMedida());
     }
 }
