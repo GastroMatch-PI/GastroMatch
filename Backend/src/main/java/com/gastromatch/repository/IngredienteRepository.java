@@ -13,7 +13,7 @@ public interface IngredienteRepository extends JpaRepository<Ingrediente, Intege
     // Sem diferenciar maiúscula nem acento. O padrão vem de BuscaTexto.padraoContem
     // (já minúsculo, sem acento e com % _ escapados); o unaccent() é do PostgreSQL.
     @Query("select i from Ingrediente i "
-            + "where function('unaccent', lower(i.nome)) like :padrao escape '\\' "
+            + "where cast(function('unaccent', lower(i.nome)) as string) like :padrao escape '\\' "
             + "order by i.nome asc")
     List<Ingrediente> buscarPorPadraoDeNome(@Param("padrao") String padrao);
 
