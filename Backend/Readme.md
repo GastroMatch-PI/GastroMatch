@@ -1,6 +1,6 @@
 # Fundamentação da Arquitetura em Camadas (Package by Layer)
 
-> Para rodar o backend no seu PC (banco no Docker, variáveis de ambiente), veja [SETUP-BANCO.md](SETUP-BANCO.md).
+> Para rodar o backend no seu PC (banco no Supabase ou no Docker, arquivo .env), veja [SETUP-BANCO.md](SETUP-BANCO.md).
 
 A decisão de adotar a Arquitetura em Camadas (*Package by Layer*), estruturada com componentes de suporte (DTOs, Security e Exception Handler), é uma escolha clássica, amplamente estabelecida na indústria para aplicações corporativas.
 
@@ -33,7 +33,7 @@ Pastas como `mapper/` (tradução entre entidade e DTO), `audit/` e `validation/
 - **`controller/` + `dto/`:** o `UsuarioController` não sabe como a tabela de usuários é modelada, nem como a senha é criptografada. O `AuthController` recebe um `CadastroUsuarioRequest`, delega para a Service e devolve um `UsuarioResponse`. Isso garante que informações sensíveis (como o hash da senha) jamais vazem para a API.
 - **Conversão entidade → DTO:** fica no próprio `UsuarioResponse.de(...)`, o que evita métodos como `toEntity()` ou `toDTO()` espalhados pelo Service ou pelo Controller. Se a conversão crescer, ela ganha uma pasta `mapper/` própria.
 - **`service/`:** é onde reside o valor real do sistema. O `UsuarioService` e o `AuthService` executam a lógica de negócio (validar e-mail único, chamar o BCrypt, emitir e girar o refresh token) sem saber se a chamada veio de um controller REST, de uma fila ou de uma linha de comando.
-- **`repository/` + `entity/`:** a camada de persistência (`Usuario`, `UsuarioRepository`) fica encapsulada. Se amanhã o banco mudar do MySQL para outro, apenas o modelo de dados interno muda, sem quebrar o contrato dos DTOs ou a lógica do controller. O esquema do banco é definido pelo SQL em `Data/Modelagem`, e o Hibernate só confere se as entidades batem com ele (`ddl-auto=validate`).
+- **`repository/` + `entity/`:** a camada de persistência (`Usuario`, `UsuarioRepository`) fica encapsulada. Se amanhã o banco mudar do PostgreSQL (Supabase) para outro, apenas o modelo de dados interno muda, sem quebrar o contrato dos DTOs ou a lógica do controller. O esquema do banco é definido pelo SQL em `Data/Modelagem`, e o Hibernate só confere se as entidades batem com ele (`ddl-auto=validate`).
 - **`security/` + `exception/`:** funcionam como *Cross-Cutting Concerns* (preocupações transversais). Tratam autenticação e erros de forma global, liberando os serviços para focarem estritamente na regra de negócio.
 
 ---

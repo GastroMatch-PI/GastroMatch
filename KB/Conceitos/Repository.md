@@ -11,7 +11,7 @@ flowchart LR
     A[UsuarioService] --> B[UsuarioRepository<br/>interface]
     B --> C[Proxy gerado<br/>pelo Spring Data]
     C --> D[EntityManager<br/>Hibernate]
-    D --> E[(MySQL)]
+    D --> E[(PostgreSQL)]
 ```
 
 ## 2. Por que o repository é uma interface?
@@ -69,7 +69,7 @@ sequenceDiagram
     participant S as UsuarioService
     participant P as Proxy do repository
     participant H as Hibernate
-    participant DB as MySQL
+    participant DB as PostgreSQL
     S->>P: existsByEmail("ana@x.com")
     P->>P: interpreta o nome do método
     P->>H: consulta equivalente
@@ -133,7 +133,7 @@ classDiagram
 
 ### Como o `save` decide entre INSERT e UPDATE
 
-- Se a entidade é **nova** (id `null`): o Hibernate faz `persist`, que gera um `INSERT`. Com `GenerationType.IDENTITY`, o INSERT acontece imediatamente e o id gerado pelo MySQL é preenchido no objeto.
+- Se a entidade é **nova** (id `null`): o Hibernate faz `persist`, que gera um `INSERT`. Com `GenerationType.IDENTITY`, o INSERT acontece imediatamente e o id gerado pelo banco é preenchido no objeto.
 - Se já **tem id**: o Hibernate faz `merge`, que normalmente consulta o registro e gera um `UPDATE`.
 
 O `save` **devolve a instância gerenciada**. Por isso o service usa o retorno (`Usuario salvo = usuarioRepository.save(usuario)`), e não o objeto original: é o retorno que garante o estado atual, com o id.
