@@ -18,12 +18,12 @@ public class IngredienteService {
         this.ingredienteRepository = ingredienteRepository;
     }
 
-    /** Catálogo em ordem alfabética; "nome" opcional filtra por trecho (sem diferenciar maiúsculas). */
+    /** Catálogo em ordem alfabética; "nome" opcional filtra por trecho (sem diferenciar maiúscula nem acento). */
     @Transactional(readOnly = true)
     public List<IngredienteResponse> listar(String nome) {
         var ingredientes = (nome == null || nome.isBlank())
                 ? ingredienteRepository.findAll(Sort.by("nome"))
-                : ingredienteRepository.findByNomeContainingIgnoreCaseOrderByNomeAsc(nome.trim());
+                : ingredienteRepository.buscarPorNome(nome);
         return ingredientes.stream().map(IngredienteResponse::de).toList();
     }
 }

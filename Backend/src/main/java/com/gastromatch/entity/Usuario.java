@@ -19,7 +19,7 @@ import jakarta.persistence.Table;
 public class Usuario {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY) // AUTO_INCREMENT do MySQL
+    @GeneratedValue(strategy = GenerationType.IDENTITY) // coluna IDENTITY do PostgreSQL (id automático)
     private Integer id; // INT no SQL
 
     // unique no banco é a última barreira contra emails duplicados,
