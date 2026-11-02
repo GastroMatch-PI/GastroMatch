@@ -18,7 +18,8 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Integer> {
     // Para fazer o login irá precisar buscar o email, username e password
     Optional<Usuario> findByEmail(String email);
     boolean existsByEmail(String email);
-    boolean existsByUsername(String username);
+    // Sem diferenciar maiúscula: "Amos" e "amos" são o mesmo username (o banco também garante isso).
+    boolean existsByUsernameIgnoreCase(String username);
 
     // Trava a linha até o fim da transação: duas requisições simultâneas não criam
     // dois perfis profissionais para a mesma conta.
