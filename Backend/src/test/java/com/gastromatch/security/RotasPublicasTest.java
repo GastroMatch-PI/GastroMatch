@@ -79,7 +79,7 @@ class RotasPublicasTest {
 
     @Test
     void receitaInexistenteDeveRetornar404() throws Exception {
-        when(receitaService.detalhar(99)).thenThrow(new ReceitaNaoEncontradaException());
+        when(receitaService.detalhar(99, null)).thenThrow(new ReceitaNaoEncontradaException());
 
         mockMvc.perform(get("/receitas/99")).andExpect(status().isNotFound());
     }
