@@ -26,17 +26,19 @@ jobs:
       run:
         working-directory: Backend
 
-    # MySQL descartável, só para esta rodada. O ApplicationTests sobe a aplicação inteira
-    # e o Hibernate (ddl-auto=validate) confere as entidades com o esquema do SQL do projeto.
+    # PostgreSQL descartável, só para esta rodada (nunca o Supabase do time). O
+    # ApplicationTests sobe a aplicação inteira e o Hibernate (ddl-auto=validate)
+    # confere as entidades com o esquema do SQL do projeto.
     services:
-      mysql:
-        image: mysql:8.0
+      postgres:
+        image: postgres:16
         env:
-          MYSQL_ROOT_PASSWORD: senha-so-do-ci
+          POSTGRES_PASSWORD: senha-so-do-ci
+          POSTGRES_DB: gastromatch
         ports:
-          - 3306:3306
+          - 5432:5432
         options: >-
-          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -psenha-so-do-ci"
+          --health-cmd="pg_isready -U postgres -d gastromatch"
           --health-interval=10s
           --health-timeout=5s
           --health-retries=10
@@ -51,7 +53,11 @@ jobs:
           cache: maven
 
       - name: Criar o esquema do banco
-        run: mysql -h 127.0.0.1 -uroot -psenha-so-do-ci --default-character-set=utf8mb4 < ../Data/Modelagem/GastroDB_v1.0.0.sql
+        env:
+          PGPASSWORD: senha-so-do-ci
+        run: |
+          psql -h 127.0.0.1 -U postgres -d gastromatch -v ON_ERROR_STOP=1 -f ../Data/Modelagem/GastroDB_v2.0.0_postgres.sql
+          psql -h 127.0.0.1 -U postgres -d gastromatch -v ON_ERROR_STOP=1 -f ../Data/Modelagem/GastroDB_dados_exemplo.sql
 
       - name: Rodar os testes
         env:
