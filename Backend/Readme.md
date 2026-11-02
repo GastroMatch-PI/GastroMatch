@@ -80,6 +80,10 @@ Erros seguem sempre o formato `{ "status": 400, "mensagem": "...", "erros": { "c
 | `GET /receitas/{id}` | Receita completa: ingredientes, etapas (em ordem), dicas de cada etapa e tabela nutricional (`nutricao`: `total` da receita e `porPorcao`). Com `?porcoes=N` (1 a 100) as quantidades e o total são recalculados para N porções; `porcoes` na resposta diz para quantas. A nutrição só soma ingredientes em `G` e `ML`; os em `UNIDADE`/`XICARA` vêm em `naoCalculados` e `completa` fica `false` (valor aproximado) |
 | `GET /receitas/{id}/comentarios` | Comentários da receita, do mais recente ao mais antigo |
 | `GET /ingredientes` | Catálogo em ordem alfabética (`?nome=` filtra por trecho) |
+| `GET /restaurantes` | Diretório e mapa: `texto` (nome/bio), `cidade`, `bairro`, `estado` (trechos, sem diferenciar maiúscula nem acento), `pagina`, `tamanho`. Cada item traz endereço, `latitude` e `longitude` |
+| `GET /restaurantes/{id}` | Página do restaurante, com os chefs que trabalham nele |
+| `GET /nutricionistas`, `GET /nutricionistas/{id}` | Só as nutricionistas **verificadas**; as pendentes respondem `404` |
+| `GET /chefs`, `GET /chefs/{id}` | Diretório de chefs (`?especializacao=` filtra) e perfil público, com o restaurante onde trabalha |
 
 **Conta** (`/auth/**` é público):
 
@@ -92,7 +96,9 @@ Erros seguem sempre o formato `{ "status": 400, "mensagem": "...", "erros": { "c
 
 | Rota | O que faz |
 |---|---|
-| `POST /chefs`, `GET /chefs/me` | Cria / consulta o perfil de chef da conta (uma conta tem no máximo um perfil) |
+| `POST /chefs`, `GET /chefs/me` | Cria / consulta o perfil de chef da conta (uma conta tem no máximo um perfil profissional, de chef, nutricionista **ou** restaurante) |
+| `POST /nutricionistas`, `GET /nutricionistas/me` | Cria / consulta o perfil de nutricionista (`crn` obrigatório). Nasce `PENDENTE`: só a equipe aprova, direto no banco, e só então aparece no diretório. O `GET /me` mostra o `statusVerificacao` |
+| `POST /restaurantes`, `GET /restaurantes/me` | Cria / consulta o restaurante (`nome` e `cnpj` obrigatórios; o CNPJ é conferido e guardado como `00.000.000/0000-00`). `latitude` e `longitude` são opcionais, mas vêm **juntas** |
 | `POST /receitas`, `PUT /receitas/{id}`, `DELETE /receitas/{id}` | Só chef, e só o chef **dono** edita ou apaga. O `PUT` troca os dados e a lista de ingredientes |
 | `POST /receitas/{id}/etapas`, `PUT`/`DELETE /receitas/{id}/etapas/{idEtapa}` | Etapas (sem `ordem`, entra no fim) |
 | `POST /receitas/{id}/etapas/{idEtapa}/dicas`, `PUT`/`DELETE .../dicas/{idDica}` | Dicas e erros comuns da etapa |

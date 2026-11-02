@@ -48,6 +48,11 @@ public class Restaurante extends EntidadeComDatas {
     @Column(length = 50)
     private String estado;
 
+    // Posição no mapa, em graus. As duas juntas ou nenhuma (o banco confere).
+    private Double latitude;
+
+    private Double longitude;
+
     @OneToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "id_profissional", nullable = false)
     private Profissional profissional;
@@ -137,5 +142,18 @@ public class Restaurante extends EntidadeComDatas {
 
     public void setProfissional(Profissional profissional) {
         this.profissional = profissional;
+    }
+
+    public Double getLatitude() {
+        return latitude;
+    }
+
+    public Double getLongitude() {
+        return longitude;
+    }
+
+    public void setPosicao(Double latitude, Double longitude) {
+        this.latitude = latitude;
+        this.longitude = longitude;
     }
 }

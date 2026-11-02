@@ -134,6 +134,29 @@ INSERT INTO dica (id, conteudo, tipo, id_etapa_receita, id_chef) VALUES
 ON CONFLICT DO NOTHING;
 
 -- ---------------------------------------------------------------------
+-- Restaurante e nutricionista de exemplo (para o diretório e o mapa)
+-- ---------------------------------------------------------------------
+-- Dados de demonstração: CNPJ e CRN fictícios, sem conta de usuário vinculada.
+INSERT INTO profissional (id, bio, role) VALUES
+  (2, 'Cozinha caseira no coração de São Paulo. Dados de demonstração.', 'RESTAURANTE'),
+  (3, 'Nutricionista de exemplo, foco em alimentação do dia a dia. Dados de demonstração.', 'NUTRICIONISTA')
+ON CONFLICT DO NOTHING;
+
+INSERT INTO restaurante
+  (id, cnpj, nome, bio, numero, rua, cep, bairro, cidade, estado, latitude, longitude, id_profissional)
+VALUES
+  (1, '11.222.333/0001-81', 'Cantina Exemplo', 'Massas frescas e comida de casa.',
+   100, 'Rua das Flores', '01310-100', 'Bela Vista', 'São Paulo', 'SP', -23.5614, -46.6559, 2)
+ON CONFLICT DO NOTHING;
+
+INSERT INTO nutricionista (id, crn, id_profissional, status_verificacao, verificado_em)
+VALUES (1, 'CRN-3/00000', 3, 'APROVADO', now())
+ON CONFLICT DO NOTHING;
+
+-- O chef de exemplo trabalha no restaurante de exemplo.
+UPDATE chef SET id_restaurante = 1 WHERE id = 1 AND id_restaurante IS NULL;
+
+-- ---------------------------------------------------------------------
 -- Acerta os contadores de id
 -- ---------------------------------------------------------------------
 -- Os inserts acima usam ids fixos (1, 2, 3...), e o Postgres NÃO avança o contador
@@ -146,3 +169,5 @@ SELECT setval(pg_get_serial_sequence('receita', 'id'),              (SELECT MAX(
 SELECT setval(pg_get_serial_sequence('ingrediente_receita', 'id'),  (SELECT MAX(id) FROM ingrediente_receita));
 SELECT setval(pg_get_serial_sequence('etapa_receita', 'id'),        (SELECT MAX(id) FROM etapa_receita));
 SELECT setval(pg_get_serial_sequence('dica', 'id'),                 (SELECT MAX(id) FROM dica));
+SELECT setval(pg_get_serial_sequence('restaurante', 'id'),          (SELECT MAX(id) FROM restaurante));
+SELECT setval(pg_get_serial_sequence('nutricionista', 'id'),        (SELECT MAX(id) FROM nutricionista));
