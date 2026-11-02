@@ -17,7 +17,11 @@ public record ReceitaDetalheResponse(
         String imagem,
         String videoUrl,
         int tempoPreparo,
+        // Porções que a receita rende como foi cadastrada.
         int nPorcoes,
+        // Porções para as quais as quantidades e a nutrição abaixo foram calculadas
+        // (igual a nPorcoes, a não ser que se peça ?porcoes=N).
+        int porcoes,
         Dificuldade dificuldade,
         TipoRefeicao tipo,
         MetodoPreparo metodoPreparo,
@@ -25,15 +29,17 @@ public record ReceitaDetalheResponse(
         PerfilAlimentar perfil,
         ChefResumoResponse chef,
         List<IngredienteDaReceitaResponse> ingredientes,
+        NutricaoResponse nutricao,
         List<EtapaResponse> etapas
 ) {
-    public static ReceitaDetalheResponse de(Receita r, String usernameDoChef,
+    public static ReceitaDetalheResponse de(Receita r, int porcoes, String usernameDoChef,
                                             List<IngredienteDaReceitaResponse> ingredientes,
+                                            NutricaoResponse nutricao,
                                             List<EtapaResponse> etapas) {
         return new ReceitaDetalheResponse(
                 r.getId(), r.getNome(), r.getDescricao(), r.getImagem(), r.getVideoUrl(),
-                r.getTempoPreparo(), r.getNPorcoes(), r.getDificuldade(), r.getTipo(),
+                r.getTempoPreparo(), r.getNPorcoes(), porcoes, r.getDificuldade(), r.getTipo(),
                 r.getMetodoPreparo(), r.getOcasiao(), r.getPerfil(),
-                ChefResumoResponse.de(r.getChef(), usernameDoChef), ingredientes, etapas);
+                ChefResumoResponse.de(r.getChef(), usernameDoChef), ingredientes, nutricao, etapas);
     }
 }

@@ -77,7 +77,7 @@ Erros seguem sempre o formato `{ "status": 400, "mensagem": "...", "erros": { "c
 | Rota | O que faz |
 |---|---|
 | `GET /receitas` | Lista com filtros opcionais: `texto`, `tempoMax` (min), `dificuldade`, `tipo`, `ocasiao`, `perfil`, `metodo`, `ingredientes=1,2,3` (ids que a pessoa TEM: só voltam receitas feitas inteiramente com eles), `pagina`, `tamanho` |
-| `GET /receitas/{id}` | Receita completa: ingredientes, etapas (em ordem) e dicas de cada etapa |
+| `GET /receitas/{id}` | Receita completa: ingredientes, etapas (em ordem), dicas de cada etapa e tabela nutricional (`nutricao`: `total` da receita e `porPorcao`). Com `?porcoes=N` (1 a 100) as quantidades e o total são recalculados para N porções; `porcoes` na resposta diz para quantas. A nutrição só soma ingredientes em `G` e `ML`; os em `UNIDADE`/`XICARA` vêm em `naoCalculados` e `completa` fica `false` (valor aproximado) |
 | `GET /receitas/{id}/comentarios` | Comentários da receita, do mais recente ao mais antigo |
 | `GET /ingredientes` | Catálogo em ordem alfabética (`?nome=` filtra por trecho) |
 

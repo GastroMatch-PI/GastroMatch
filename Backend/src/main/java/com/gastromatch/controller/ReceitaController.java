@@ -58,7 +58,10 @@ public class ReceitaController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ReceitaDetalheResponse> detalhar(@PathVariable Integer id) {
-        return ResponseEntity.ok(receitaService.detalhar(id));
+    public ResponseEntity<ReceitaDetalheResponse> detalhar(
+            @PathVariable Integer id,
+            // Opcional: recalcula as quantidades e a nutrição total para este número de porções.
+            @RequestParam(required = false) Integer porcoes) {
+        return ResponseEntity.ok(receitaService.detalhar(id, porcoes));
     }
 }
