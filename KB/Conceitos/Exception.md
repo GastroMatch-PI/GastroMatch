@@ -150,7 +150,7 @@ O `putIfAbsent` guarda só a **primeira** mensagem de cada campo, já que um cam
 Porque o handler escolhe **pelo tipo da exceção** (herança), e não pelo status que ela acabará produzindo. O 409 é só o **resultado** da resposta, e não o critério de escolha.
 
 - `ApiException` e suas filhas são **nossas**: a linhagem delas termina em `RuntimeException`, passando por `ApiException`.
-- `DataIntegrityViolationException` é do **Spring**, da família `DataAccessException`. Ela é lançada quando o MySQL rejeita um `INSERT` (por exemplo, violação do `UNIQUE`). Não tem nenhum parentesco com `ApiException`.
+- `DataIntegrityViolationException` é do **Spring**, da família `DataAccessException`. Ela é lançada quando o banco rejeita um `INSERT` (por exemplo, violação do `UNIQUE`). Não tem nenhum parentesco com `ApiException`.
 
 Como não há relação de herança, `@ExceptionHandler(ApiException.class)` não a enxerga. Por isso ela precisa de handler próprio.
 

@@ -1,19 +1,21 @@
-# Banco MySQL local do GastroMatch. Passo a passo em SETUP-BANCO.md
+# Banco PostgreSQL local do GastroMatch, para testes. Passo a passo em SETUP-BANCO.md
+# (o banco principal do time fica no Supabase).
 services:
-  mysql:
-    image: mysql:8.0
-    container_name: gastromatch-mysql
+  postgres:
+    image: postgres:16
+    container_name: gastromatch-postgres
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:?defina DB_PASSWORD no arquivo .env}
-    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?defina DB_PASSWORD no arquivo .env}
+      POSTGRES_DB: gastromatch
     ports:
-      - "3306:3306"
+      - "5432:5432"
     volumes:
-      - gastromatch-db:/var/lib/mysql
-      # Roda só na PRIMEIRA criação do banco: cria o schema a partir do SQL do projeto
-      - ../Data/Modelagem/GastroDB_v1.0.0.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
-      # Ingredientes e receitas de exemplo, para testar a API sem cadastrar nada à mão
+      - gastromatch-db:/var/lib/postgresql/data
+      # Rodam só na PRIMEIRA criação do banco, em ordem alfabética:
+      # cria o schema a partir do SQL do projeto...
+      - ../Data/Modelagem/GastroDB_v2.0.0_postgres.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      # ...e carrega ingredientes e receitas de exemplo, para testar a API sem cadastrar nada à mão
       - ../Data/Modelagem/GastroDB_dados_exemplo.sql:/docker-entrypoint-initdb.d/02-dados.sql:ro
 
 volumes:

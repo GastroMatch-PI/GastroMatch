@@ -2,7 +2,6 @@ package com.gastromatch.repository;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 
 import org.springframework.data.jpa.domain.Specification;
 
@@ -25,10 +24,14 @@ public final class ReceitaSpecs {
             List<Predicate> condicoes = new ArrayList<>();
 
             if (f.texto() != null && !f.texto().isBlank()) {
-                String padrao = "%" + escaparLike(f.texto().trim().toLowerCase(Locale.ROOT)) + "%";
+                // Sem diferenciar maiúscula nem acento: unaccent() é do PostgreSQL (extensão
+                // criada no SQL do projeto) e o padrão já chega sem acento (BuscaTexto).
+                String padrao = BuscaTexto.padraoContem(f.texto());
                 condicoes.add(cb.or(
-                        cb.like(cb.lower(root.<String>get("nome")), padrao, '\\'),
-                        cb.like(cb.lower(root.<String>get("descricao")), padrao, '\\')));
+                        cb.like(cb.function("unaccent", String.class, cb.lower(root.<String>get("nome"))),
+                                padrao, '\\'),
+                        cb.like(cb.function("unaccent", String.class, cb.lower(root.<String>get("descricao"))),
+                                padrao, '\\')));
             }
             if (f.tempoMax() != null) {
                 condicoes.add(cb.lessThanOrEqualTo(root.<Integer>get("tempoPreparo"), f.tempoMax()));
@@ -69,10 +72,5 @@ public final class ReceitaSpecs {
 
             return cb.and(condicoes.toArray(new Predicate[0]));
         };
-    }
-
-    // % e _ digitados pela pessoa devem valer como texto comum, não como curinga.
-    private static String escaparLike(String texto) {
-        return texto.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
     }
 }

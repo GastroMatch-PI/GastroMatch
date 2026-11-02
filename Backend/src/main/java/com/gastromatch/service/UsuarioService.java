@@ -37,7 +37,7 @@ public class UsuarioService {
         if (usuarioRepository.existsByEmail(email)) {
             throw new EmailJaCadastradoException();
         }
-        if (usuarioRepository.existsByUsername(username)) {
+        if (usuarioRepository.existsByUsernameIgnoreCase(username)) {
             throw new UsernameJaCadastradoException();
         }
 

@@ -1,7 +1,7 @@
 -- =====================================================================
 -- GastroMatch - Dados de exemplo (apenas DESENVOLVIMENTO)
--- Rodar DEPOIS do GastroDB_v1.0.0.sql. Pode ser executado mais de uma vez
--- (INSERT IGNORE com ids fixos: não duplica nem apaga nada).
+-- Rodar DEPOIS do GastroDB_v2.0.0_postgres.sql. Pode ser executado mais de uma vez
+-- (ids fixos + ON CONFLICT DO NOTHING: não duplica nem apaga nada).
 --
 -- Contém: 1 chef de exemplo, 18 ingredientes e 5 receitas completas
 -- (ingredientes, etapas e dicas).
@@ -11,23 +11,23 @@
 -- Valores nutricionais aproximados (por 100 g ou 100 ml), só para demonstração.
 -- =====================================================================
 
-SET NAMES utf8mb4;
-USE `gastromatch`;
 
 -- ---------------------------------------------------------------------
 -- Chef de exemplo
 -- ---------------------------------------------------------------------
-INSERT IGNORE INTO `profissional` (`id`, `bio`, `role`)
-VALUES (1, 'Chef de exemplo para testes. Dados de demonstração.', 'CHEF');
+INSERT INTO profissional (id, bio, role)
+VALUES (1, 'Chef de exemplo para testes. Dados de demonstração.', 'CHEF')
+ON CONFLICT DO NOTHING;
 
-INSERT IGNORE INTO `chef` (`id`, `id_profissional`, `especializacao`)
-VALUES (1, 1, 'MASSAS');
+INSERT INTO chef (id, id_profissional, especializacao)
+VALUES (1, 1, 'MASSAS')
+ON CONFLICT DO NOTHING;
 
 -- ---------------------------------------------------------------------
 -- Ingredientes (porcao_base = 100; calorias, gordura, proteina, carboidrato)
 -- ---------------------------------------------------------------------
-INSERT IGNORE INTO `ingrediente`
-  (`id`, `nome`, `porcao_base`, `calorias`, `gordura`, `proteina`, `carboidrato`) VALUES
+INSERT INTO ingrediente
+  (id, nome, porcao_base, calorias, gordura, proteina, carboidrato) VALUES
   (1,  'Farinha de trigo',       100, 360,  1.4,  9.8, 75.0),
   (2,  'Açúcar refinado',        100, 387,  0.0,  0.0, 99.5),
   (3,  'Ovo',                    100, 143,  9.5, 13.0,  1.6),
@@ -45,14 +45,15 @@ INSERT IGNORE INTO `ingrediente`
   (15, 'Azeite de oliva',        100, 884, 100.0, 0.0,  0.0),
   (16, 'Queijo mussarela',       100, 300, 22.4, 22.2,  2.2),
   (17, 'Macarrão espaguete cru', 100, 371,  1.5, 13.0, 75.0),
-  (18, 'Pimenta-do-reino',       100, 251,  3.3, 10.0, 64.0);
+  (18, 'Pimenta-do-reino',       100, 251,  3.3, 10.0, 64.0)
+ON CONFLICT DO NOTHING;
 
 -- ---------------------------------------------------------------------
 -- Receitas (todas do chef 1)
 -- ---------------------------------------------------------------------
-INSERT IGNORE INTO `receita`
-  (`id`, `nome`, `descricao`, `n_porcoes`, `dificuldade`, `tipo`, `metodo_preparo`,
-   `ocasiao`, `tempo_preparo`, `perfil`, `id_chef`) VALUES
+INSERT INTO receita
+  (id, nome, descricao, n_porcoes, dificuldade, tipo, metodo_preparo,
+   ocasiao, tempo_preparo, perfil, id_chef) VALUES
   (1, 'Bolo simples de leite',
       'Bolo fofinho de forma, perfeito para o café da tarde.',
       10, 'FACIL', 'SOBREMESA', 'FORNO', 'ANIVERSARIO', 60, NULL, 1),
@@ -67,13 +68,14 @@ INSERT IGNORE INTO `receita`
       1, 'FACIL', 'CAFE_DA_MANHA', 'FOGAO', 'DIA_A_DIA', 10, 'LOW_CARB', 1),
   (5, 'Macarrão ao alho e óleo',
       'Prato simples e saboroso, feito com o que tem na despensa.',
-      2, 'MEDIO', 'ALMOCO', 'FOGAO', 'DIA_A_DIA', 25, 'VEGETARIANO', 1);
+      2, 'MEDIO', 'ALMOCO', 'FOGAO', 'DIA_A_DIA', 25, 'VEGETARIANO', 1)
+ON CONFLICT DO NOTHING;
 
 -- ---------------------------------------------------------------------
 -- Ingredientes de cada receita (receita, ingrediente, quantidade, unidade)
 -- ---------------------------------------------------------------------
-INSERT IGNORE INTO `ingrediente_receita`
-  (`id`, `id_receita`, `id_ingrediente`, `quantidade`, `unidade_medida`) VALUES
+INSERT INTO ingrediente_receita
+  (id, id_receita, id_ingrediente, quantidade, unidade_medida) VALUES
   (1,  1, 1,  300, 'G'),
   (2,  1, 2,  200, 'G'),
   (3,  1, 3,  150, 'G'),
@@ -98,13 +100,14 @@ INSERT IGNORE INTO `ingrediente_receita`
   (22, 5, 9,   20, 'G'),
   (23, 5, 15,  40, 'ML'),
   (24, 5, 12,   5, 'G'),
-  (25, 5, 18,   1, 'G');
+  (25, 5, 18,   1, 'G')
+ON CONFLICT DO NOTHING;
 
 -- ---------------------------------------------------------------------
 -- Etapas (ordem começa em 1 dentro de cada receita)
 -- ---------------------------------------------------------------------
-INSERT IGNORE INTO `etapa_receita`
-  (`id`, `id_receita`, `ordem`, `titulo`, `instrucao`) VALUES
+INSERT INTO etapa_receita
+  (id, id_receita, ordem, titulo, instrucao) VALUES
   (1,  1, 1, 'Preparar a forma',   'Unte uma forma de 22 cm com manteiga e farinha e ligue o forno a 180 °C.'),
   (2,  1, 2, 'Misturar a massa',   'Bata os ovos, o açúcar, a manteiga e o leite até ficar homogêneo.'),
   (3,  1, 3, 'Juntar os secos',    'Acrescente a farinha aos poucos e, por último, o fermento, mexendo sem bater demais.'),
@@ -117,13 +120,29 @@ INSERT IGNORE INTO `etapa_receita`
   (10, 4, 2, 'Fazer a omelete',    'Derreta a manteiga na frigideira, despeje os ovos, coloque o queijo e dobre ao meio.'),
   (11, 5, 1, 'Cozinhar a massa',   'Cozinhe o espaguete em água fervente com sal até ficar al dente.'),
   (12, 5, 2, 'Fazer o molho',      'Doure o alho fatiado no azeite em fogo baixo, sem deixar queimar.'),
-  (13, 5, 3, 'Finalizar',          'Misture a massa escorrida ao azeite com alho e tempere com pimenta.');
+  (13, 5, 3, 'Finalizar',          'Misture a massa escorrida ao azeite com alho e tempere com pimenta.')
+ON CONFLICT DO NOTHING;
 
 -- ---------------------------------------------------------------------
 -- Dicas e erros comuns (ligados a uma etapa, autor = chef 1)
 -- ---------------------------------------------------------------------
-INSERT IGNORE INTO `dica` (`id`, `conteudo`, `tipo`, `id_etapa_receita`, `id_chef`) VALUES
+INSERT INTO dica (id, conteudo, tipo, id_etapa_receita, id_chef) VALUES
   (1, 'Deixe os ovos e o leite fora da geladeira por 15 minutos antes de misturar.', 'DICA', 2, 1),
   (2, 'Não abra o forno antes dos 30 minutos: o bolo pode murchar.', 'ERRO_COMUM', 4, 1),
   (3, 'Lave o arroz até a água sair quase transparente para ele ficar soltinho.', 'DICA', 5, 1),
-  (4, 'Alho queimado amarga o prato todo: se escurecer demais, recomece.', 'ERRO_COMUM', 12, 1);
+  (4, 'Alho queimado amarga o prato todo: se escurecer demais, recomece.', 'ERRO_COMUM', 12, 1)
+ON CONFLICT DO NOTHING;
+
+-- ---------------------------------------------------------------------
+-- Acerta os contadores de id
+-- ---------------------------------------------------------------------
+-- Os inserts acima usam ids fixos (1, 2, 3...), e o Postgres NÃO avança o contador
+-- da coluna IDENTITY nesse caso. Sem este bloco, o primeiro cadastro real tentaria
+-- usar o id 1 e falharia com "chave duplicada". (No MySQL isso era automático.)
+SELECT setval(pg_get_serial_sequence('profissional', 'id'),         (SELECT MAX(id) FROM profissional));
+SELECT setval(pg_get_serial_sequence('chef', 'id'),                 (SELECT MAX(id) FROM chef));
+SELECT setval(pg_get_serial_sequence('ingrediente', 'id'),          (SELECT MAX(id) FROM ingrediente));
+SELECT setval(pg_get_serial_sequence('receita', 'id'),              (SELECT MAX(id) FROM receita));
+SELECT setval(pg_get_serial_sequence('ingrediente_receita', 'id'),  (SELECT MAX(id) FROM ingrediente_receita));
+SELECT setval(pg_get_serial_sequence('etapa_receita', 'id'),        (SELECT MAX(id) FROM etapa_receita));
+SELECT setval(pg_get_serial_sequence('dica', 'id'),                 (SELECT MAX(id) FROM dica));

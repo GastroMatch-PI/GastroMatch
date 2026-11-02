@@ -11,7 +11,7 @@ flowchart LR
     A[Cliente] --> B[AuthController]
     B --> C[UsuarioService]
     C --> D[UsuarioRepository]
-    D --> E[(MySQL)]
+    D --> E[(PostgreSQL)]
     C --> F[PasswordEncoder BCrypt]
 ```
 
