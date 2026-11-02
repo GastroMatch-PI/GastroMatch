@@ -29,7 +29,7 @@ Profissionais (chefs, restaurantes e nutricionistas) têm áreas próprias, com 
 
 ### Profissional (chef / restaurante / nutricionista)
 - Cadastro com verificação manual e página de onboarding dedicada
-- Publicação de receitas e vídeos (armazenados na própria infraestrutura da plataforma)
+- Publicação de receitas com vídeo de preparo (link do YouTube)
 - Vídeos de perfil exibidos em formato de feed/reels na comunidade
 - Dicas e alertas de erros comuns associados a qualquer receita (relação muitos-para-muitos entre chefs e receitas)
 - Divulgação de restaurante, aulas e eventos (fase posterior ao básico)
@@ -43,7 +43,7 @@ Profissionais (chefs, restaurantes e nutricionistas) têm áreas próprias, com 
 - CRUD de receitas estruturado por etapas
 - Ajuste automático de porções
 - Página da receita / modo cozinhar, com dicas de chef e comentários (mockados nesta fase)
-- Vídeo de receitas (upload próprio, sem embed externo)
+- Vídeo de receitas (link do YouTube incorporado na página da receita, com salto por etapa)
 - Listas locais
 - Descoberta simples de restaurantes e profissionais, com mini mapa
 - Feed da comunidade em modo visualização
@@ -63,7 +63,7 @@ Profissionais (chefs, restaurantes e nutricionistas) têm áreas próprias, com 
 
 - **Frontend:** React + Vite — interface, navegação, filtros, página de receita/modo cozinha, mapas, perfis, feed, área profissional.
 - **Backend:** Java + Spring Boot — API REST, autenticação, regras de negócio, buscas e integrações externas.
-- **Armazenamento de mídia:** vídeos e imagens hospedados na própria infraestrutura (upload → backend → object storage → CDN), sem depender de players ou plataformas externas.
+- **Armazenamento de mídia:** imagens hospedadas na própria infraestrutura (upload → backend → object storage → CDN). Os vídeos das receitas ficam no YouTube: o backend guarda só o link (`videoUrl`) e o front incorpora o player.
 - **Área administrativa:** aprovação de profissionais, moderação reativa por denúncia (sem fila de revisão prévia), gestão de conteúdo e usuários.
 
 > Este README não detalha o modelo de dados/banco — a modelagem está documentada separadamente.
