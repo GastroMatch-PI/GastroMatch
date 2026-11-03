@@ -1,5 +1,6 @@
 package com.gastromatch.security;
 
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -119,6 +120,14 @@ class RotasPublicasTest {
         mockMvc.perform(put("/receitas/1/favorito")).andExpect(status().isUnauthorized());
         mockMvc.perform(delete("/receitas/1/favorito")).andExpect(status().isUnauthorized());
         mockMvc.perform(get("/usuarios/me/favoritos")).andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void healthCheckNaoExigeLogin() throws Exception {
+        // Neste teste o Actuator não está carregado (dá 404), mas nunca pode ser 401.
+        mockMvc.perform(get("/actuator/health"))
+                .andExpect(result -> assertNotEquals(401, result.getResponse().getStatus()));
+        mockMvc.perform(get("/actuator/env")).andExpect(status().isUnauthorized());
     }
 
     @Test
