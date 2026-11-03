@@ -130,7 +130,7 @@ Antes: `$env:DB_PASSWORD = 'P@ssword'` e `.\mvnw.cmd spring-boot:run` no mesmo t
 >
 > ![Console da aplicação sem senhas](img/log-sem-senha.png)
 
-Conferência no banco depois dos testes: `SELECT id, email, username, password FROM usuarios;`. Deve haver **uma** linha para o teste 1.
+Conferência no banco depois dos testes: `SELECT id, email, username, password FROM usuario;`. Deve haver **uma** linha para o teste 1.
 
 ## 8. O que este teste **não** prova
 

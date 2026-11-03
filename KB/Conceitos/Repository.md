@@ -11,7 +11,7 @@ flowchart LR
     A[UsuarioService] --> B[UsuarioRepository<br/>interface]
     B --> C[Proxy gerado<br/>pelo Spring Data]
     C --> D[EntityManager<br/>Hibernate]
-    D --> E[(MySQL)]
+    D --> E[(PostgreSQL)]
 ```
 
 ## 2. Por que o repository é uma interface?
@@ -44,7 +44,7 @@ public class UsuarioRepositoryManual {
 Com o Spring Data, você declara só o contrato:
 
 ```java
-public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
+public interface UsuarioRepository extends JpaRepository<Usuario, Integer> {
     Optional<Usuario> findByEmail(String email);
     boolean existsByEmail(String email);
     boolean existsByUsername(String username);
@@ -69,7 +69,7 @@ sequenceDiagram
     participant S as UsuarioService
     participant P as Proxy do repository
     participant H as Hibernate
-    participant DB as MySQL
+    participant DB as PostgreSQL
     S->>P: existsByEmail("ana@x.com")
     P->>P: interpreta o nome do método
     P->>H: consulta equivalente
@@ -81,16 +81,16 @@ sequenceDiagram
 
 **Ponto de atenção:** se a interface estiver fora de `com.gastromatch` (ou de seus subpacotes), o Spring não a encontra, e o bean não existe.
 
-## 4. O que é `JpaRepository<Usuario, Long>`
+## 4. O que é `JpaRepository<Usuario, Integer>`
 
 `JpaRepository` é uma interface do Spring Data que traz um conjunto pronto de operações. Os dois tipos entre `< >` são:
 
 | Parâmetro | Significado | Aqui |
 |---|---|---|
 | 1º | A **entidade** gerenciada | `Usuario` |
-| 2º | O **tipo do `@Id`** da entidade | `Long` |
+| 2º | O **tipo do `@Id`** da entidade | `Integer` |
 
-Tipo de id errado (por exemplo, `Integer` com `@Id Long`) causa erros em operações como `findById`.
+Tipo de id errado (por exemplo, `Long` com `@Id Integer`) causa erros em operações como `findById`.
 
 Estrutura simplificada da herança (confira a real na sua IDE: Ctrl+clique em `JpaRepository`):
 
@@ -133,7 +133,7 @@ classDiagram
 
 ### Como o `save` decide entre INSERT e UPDATE
 
-- Se a entidade é **nova** (id `null`): o Hibernate faz `persist`, que gera um `INSERT`. Com `GenerationType.IDENTITY`, o INSERT acontece imediatamente e o id gerado pelo MySQL é preenchido no objeto.
+- Se a entidade é **nova** (id `null`): o Hibernate faz `persist`, que gera um `INSERT`. Com `GenerationType.IDENTITY`, o INSERT acontece imediatamente e o id gerado pelo banco é preenchido no objeto.
 - Se já **tem id**: o Hibernate faz `merge`, que normalmente consulta o registro e gera um `UPDATE`.
 
 O `save` **devolve a instância gerenciada**. Por isso o service usa o retorno (`Usuario salvo = usuarioRepository.save(usuario)`), e não o objeto original: é o retorno que garante o estado atual, com o id.
@@ -178,7 +178,7 @@ Com `spring.jpa.show-sql=true` no `application.properties`, o console mostra o S
 
 1. uma consulta de existência pelo email;
 2. uma consulta de existência pelo username;
-3. um `insert into usuarios ...`.
+3. um `insert into usuario ...`.
 
 Anote qual método do service gerou cada uma.
 
