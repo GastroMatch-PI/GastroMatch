@@ -1,6 +1,6 @@
 # Fundamentação da Arquitetura em Camadas (Package by Layer)
 
-> Para rodar o backend no seu PC (banco no Supabase ou no Docker, arquivo .env), veja [SETUP-BANCO.md](SETUP-BANCO.md).
+> Para rodar o backend no seu PC (banco no Supabase ou no Docker, arquivo .env), veja [SETUP-BANCO.md](SETUP-BANCO.md). O que ficou combinado para depois (como o CORS do front publicado) está em [PENDENCIAS.md](PENDENCIAS.md).
 
 A decisão de adotar a Arquitetura em Camadas (*Package by Layer*), estruturada com componentes de suporte (DTOs, Security e Exception Handler), é uma escolha clássica, amplamente estabelecida na indústria para aplicações corporativas.
 
@@ -26,12 +26,12 @@ com.gastromatch/
 └── exception/    <-- Padronização e tratamento centralizado de erros
 ```
 
-Pastas como `mapper/` (tradução entre entidade e DTO), `audit/` e `validation/` **ainda não existem**: hoje a conversão está em `UsuarioResponse.de(...)` e a validação está nas anotações dos DTOs (`@NotBlank`, `@Email`, `@Size`). Elas só entram quando houver necessidade real.
+Pastas como `mapper/` (tradução entre entidade e DTO), `audit/` e `validation/` **ainda não existem**: hoje a conversão está nos próprios DTOs (ex.: `UsuarioResponse.de(...)`) e a validação está nas anotações dos DTOs (`@NotBlank`, `@Email`, `@Size`). Elas só entram quando houver necessidade real.
 
 ### Por que cada camada existe na prática?
 
 - **`controller/` + `dto/`:** o `UsuarioController` não sabe como a tabela de usuários é modelada, nem como a senha é criptografada. O `AuthController` recebe um `CadastroUsuarioRequest`, delega para a Service e devolve um `UsuarioResponse`. Isso garante que informações sensíveis (como o hash da senha) jamais vazem para a API.
-- **Conversão entidade → DTO:** fica no próprio `UsuarioResponse.de(...)`, o que evita métodos como `toEntity()` ou `toDTO()` espalhados pelo Service ou pelo Controller. Se a conversão crescer, ela ganha uma pasta `mapper/` própria.
+- **Conversão entidade → DTO:** fica no próprio DTO, num método `de(...)` (como o `UsuarioResponse.de(...)`), o que evita métodos como `toEntity()` ou `toDTO()` espalhados pelo Service ou pelo Controller. Se a conversão crescer, ela ganha uma pasta `mapper/` própria.
 - **`service/`:** é onde reside o valor real do sistema. O `UsuarioService` e o `AuthService` executam a lógica de negócio (validar e-mail único, chamar o BCrypt, emitir e girar o refresh token) sem saber se a chamada veio de um controller REST, de uma fila ou de uma linha de comando.
 - **`repository/` + `entity/`:** a camada de persistência (`Usuario`, `UsuarioRepository`) fica encapsulada. Se amanhã o banco mudar do PostgreSQL (Supabase) para outro, apenas o modelo de dados interno muda, sem quebrar o contrato dos DTOs ou a lógica do controller. O esquema do banco é definido pelo SQL em `Data/Modelagem`, e o Hibernate só confere se as entidades batem com ele (`ddl-auto=validate`).
 - **`security/` + `exception/`:** funcionam como *Cross-Cutting Concerns* (preocupações transversais). Tratam autenticação e erros de forma global, liberando os serviços para focarem estritamente na regra de negócio.
@@ -70,7 +70,7 @@ Alterar uma regra de negócio (como mudar a política de expiração do JWT de 1
 
 ## 3. Rotas da API
 
-Erros seguem sempre o formato `{ "status": 400, "mensagem": "...", "erros": { "campo": "..." } }` (`erros` só em validação). Listas devolvem `{ conteudo, pagina, tamanho, totalElementos, totalPaginas }` (`pagina` começa em 0; `tamanho` máximo 50).
+Erros seguem sempre o formato `{ "status": 400, "mensagem": "...", "erros": { "campo": "..." } }` (`erros` só em validação). Listas devolvem `{ conteudo, pagina, tamanho, totalElementos, totalPaginas }` (`pagina` começa em 0; `tamanho` padrão 20 e máximo 50).
 
 **Públicas (sem login, só GET):**
 
@@ -89,7 +89,7 @@ Erros seguem sempre o formato `{ "status": 400, "mensagem": "...", "erros": { "c
 
 | Rota | O que faz |
 |---|---|
-| `POST /auth/cadastro`, `/auth/login`, `/auth/refresh`, `/auth/logout` | Cadastro e sessão (access token de 15 min + refresh token com rotação) |
+| `POST /auth/cadastro`, `/auth/login`, `/auth/refresh`, `/auth/logout` | Cadastro e sessão (access token de 15 min + refresh token de 7 dias, com rotação) |
 | `GET /usuarios/me` | Dados da conta logada |
 
 **Exigem login (`Authorization: Bearer <accessToken>`):**
@@ -122,4 +122,4 @@ Atualmente existem duas grandes correntes de organização:
 | **Package by Layer** (escolha atual) | Pela função técnica (controllers, services, repositories) | Projetos de porte pequeno a médio, times onde a padronização técnica é prioridade, ou quando a API possui domínios muito interconectados (como `Usuario` e `Auth`) |
 | **Package by Feature** | Pelo domínio de negócio (`usuario/`, `auth/`, `receita/`) | Sistemas monolíticos muito grandes, com múltiplos times trabalhando em domínios completamente isolados |
 
-Para o escopo do GastroMatch, que começa pelo módulo de usuários e autenticação e segue para receitas e perfis profissionais, a organização em *Package by Layer* atende perfeitamente aos requisitos, com alto nível de legibilidade e segurança.
+Para o escopo do GastroMatch, que cobre usuários e autenticação, receitas, perfis profissionais e o diretório, a organização em *Package by Layer* atende perfeitamente aos requisitos, com alto nível de legibilidade e segurança.
