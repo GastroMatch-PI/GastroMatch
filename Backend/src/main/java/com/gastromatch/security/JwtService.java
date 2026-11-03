@@ -47,15 +47,26 @@ public class JwtService {
                 .compact();
     }
 
-    /** Devolve o id do usuário se o token for válido (assinatura e validade); senão, vazio. */
-    public Optional<Long> extrairUsuarioId(String token) {
+    /** Dados lidos de um token válido: de quem é e quando foi emitido. */
+    public record TokenValido(Integer usuarioId, Instant emitidoEm) {
+    }
+
+    /** Devolve os dados do token se ele for válido (assinatura e validade); senão, vazio. */
+    public Optional<TokenValido> validar(String token) {
         try {
             Claims claims = Jwts.parser()
                     .verifyWith(key)
                     .build()
                     .parseSignedClaims(token)
                     .getPayload();
-            return Optional.of(Long.valueOf(claims.getSubject()));
+
+            // Todo token emitido por nós tem data de emissão; sem ela, não é confiável.
+            Date emitidoEm = claims.getIssuedAt();
+            if (emitidoEm == null) {
+                return Optional.empty();
+            }
+            return Optional.of(new TokenValido(
+                    Integer.valueOf(claims.getSubject()), emitidoEm.toInstant()));
         } catch (JwtException | IllegalArgumentException e) {
             return Optional.empty();
         }

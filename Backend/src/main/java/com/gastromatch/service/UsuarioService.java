@@ -37,7 +37,7 @@ public class UsuarioService {
         if (usuarioRepository.existsByEmail(email)) {
             throw new EmailJaCadastradoException();
         }
-        if (usuarioRepository.existsByUsername(username)) {
+        if (usuarioRepository.existsByUsernameIgnoreCase(username)) {
             throw new UsernameJaCadastradoException();
         }
 
@@ -52,7 +52,7 @@ public class UsuarioService {
     }
 
     @Transactional(readOnly = true)
-    public UsuarioResponse buscarPorId(Long id) {
+    public UsuarioResponse buscarPorId(Integer id) {
         return usuarioRepository.findById(id)
                 .map(UsuarioResponse::de)
                 .orElseThrow(UsuarioNaoEncontradoException::new);

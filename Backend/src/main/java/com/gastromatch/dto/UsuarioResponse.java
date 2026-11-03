@@ -7,7 +7,7 @@ import com.gastromatch.entity.Usuario;
  * de sair na resposta. Sem anotações de validação, porque é saída.
  */
 public record UsuarioResponse(
-        Long id,
+        Integer id,
         String email,
         String username,
         String capa
