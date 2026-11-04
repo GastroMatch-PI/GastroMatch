@@ -17,7 +17,7 @@ public interface NutricionistaRepository extends JpaRepository<Nutricionista, In
     @EntityGraph(attributePaths = {"profissional"})
     Optional<Nutricionista> findByProfissionalId(Integer idProfissional);
 
-    // Diretório público: só quem teve o registro verificado pela equipe.
+    // Diretório público: só quem não foi escondido pela equipe (status APROVADO).
     @EntityGraph(attributePaths = {"profissional"})
     Page<Nutricionista> findByStatusVerificacao(StatusVerificacao status, Pageable pageable);
 

@@ -17,8 +17,9 @@ import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 
 /**
- * Perfil de nutricionista. A verificação do CRN é feita à mão, direto no banco,
- * pela equipe: por isso o status NÃO tem setter e nunca deve vir de uma requisição.
+ * Perfil de nutricionista. Não há aprovação: quem se cadastra já nasce APROVADO e aparece
+ * no diretório. O status fica só para a equipe esconder alguém, mexendo direto no banco
+ * (REJEITADO): por isso ele NÃO tem setter e nunca deve vir de uma requisição.
  */
 @Entity
 @Table(name = "nutricionista")
@@ -35,10 +36,9 @@ public class Nutricionista extends EntidadeComDatas {
     @JoinColumn(name = "id_profissional", nullable = false)
     private Profissional profissional;
 
-    // O DEFAULT do banco é PENDENTE; o valor aqui só evita enviar NULL no INSERT.
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private StatusVerificacao statusVerificacao = StatusVerificacao.PENDENTE;
+    private StatusVerificacao statusVerificacao = StatusVerificacao.APROVADO;
 
     private Instant verificadoEm;
 

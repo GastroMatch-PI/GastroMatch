@@ -54,7 +54,7 @@ class NutricionistaServiceTest {
     }
 
     @Test
-    void cadastroNasceComoPendenteECrnNormalizado() {
+    void cadastroNasceAprovadoECrnNormalizado() {
         when(vinculo.criar(eq(USUARIO), eq(RoleProfissional.NUTRICIONISTA), any())).thenReturn(profissional(7));
         when(nutricionistaRepository.save(any(Nutricionista.class))).thenAnswer(i -> i.getArgument(0));
 
@@ -64,9 +64,9 @@ class NutricionistaServiceTest {
         ArgumentCaptor<Nutricionista> salva = ArgumentCaptor.forClass(Nutricionista.class);
         verify(nutricionistaRepository).save(salva.capture());
         assertEquals("CRN-3/12345", salva.getValue().getCrn());
-        // A verificação nunca vem do cliente: começa pendente.
-        assertEquals(StatusVerificacao.PENDENTE, salva.getValue().getStatusVerificacao());
-        assertEquals(StatusVerificacao.PENDENTE, resposta.statusVerificacao());
+        // O status nunca vem do cliente: não há aprovação, então já nasce aprovada.
+        assertEquals(StatusVerificacao.APROVADO, salva.getValue().getStatusVerificacao());
+        assertEquals(StatusVerificacao.APROVADO, resposta.statusVerificacao());
     }
 
     @Test
@@ -86,7 +86,7 @@ class NutricionistaServiceTest {
     }
 
     @Test
-    void perfilPendenteNaoApareceNoDiretorioPublico() {
+    void perfilEscondidoPelaEquipeNaoApareceNoDiretorioPublico() {
         when(nutricionistaRepository.findByIdAndStatusVerificacao(3, StatusVerificacao.APROVADO))
                 .thenReturn(Optional.empty());
 

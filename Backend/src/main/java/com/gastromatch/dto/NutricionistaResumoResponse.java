@@ -2,7 +2,7 @@ package com.gastromatch.dto;
 
 import com.gastromatch.entity.Nutricionista;
 
-/** Nutricionista no diretório público (só aparecem as verificadas). */
+/** Nutricionista no diretório público. */
 public record NutricionistaResumoResponse(
         Integer id,
         String username,
