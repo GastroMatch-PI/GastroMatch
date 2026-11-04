@@ -1,6 +1,7 @@
 package com.gastromatch.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
@@ -106,5 +107,43 @@ class ChefServiceTest {
         when(chefRepository.findByProfissionalId(3)).thenReturn(Optional.of(chef));
 
         assertEquals(chef, service.chefDoUsuario(USUARIO));
+    }
+
+    @Test
+    void atualizaBioEEspecializacaoDoChef() {
+        usuario.setIdProfissional(3);
+        when(usuarioRepository.findById(USUARIO)).thenReturn(Optional.of(usuario));
+        Chef chef = new Chef(new Profissional(RoleProfissional.CHEF, "Bio antiga"), Especializacao.CARNES);
+        when(chefRepository.findByProfissionalId(3)).thenReturn(Optional.of(chef));
+
+        ChefResponse resposta = service.atualizarPerfil(USUARIO,
+                new CadastroChefRequest("  Bio nova  ", Especializacao.MASSAS));
+
+        // A bio sai sem espaços nas pontas, como no cadastro.
+        assertEquals("Bio nova", resposta.bio());
+        assertEquals(Especializacao.MASSAS, resposta.especializacao());
+        assertEquals("Bio nova", chef.getProfissional().getBio());
+        assertEquals(Especializacao.MASSAS, chef.getEspecializacao());
+    }
+
+    @Test
+    void bioEmBrancoNaAtualizacaoViraNula() {
+        usuario.setIdProfissional(3);
+        when(usuarioRepository.findById(USUARIO)).thenReturn(Optional.of(usuario));
+        Chef chef = new Chef(new Profissional(RoleProfissional.CHEF, "Bio antiga"), Especializacao.CARNES);
+        when(chefRepository.findByProfissionalId(3)).thenReturn(Optional.of(chef));
+
+        ChefResponse resposta = service.atualizarPerfil(USUARIO, new CadastroChefRequest("   ", null));
+
+        assertNull(resposta.bio());
+        assertNull(resposta.especializacao());
+    }
+
+    @Test
+    void contaSemPerfilDeChefNaoAtualiza() {
+        when(usuarioRepository.findById(USUARIO)).thenReturn(Optional.of(usuario));
+
+        assertThrows(AcessoNegadoException.class,
+                () -> service.atualizarPerfil(USUARIO, new CadastroChefRequest("bio", Especializacao.MASSAS)));
     }
 }
