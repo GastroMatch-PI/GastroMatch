@@ -14,7 +14,7 @@ O GastroMatch permite que qualquer visitante, sem login, possa:
 - Consultar informações nutricionais calculadas
 - Participar da comunidade (leitura de comentários e fórum)
 
-Profissionais (chefs, restaurantes e nutricionistas) têm áreas próprias, com cadastro e verificação manual, para publicar receitas, divulgar seus serviços e construir reputação na plataforma.
+Profissionais (chefs, restaurantes e nutricionistas) têm áreas próprias, com cadastro, para publicar receitas, divulgar seus serviços e construir reputação na plataforma.
 
 ## Funcionalidades
 
@@ -28,7 +28,7 @@ Profissionais (chefs, restaurantes e nutricionistas) têm áreas próprias, com 
 - Comunidade: leitura de comentários, avaliações e fórum de discussão (publicação exige conta)
 
 ### Profissional (chef / restaurante / nutricionista)
-- Cadastro com verificação manual e página de onboarding dedicada
+- Cadastro e página de onboarding dedicada (sem aprovação: o perfil já fica no ar)
 - Publicação de receitas com vídeo de preparo (link do YouTube)
 - Vídeos de perfil exibidos em formato de feed/reels na comunidade
 - Dicas e alertas de erros comuns associados a qualquer receita (relação muitos-para-muitos entre chefs e receitas)
@@ -47,7 +47,7 @@ Profissionais (chefs, restaurantes e nutricionistas) têm áreas próprias, com 
 - Listas locais
 - Descoberta simples de restaurantes e profissionais, com mini mapa
 - Feed da comunidade em modo visualização
-- Cadastro e verificação manual de profissionais
+- Cadastro de profissionais
 - Kits ilustrativos
 
 **Fora do MVP (fases futuras):**
@@ -64,7 +64,7 @@ Profissionais (chefs, restaurantes e nutricionistas) têm áreas próprias, com 
 - **Frontend:** React + Vite — interface, navegação, filtros, página de receita/modo cozinha, mapas, perfis, feed, área profissional.
 - **Backend:** Java + Spring Boot — API REST, autenticação, regras de negócio, buscas e integrações externas.
 - **Armazenamento de mídia:** imagens hospedadas na própria infraestrutura (upload → backend → object storage → CDN). Os vídeos das receitas ficam no YouTube: o backend guarda só o link (`videoUrl`) e o front incorpora o player.
-- **Área administrativa:** aprovação de profissionais, moderação reativa por denúncia (sem fila de revisão prévia), gestão de conteúdo e usuários.
+- **Área administrativa:** moderação reativa por denúncia (sem fila de revisão prévia), gestão de conteúdo e usuários.
 
 > Este README não detalha o modelo de dados/banco — a modelagem está documentada separadamente.
 
