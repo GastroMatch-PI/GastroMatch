@@ -108,4 +108,13 @@ public class ChefService {
                 .get(chef.getProfissional().getId());
         return ChefPerfilResponse.de(chef, username);
     }
+
+    /** Atualiza perfil de um chef */
+    @Transactional
+    public ChefResponse atualizarPerfil(Integer usuarioId, CadastroChefRequest request){
+        Chef chef = chefDoUsuario(usuarioId);
+        chef.getProfissional().setBio(request.bio() == null || request.bio().isBlank() ? null : request.bio().trim());
+        chef.setEspecializacao(request.especializacao());
+        return ChefResponse.de(chef);
+    }
 }
