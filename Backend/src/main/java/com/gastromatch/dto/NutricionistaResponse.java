@@ -3,7 +3,7 @@ package com.gastromatch.dto;
 import com.gastromatch.entity.Nutricionista;
 import com.gastromatch.entity.enums.StatusVerificacao;
 
-/** Perfil de nutricionista visto pela própria pessoa, com o andamento da verificação. */
+/** Perfil de nutricionista visto pela própria pessoa, com o status (APROVADO, ou REJEITADO se a equipe a escondeu). */
 public record NutricionistaResponse(
         Integer id,
         Integer idProfissional,
