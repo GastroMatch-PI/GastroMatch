@@ -5,6 +5,12 @@ import Directory from './pages/Directory'
 import Home from './pages/Home'
 import Portal from './pages/Portal'
 import Recipe from './pages/Recipe'
+import Login from './pages/Login'
+import Cadastro from './pages/Cadastro'
+import Onboarding from './pages/Onboarding'
+import PublicarReceita from './pages/PublicarReceita'
+import Favoritos from './pages/Favoritos'
+import Conta from './pages/Conta'
 
 export default function App() {
   return (
@@ -16,6 +22,12 @@ export default function App() {
           <Route path="/profissionais" element={<Directory />} />
           <Route path="/portal" element={<Portal />} />
           <Route path="/receita/:id" element={<Recipe />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/cadastro" element={<Cadastro />} />
+          <Route path="/onboarding" element={<Onboarding />} />
+          <Route path="/publicar" element={<PublicarReceita />} />
+          <Route path="/favoritos" element={<Favoritos />} />
+          <Route path="/conta" element={<Conta />} />
           <Route path="*" element={<Home />} />
         </Routes>
       </main>
