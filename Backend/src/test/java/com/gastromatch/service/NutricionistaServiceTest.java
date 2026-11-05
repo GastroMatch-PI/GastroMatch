@@ -1,6 +1,7 @@
 package com.gastromatch.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -91,6 +92,58 @@ class NutricionistaServiceTest {
                 .thenReturn(Optional.empty());
 
         assertThrows(RecursoNaoEncontradoException.class, () -> service.buscar(3));
+    }
+
+    private Nutricionista perfilDaConta() {
+        Usuario usuario = new Usuario();
+        usuario.setIdProfissional(7);
+        when(usuarioRepository.findById(USUARIO)).thenReturn(Optional.of(usuario));
+        Nutricionista n = new Nutricionista(profissional(7), "CRN-3/11111");
+        when(nutricionistaRepository.findByProfissionalId(7)).thenReturn(Optional.of(n));
+        return n;
+    }
+
+    @Test
+    void atualizacaoTrocaBioECrnENaoMexeNoStatus() {
+        Nutricionista n = perfilDaConta();
+        when(nutricionistaRepository.existsByCrn("CRN-3/22222")).thenReturn(false);
+
+        NutricionistaResponse resposta = service.atualizarPerfil(USUARIO,
+                new CadastroNutricionistaRequest("  Bio nova  ", " crn-3/22222 "));
+
+        assertEquals("CRN-3/22222", n.getCrn());
+        assertEquals("Bio nova", n.getProfissional().getBio());
+        assertEquals("CRN-3/22222", resposta.crn());
+        assertEquals(StatusVerificacao.APROVADO, n.getStatusVerificacao());
+    }
+
+    @Test
+    void atualizacaoMantendoOMesmoCrnNaoDaConflito() {
+        Nutricionista n = perfilDaConta();
+
+        service.atualizarPerfil(USUARIO, new CadastroNutricionistaRequest("   ", "CRN-3/11111"));
+
+        // Não consulta duplicidade: o CRN é o da própria pessoa. Bio em branco vira nula.
+        verify(nutricionistaRepository, never()).existsByCrn(any());
+        assertNull(n.getProfissional().getBio());
+    }
+
+    @Test
+    void atualizacaoComCrnDeOutraPessoaDaConflito() {
+        Nutricionista n = perfilDaConta();
+        when(nutricionistaRepository.existsByCrn("CRN-3/22222")).thenReturn(true);
+
+        assertThrows(ConflitoException.class,
+                () -> service.atualizarPerfil(USUARIO, new CadastroNutricionistaRequest("bio", "CRN-3/22222")));
+        assertEquals("CRN-3/11111", n.getCrn());
+    }
+
+    @Test
+    void contaSemPerfilNaoAtualiza() {
+        when(usuarioRepository.findById(USUARIO)).thenReturn(Optional.of(new Usuario()));
+
+        assertThrows(RecursoNaoEncontradoException.class,
+                () -> service.atualizarPerfil(USUARIO, new CadastroNutricionistaRequest("bio", "CRN-3/22222")));
     }
 
     @Test
