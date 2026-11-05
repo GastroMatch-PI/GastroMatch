@@ -1,4 +1,5 @@
-import { NavLink, Link, useLocation } from 'react-router-dom'
+import { useState } from 'react'
+import { NavLink, Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/Auth'
 
 const links = [
@@ -12,6 +13,8 @@ const links = [
 export default function Header() {
   const { pathname } = useLocation()
   const { usuario } = useAuth()
+  const nav = useNavigate()
+  const [q, setQ] = useState('')
   const pro = pathname.startsWith('/portal')
   return (
     <header className="sticky top-0 z-20 border-b border-line bg-cream/90 backdrop-blur">
@@ -24,7 +27,9 @@ export default function Header() {
             Modo Profissional
           </span>
         )}
-        <input className="input hidden max-w-[220px] md:block" placeholder="Buscar prato, ingrediente..." />
+        <form className="hidden md:block" onSubmit={(e) => { e.preventDefault(); nav(q.trim() ? `/?q=${encodeURIComponent(q.trim())}` : '/') }}>
+          <input className="input max-w-[220px]" placeholder="Buscar prato, ingrediente..." value={q} onChange={(e) => setQ(e.target.value)} />
+        </form>
         <nav className="ml-auto hidden items-center gap-5 text-sm font-medium text-ink-soft lg:flex">
           {links.map((l) =>
             l.to.includes('#') ? (

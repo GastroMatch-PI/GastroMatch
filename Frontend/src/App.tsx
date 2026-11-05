@@ -11,6 +11,7 @@ import Onboarding from './pages/Onboarding'
 import PublicarReceita from './pages/PublicarReceita'
 import Favoritos from './pages/Favoritos'
 import Conta from './pages/Conta'
+import Admin from './pages/Admin'
 
 export default function App() {
   return (
@@ -28,6 +29,7 @@ export default function App() {
           <Route path="/publicar" element={<PublicarReceita />} />
           <Route path="/favoritos" element={<Favoritos />} />
           <Route path="/conta" element={<Conta />} />
+          <Route path="/admin" element={<Admin />} />
           <Route path="*" element={<Home />} />
         </Routes>
       </main>

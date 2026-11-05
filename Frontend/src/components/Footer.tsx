@@ -7,16 +7,12 @@ export default function Footer() {
         <div>
           <p className="font-display text-lg font-extrabold text-terra">🍴 GastroMatch</p>
           <p className="mt-1 max-w-sm text-ink-soft">
-            © 2024 GastroMatch. Alta gastronomia, culinária consciente e validação profissional.
+            © 2026 GastroMatch.
           </p>
         </div>
         <nav className="flex flex-wrap items-start gap-x-5 gap-y-2 text-xs font-medium text-ink-soft">
-          <span>Termos de Uso</span>
-          <span>Privacidade</span>
           <Link to="/portal" className="text-terra">Portal Profissional</Link>
-          <span>Diretrizes Nutricionais</span>
-          <span>Imprensa</span>
-          <span>Suporte</span>
+          <Link to="/admin">Curadoria</Link>
         </nav>
       </div>
     </footer>
