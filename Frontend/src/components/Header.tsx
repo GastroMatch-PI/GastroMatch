@@ -1,15 +1,17 @@
 import { NavLink, Link, useLocation } from 'react-router-dom'
+import { useAuth } from '../context/Auth'
 
 const links = [
   { to: '/', label: 'Explorar Receitas' },
   { to: '/#geladeira', label: 'Na Geladeira' },
   { to: '/profissionais', label: 'Chefs & Restaurantes' },
   { to: '/#comunidade', label: 'Comunidade' },
-  { to: '/#listas', label: 'Minhas Listas' },
+  { to: '/favoritos', label: 'Favoritos' },
 ]
 
 export default function Header() {
   const { pathname } = useLocation()
+  const { usuario } = useAuth()
   const pro = pathname.startsWith('/portal')
   return (
     <header className="sticky top-0 z-20 border-b border-line bg-cream/90 backdrop-blur">
@@ -41,6 +43,11 @@ export default function Header() {
             ),
           )}
         </nav>
+        {usuario ? (
+          <Link to="/conta" className="btn-ghost">👤 {usuario.username}</Link>
+        ) : (
+          <Link to="/login" className="btn-ghost">Entrar</Link>
+        )}
         <Link to="/portal" className="btn-primary ml-auto lg:ml-0">
           🛡 Sou Profissional
         </Link>
