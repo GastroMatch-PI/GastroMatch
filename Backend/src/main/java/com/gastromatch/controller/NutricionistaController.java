@@ -20,7 +20,7 @@ import com.gastromatch.service.NutricionistaService;
 
 import jakarta.validation.Valid;
 
-/** Cadastro e perfil da nutricionista logada (exige login) e diretório público das verificadas. */
+/** Cadastro e perfil da nutricionista logada (exige login) e diretório público. */
 @RestController
 @RequestMapping("/nutricionistas")
 public class NutricionistaController {

@@ -1,5 +1,6 @@
-import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
+import { useAuth } from '../context/Auth'
+import { useFavoritos } from '../lib/useRecipes'
 import type { Recipe } from '../data/data'
 import Photo, { Avatar } from './Photo'
 
@@ -14,11 +15,15 @@ export default function RecipeCard({
   planned: boolean
   onAdd: (title: string) => void
 }) {
-  const [saved, setSaved] = useState(false)
+  const { usuario } = useAuth()
+  const nav = useNavigate()
+  const { favs, toggle } = useFavoritos()
+  const saved = favs.includes(recipe.id)
   return (
     <article className="card overflow-hidden">
       <Link to={`/receita/${recipe.id}`}>
         <Photo emoji={recipe.emoji} seed={recipe.seed} className="h-44 w-full">
+          {recipe.image && <img src={recipe.image} alt="" className="absolute inset-0 h-full w-full object-cover" />}
           <span className="absolute left-3 top-3 rounded-full bg-white/90 px-2.5 py-1 text-xs font-medium">
             ⏱ {recipe.minutes} min
           </span>
@@ -36,12 +41,12 @@ export default function RecipeCard({
             </span>
           </p>
           <button
-            onClick={() => setSaved(!saved)}
+            onClick={() => (usuario ? toggle(recipe.id) : nav('/login'))}
             aria-pressed={saved}
-            aria-label="Salvar receita"
+            aria-label={saved ? 'Remover dos favoritos' : 'Favoritar receita'}
             className="rounded-full border border-line px-2 py-1 text-sm hover:bg-peach"
           >
-            {saved ? '🔖' : '📑'}
+            {saved ? '♥' : '♡'}
           </button>
         </div>
         <Link to={`/receita/${recipe.id}`} className="block font-display text-lg font-semibold leading-snug hover:text-terra">
@@ -52,7 +57,7 @@ export default function RecipeCard({
           {match !== undefined ? ` • Match Geladeira: ${match}%` : ''}
         </p>
         <div className="flex items-center justify-between pt-1">
-          <span className="rounded-full bg-gold-soft px-2.5 py-1 text-xs font-medium text-gold">{recipe.nutrition}</span>
+          <span className="rounded-full bg-gold-soft px-2.5 py-1 text-xs font-medium text-gold">{recipe.collections[0]}</span>
           <button
             onClick={() => onAdd(recipe.title)}
             disabled={planned}

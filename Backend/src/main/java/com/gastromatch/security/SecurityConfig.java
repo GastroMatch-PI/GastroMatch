@@ -46,6 +46,8 @@ public class SecurityConfig {
                 // Diretório de profissionais e restaurantes (e o mapa).
                 .requestMatchers(HttpMethod.GET, "/chefs", "/chefs/*", "/nutricionistas", "/nutricionistas/*",
                         "/restaurantes", "/restaurantes/*").permitAll()
+                // Health check do host (só o /health está exposto, ver application.properties).
+                .requestMatchers(HttpMethod.GET, "/actuator/health").permitAll()
                 // Swagger: só existe quando habilitado (profile dev); em produção dá 404.
                 .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                 .anyRequest().authenticated())

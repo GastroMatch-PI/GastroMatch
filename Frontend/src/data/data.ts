@@ -1,16 +1,23 @@
+import type { EtapaR, IngReceita } from '../lib/tipos'
+
 export type Recipe = {
   id: string
   title: string
   emoji: string
   seed: number
   minutes: number
-  difficulty: 'Fácil' | 'Médio'
+  difficulty: 'Fácil' | 'Médio' | 'Difícil'
   servings: number
   author: string
   role: 'Chef' | 'Nutricionista'
   collections: string[]
   ingredients: string[]
   nutrition: string
+  image?: string
+  video?: string
+  description?: string
+  detail?: { ing: IngReceita[]; steps: EtapaR[] }
+  owner?: string
 }
 
 export const recipes: Recipe[] = [
@@ -253,3 +260,97 @@ export const comments = [
     useful: 12,
   },
 ]
+
+// ---- Detalhes das receitas de demonstração (conteúdo local) ----
+const stepSeconds = (i: number) => steps[i].seconds
+
+recipes.unshift({
+  id: 'risotto-cogumelos',
+  title: 'Risoto de Cogumelos Frescos com Azeite Trufado e Tomilho Limão',
+  emoji: '🍄',
+  seed: 4,
+  minutes: 45,
+  difficulty: 'Médio',
+  servings: 4,
+  author: 'Chef Henrique Faria',
+  role: 'Chef',
+  collections: ['Vegetariano', 'Prato Principal'],
+  ingredients: ['Cogumelos Paris', 'Alho', 'Azeite de Oliva', 'Queijo'],
+  nutrition: 'Estimativa calculada pelos ingredientes',
+  description: 'Risoto cremoso com cogumelos dourados, finalizado com manteiga gelada e azeite trufado.',
+  detail: {
+    ing: [
+      { cat: 'arroz', name: 'Arroz Arbóreo', qty: 320, unit: 'G' },
+      { cat: 'cogumelo', name: 'Cogumelos Paris e Shimeji', qty: 400, unit: 'G' },
+      { cat: 'caldo', name: 'Caldo artesanal de legumes aquecido', qty: 1200, unit: 'ML' },
+      { cat: 'queijo', name: 'Parmigiano Reggiano ralado', qty: 80, unit: 'G' },
+      { cat: 'vinho', name: 'Vinho branco seco', qty: 120, unit: 'ML' },
+      { cat: 'manteiga', name: 'Manteiga sem sal gelada', qty: 40, unit: 'G' },
+      { cat: 'azeite', name: 'Azeite extra virgem', qty: 20, unit: 'ML' },
+      { name: 'Tomilho-limão fresco', qty: 1, unit: 'UNIDADE' },
+    ],
+    steps: steps.map((s, i) => ({ title: s.title, text: s.text, seconds: stepSeconds(i) })),
+  },
+})
+
+const det: Record<string, { ing: IngReceita[]; steps: EtapaR[] }> = {
+  shakshuka: {
+    ing: [
+      { cat: 'ovo', name: 'Ovos caipiras', qty: 400, unit: 'G' },
+      { cat: 'tomate', name: 'Tomate maduro', qty: 600, unit: 'G' },
+      { cat: 'cebola', name: 'Cebola roxa', qty: 150, unit: 'G' },
+      { cat: 'alho', name: 'Alho', qty: 15, unit: 'G' },
+      { cat: 'azeite', name: 'Azeite de oliva', qty: 30, unit: 'ML' },
+      { cat: 'queijo', name: 'Queijo de cabra', qty: 100, unit: 'G' },
+    ],
+    steps: [
+      { title: 'Refogar a base', text: 'Doure cebola e alho no azeite até ficarem macios.', seconds: 300 },
+      { title: 'Cozinhar o molho', text: 'Junte o tomate e cozinhe em fogo médio até encorpar.', seconds: 600 },
+      { title: 'Cozinhar os ovos', text: 'Abra covas no molho, quebre os ovos, tampe e cozinhe até a clara firmar. Finalize com o queijo.', seconds: 420 },
+    ],
+  },
+  'risotto-abobora': {
+    ing: [
+      { cat: 'arroz', name: 'Arroz arbóreo', qty: 200, unit: 'G' },
+      { cat: 'abobora', name: 'Abóbora cabotiá', qty: 300, unit: 'G' },
+      { cat: 'cebola', name: 'Cebola roxa', qty: 80, unit: 'G' },
+      { cat: 'alho', name: 'Alho', qty: 8, unit: 'G' },
+      { cat: 'caldo', name: 'Caldo de legumes', qty: 700, unit: 'ML' },
+      { cat: 'azeite', name: 'Azeite', qty: 20, unit: 'ML' },
+      { cat: 'queijo', name: 'Queijo ralado', qty: 40, unit: 'G' },
+    ],
+    steps: [
+      { title: 'Assar a abóbora', text: 'Asse a abóbora em cubos com azeite até dourar.', seconds: 1200 },
+      { title: 'Tostar o arroz', text: 'Refogue cebola e alho, junte o arroz e toste por 2 minutos.', seconds: 120 },
+      { title: 'Cozinhar com caldo', text: 'Adicione o caldo aos poucos, mexendo. Incorpore a abóbora e o queijo no final.', seconds: 1000 },
+    ],
+  },
+  'massa-alho-negro': {
+    ing: [
+      { cat: 'massa', name: 'Massa fresca', qty: 300, unit: 'G' },
+      { cat: 'tomate', name: 'Tomates confitados', qty: 250, unit: 'G' },
+      { cat: 'alho', name: 'Alho negro', qty: 20, unit: 'G' },
+      { cat: 'azeite', name: 'Azeite', qty: 30, unit: 'ML' },
+      { cat: 'manjericao', name: 'Manjericão', qty: 10, unit: 'G' },
+    ],
+    steps: [
+      { title: 'Cozinhar a massa', text: 'Cozinhe a massa em água salgada até ficar al dente.', seconds: 180 },
+      { title: 'Montar o molho', text: 'Aqueça o azeite com o alho negro e os tomates confitados.', seconds: 240 },
+      { title: 'Finalizar', text: 'Misture a massa ao molho com um pouco da água do cozimento e finalize com manjericão.', seconds: 60 },
+    ],
+  },
+  'salmao-mousseline': {
+    ing: [
+      { cat: 'salmao', name: 'Filé de salmão', qty: 300, unit: 'G' },
+      { cat: 'ervilha', name: 'Ervilhas frescas', qty: 250, unit: 'G' },
+      { cat: 'alho', name: 'Alho', qty: 6, unit: 'G' },
+      { cat: 'azeite', name: 'Azeite', qty: 25, unit: 'ML' },
+    ],
+    steps: [
+      { title: 'Preparar o purê', text: 'Cozinhe as ervilhas e bata com azeite até ficar cremoso.', seconds: 420 },
+      { title: 'Selar o salmão', text: 'Sele o salmão com a pele para baixo em frigideira bem quente até ficar crocante.', seconds: 300 },
+      { title: 'Montar o prato', text: 'Sirva o salmão sobre o purê de ervilhas.', seconds: 60 },
+    ],
+  },
+}
+for (const r of recipes) if (det[r.id]) r.detail = det[r.id]

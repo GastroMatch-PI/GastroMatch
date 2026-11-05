@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
-import Photo, { Avatar } from '../components/Photo'
+import { Link, useSearchParams } from 'react-router-dom'
+import Photo from '../components/Photo'
 import RecipeCard from '../components/RecipeCard'
-import { collections, fridgeItems, recipes, trending } from '../data/data'
+import { collections, fridgeItems } from '../data/data'
+import { useRecipes } from '../lib/useRecipes'
 import { useLocalState } from '../hooks/useLocalState'
 
 type ShopItem = { id: number; name: string; qty: string; done: boolean }
@@ -21,10 +22,14 @@ const initialMenu = [
 ]
 
 export default function Home() {
+  const recipes = useRecipes()
+  const [params] = useSearchParams()
+  const [maxMin, setMaxMin] = useState(0)
+  const [dif, setDif] = useState('')
   const [selected, setSelected] = useState<string[]>(['Tomate', 'Queijo', 'Manjericão'])
   const [searched, setSearched] = useState(false)
-  const [tab, setTab] = useState<'geladeira' | 'prato'>('geladeira')
-  const [dish, setDish] = useState('')
+  const [tab, setTab] = useState<'geladeira' | 'prato'>(params.get('q') ? 'prato' : 'geladeira')
+  const [dish, setDish] = useState(params.get('q') ?? '')
   const [collection, setCollection] = useState('Todos')
   const [shopping, setShopping] = useLocalState<ShopItem[]>('gm-shopping', initialShopping)
   const [menu, setMenu] = useLocalState('gm-menu', initialMenu)
@@ -41,15 +46,17 @@ export default function Home() {
           return { recipe: r, match: Math.round((hit / r.ingredients.length) * 100) }
         })
         .filter((m) => m.match > 0),
-    [selected],
+    [selected, recipes],
   )
 
   const list = useMemo(() => {
     const term = dish.trim().toLowerCase()
     return recipes
       .filter((r) => collection === 'Todos' || r.collections.includes(collection))
-      .filter((r) => !term || r.title.toLowerCase().includes(term))
-  }, [collection, dish])
+      .filter((r) => !term || [r.title, r.author, ...r.ingredients, ...r.collections].some((t) => t.toLowerCase().includes(term)))
+      .filter((r) => !maxMin || r.minutes <= maxMin)
+      .filter((r) => !dif || r.difficulty === dif)
+  }, [collection, dish, recipes, maxMin, dif])
 
   const addToMenu = (title: string) => {
     const days = ['TER', 'QUI', 'SAB', 'DOM']
@@ -63,17 +70,15 @@ export default function Home() {
       <section className="grid gap-6 rounded-3xl bg-peach p-6 md:grid-cols-2 md:p-10">
         <div className="space-y-4">
           <span className="inline-block rounded-full bg-leaf-soft px-3 py-1 text-xs font-semibold text-leaf">
-            🔓 Acesso Aberto • Zero Barreiras de Login
+            🔓 Explore sem login
           </span>
           <h1 className="text-4xl font-extrabold leading-tight md:text-5xl">
             Descubra a gastronomia autêntica feita para cozinhar agora
           </h1>
           <p className="text-ink-soft">
-            Uma plataforma aberta com técnicas de alta cozinha, receitas validadas por chefs e nutricionistas, sem fricção:
-            guarde seus ingredientes e listas direto no seu navegador.
+            Receitas de chefs, nutricionistas e restaurantes. Explore sem cadastro; entre para comentar e favoritar.
           </p>
           <ul className="flex flex-wrap gap-x-5 gap-y-1 text-xs font-medium text-ink-soft">
-            <li>✔ 1.400+ Fichas Validadas</li>
             <li>🌿 Foco em Desperdício Zero</li>
             <li>💾 Armazenamento Local Seguro</li>
           </ul>
@@ -81,9 +86,9 @@ export default function Home() {
         <Link to="/receita/risotto-cogumelos" className="group relative block overflow-hidden rounded-2xl">
           <Photo emoji="🥖" seed={0} className="h-64 w-full md:h-full">
             <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-4 text-white">
-              <span className="rounded bg-gold px-2 py-0.5 text-[10px] font-bold uppercase">Destaque do Sommelier</span>
-              <p className="mt-1 font-display text-lg font-bold">Harmonização: Gnocchi Artesanal ao Pesto Selvagem</p>
-              <p className="text-xs opacity-90">Receita pelo Chef Rogério Bittencourt • 25 min</p>
+              <span className="rounded bg-gold px-2 py-0.5 text-[10px] font-bold uppercase">Em destaque</span>
+              <p className="mt-1 font-display text-lg font-bold">Risoto de Cogumelos Frescos com Azeite Trufado</p>
+              <p className="text-xs opacity-90">Chef Henrique Faria • 45 min</p>
             </div>
           </Photo>
         </Link>
@@ -98,13 +103,10 @@ export default function Home() {
                 onClick={() => setTab(t)}
                 className={`border-b-2 pb-1 ${tab === t ? 'border-terra text-terra' : 'border-transparent text-ink-soft'}`}
               >
-                {t === 'geladeira' ? '🧊 O que tenho na geladeira?' : '🔎 Busca por Prato ou Técnica'}
+                {t === 'geladeira' ? '🧊 O que tenho na geladeira?' : '🔎 Busca por texto'}
               </button>
             ))}
           </div>
-          <span className="rounded-full bg-leaf-soft px-2.5 py-1 text-xs font-medium text-leaf">
-            ✨ Algoritmo de Compatibilidade GastroMatch
-          </span>
         </div>
 
         {tab === 'geladeira' ? (
@@ -149,19 +151,28 @@ export default function Home() {
             )}
           </>
         ) : (
-          <input
-            className="input"
-            placeholder="Ex.: risoto, emulsão, fermentação natural..."
-            value={dish}
-            onChange={(e) => setDish(e.target.value)}
-          />
+          <div className="space-y-3">
+            <input
+              className="input"
+              placeholder="Nome, ingrediente, chef ou tipo..."
+              value={dish}
+              onChange={(e) => setDish(e.target.value)}
+            />
+            <div className="flex flex-wrap gap-2 text-xs">
+              <select className="input !w-auto" value={maxMin} onChange={(e) => setMaxMin(Number(e.target.value))}>
+                <option value={0}>Qualquer tempo</option><option value={20}>Até 20 min</option><option value={30}>Até 30 min</option><option value={60}>Até 60 min</option>
+              </select>
+              <select className="input !w-auto" value={dif} onChange={(e) => setDif(e.target.value)}>
+                <option value="">Qualquer dificuldade</option><option>Fácil</option><option>Médio</option><option>Difícil</option>
+              </select>
+            </div>
+          </div>
         )}
       </section>
 
       <section id="colecoes" className="space-y-3">
         <div className="flex flex-wrap items-end justify-between gap-2">
           <h2 className="text-2xl font-bold">Explorar Coleções</h2>
-          <p className="text-xs text-ink-faint">Filtragem instantânea sem recarregar a tela</p>
         </div>
         <div className="flex flex-wrap gap-2">
           {collections.map((c) => (
@@ -184,10 +195,10 @@ export default function Home() {
             <div>
               <h2 className="text-3xl font-bold">Receitas em Destaque</h2>
               <p className="text-xs text-ink-faint">
-                Execução precisa, cálculo de macronutrientes e passo a passo testado.
+                Passo a passo e tabela nutricional estimada.
               </p>
             </div>
-            <span className="text-xs font-semibold text-terra">Ver todas (340) →</span>
+            <span className="text-xs text-ink-faint">{list.length} receitas</span>
           </div>
           {list.length === 0 ? (
             <p className="card p-6 text-sm text-ink-soft">Nenhuma receita encontrada nesta coleção.</p>
@@ -209,10 +220,9 @@ export default function Home() {
           <div className="card space-y-4 bg-peach/60 p-5">
             <div className="flex items-center justify-between">
               <h3 className="font-display text-lg font-bold">📦 Minhas Listas Locais</h3>
-              <span className="rounded-full bg-leaf-soft px-2 py-0.5 text-[10px] font-semibold text-leaf">Offline First</span>
             </div>
             <p className="rounded-lg bg-white p-2 text-[11px] text-ink-soft">
-              ⚠ Estes dados são salvos diretamente na memória do seu navegador. Nenhum login ou cadastro obrigatório.
+              Estas listas ficam salvas só neste navegador.
             </p>
             <div>
               <p className="mb-2 flex justify-between text-xs font-semibold text-terra">
@@ -276,36 +286,15 @@ export default function Home() {
               </ul>
             </div>
           </div>
-          <div className="card bg-peach p-4 text-xs text-ink-soft">
-            <p className="mb-1 font-semibold text-terra">📍 Dica do Sommelier GastroMatch</p>
-            Pratos com emulsões ácidas e tomates confitados harmonizam perfeitamente com vinhos brancos minerais ou tintos
-            leves como Pinot Noir servido a 14°C.
-          </div>
         </aside>
       </div>
 
-      <section id="comunidade" className="space-y-3">
-        <div className="flex flex-wrap items-end justify-between gap-2">
-          <div>
-            <h2 className="text-3xl font-bold">Chefs & Restaurantes em Alta</h2>
-            <p className="text-xs text-ink-faint">Criadores profissionais com validação técnica em tempo real na plataforma.</p>
-          </div>
-          <Link to="/profissionais" className="btn-ghost text-xs">
-            🗺 Ver no Mapa Gastronômico
-          </Link>
+      <section id="comunidade" className="card flex flex-wrap items-center justify-between gap-3 p-5">
+        <div>
+          <h2 className="text-2xl font-bold">Chefs, Nutricionistas & Restaurantes</h2>
+          <p className="text-xs text-ink-faint">Conheça os perfis cadastrados na plataforma.</p>
         </div>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {trending.map((t) => (
-            <div key={t.name} className="card flex items-center gap-3 p-3">
-              <Avatar emoji={t.emoji} className="h-10 w-10" />
-              <div className="min-w-0 text-xs">
-                <p className="truncate text-sm font-semibold">{t.name} <span className="text-gold">✪</span></p>
-                <p className="truncate text-ink-faint">{t.sub}</p>
-                <p className="text-terra">{t.stat}</p>
-              </div>
-            </div>
-          ))}
-        </div>
+        <Link to="/profissionais" className="btn-primary">Ver diretório</Link>
       </section>
     </div>
   )

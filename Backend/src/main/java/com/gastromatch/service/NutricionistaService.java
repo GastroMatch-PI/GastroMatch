@@ -41,7 +41,7 @@ public class NutricionistaService {
         this.vinculo = vinculo;
     }
 
-    /** Cria o perfil. Nasce PENDENTE: só a equipe aprova, direto no banco, e só então a pessoa aparece no diretório. */
+    /** Cria o perfil. Não há aprovação: a pessoa já aparece no diretório. */
     @Transactional
     public NutricionistaResponse criarPerfil(Integer usuarioId, CadastroNutricionistaRequest request) {
         String crn = Documentos.normalizarCrn(request.crn());
@@ -53,7 +53,7 @@ public class NutricionistaService {
         return NutricionistaResponse.de(nutricionista);
     }
 
-    /** Perfil da própria pessoa, inclusive enquanto a verificação está pendente. */
+    /** Perfil da própria pessoa, mesmo que a equipe a tenha escondido do diretório. */
     @Transactional(readOnly = true)
     public NutricionistaResponse meuPerfil(Integer usuarioId) {
         Usuario usuario = usuarioRepository.findById(usuarioId).orElseThrow(UsuarioNaoEncontradoException::new);
@@ -65,7 +65,7 @@ public class NutricionistaService {
                 .orElseThrow(() -> new RecursoNaoEncontradoException(SEM_PERFIL));
     }
 
-    /** Diretório público: só nutricionistas com a verificação aprovada. */
+    /** Diretório público: todas, menos as que a equipe escondeu (status diferente de APROVADO). */
     @Transactional(readOnly = true)
     public PaginaResponse<NutricionistaResumoResponse> listar(Pageable pageable) {
         Page<Nutricionista> pagina =
@@ -76,7 +76,7 @@ public class NutricionistaService {
                 NutricionistaResumoResponse.de(n, usernames.get(n.getProfissional().getId()))));
     }
 
-    /** Perfil público. Quem ainda não foi aprovado responde 404, como se não existisse. */
+    /** Perfil público. Quem a equipe escondeu responde 404, como se não existisse. */
     @Transactional(readOnly = true)
     public NutricionistaResumoResponse buscar(Integer id) {
         Nutricionista n = nutricionistaRepository.findByIdAndStatusVerificacao(id, StatusVerificacao.APROVADO)

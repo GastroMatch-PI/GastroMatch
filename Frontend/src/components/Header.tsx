@@ -1,15 +1,20 @@
-import { NavLink, Link, useLocation } from 'react-router-dom'
+import { useState } from 'react'
+import { NavLink, Link, useLocation, useNavigate } from 'react-router-dom'
+import { useAuth } from '../context/Auth'
 
 const links = [
   { to: '/', label: 'Explorar Receitas' },
   { to: '/#geladeira', label: 'Na Geladeira' },
   { to: '/profissionais', label: 'Chefs & Restaurantes' },
   { to: '/#comunidade', label: 'Comunidade' },
-  { to: '/#listas', label: 'Minhas Listas' },
+  { to: '/favoritos', label: 'Favoritos' },
 ]
 
 export default function Header() {
   const { pathname } = useLocation()
+  const { usuario } = useAuth()
+  const nav = useNavigate()
+  const [q, setQ] = useState('')
   const pro = pathname.startsWith('/portal')
   return (
     <header className="sticky top-0 z-20 border-b border-line bg-cream/90 backdrop-blur">
@@ -22,7 +27,9 @@ export default function Header() {
             Modo Profissional
           </span>
         )}
-        <input className="input hidden max-w-[220px] md:block" placeholder="Buscar prato, ingrediente..." />
+        <form className="hidden md:block" onSubmit={(e) => { e.preventDefault(); nav(q.trim() ? `/?q=${encodeURIComponent(q.trim())}` : '/') }}>
+          <input className="input max-w-[220px]" placeholder="Buscar prato, ingrediente..." value={q} onChange={(e) => setQ(e.target.value)} />
+        </form>
         <nav className="ml-auto hidden items-center gap-5 text-sm font-medium text-ink-soft lg:flex">
           {links.map((l) =>
             l.to.includes('#') ? (
@@ -41,6 +48,11 @@ export default function Header() {
             ),
           )}
         </nav>
+        {usuario ? (
+          <Link to="/conta" className="btn-ghost">👤 {usuario.username}</Link>
+        ) : (
+          <Link to="/login" className="btn-ghost">Entrar</Link>
+        )}
         <Link to="/portal" className="btn-primary ml-auto lg:ml-0">
           🛡 Sou Profissional
         </Link>
