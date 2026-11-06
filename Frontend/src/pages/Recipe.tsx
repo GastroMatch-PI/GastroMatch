@@ -26,11 +26,11 @@ function StepTimer({ seconds }: { seconds: number }) {
 
   const done = left === 0
   return (
-    <div className="inline-flex flex-wrap items-center gap-2 rounded-lg border border-line bg-white px-3 py-1.5 text-xs">
+    <div className="inline-flex flex-wrap items-center gap-2 rounded-lg border border-line bg-surface px-3 py-1.5 text-xs">
       <span aria-hidden>⏰</span>
       Timer da etapa
       <button
-        className="rounded bg-terra px-2 py-1 font-semibold text-white"
+        className="rounded bg-terra px-2 py-1 font-semibold text-on-accent"
         onClick={() => {
           if (done) setLeft(seconds)
           setRunning(!running || done)
@@ -131,10 +131,10 @@ export default function Recipe() {
   if (guided !== null && steps[guided]) {
     const s = steps[guided]
     return (
-      <div className="fixed inset-0 z-30 flex flex-col bg-ink p-6 text-white">
+      <div className="fixed inset-0 z-30 flex flex-col bg-black p-6 text-white">
         <div className="flex items-center justify-between text-sm">
           <span>Modo Cozinhar Guiado • Passo {guided + 1} de {steps.length}</span>
-          <button className="rounded bg-white/10 px-3 py-1.5" onClick={() => setGuided(null)}>Sair</button>
+          <button className="rounded bg-surface/10 px-3 py-1.5" onClick={() => setGuided(null)}>Sair</button>
         </div>
         <div className="mx-auto flex max-w-3xl flex-1 flex-col justify-center gap-6">
           <h2 className="text-4xl font-extrabold">{s.title}</h2>
@@ -179,7 +179,7 @@ export default function Recipe() {
           {vid && steps.some((s) => s.videoAt !== undefined) && (
             <div className="mt-2 flex flex-wrap gap-2 text-xs">
               {steps.map((s, i) => s.videoAt !== undefined && (
-                <button key={i} onClick={() => setStepVideo(i)} className={`rounded-full border px-3 py-1 ${stepVideo === i ? 'border-terra bg-peach text-terra' : 'border-line bg-white'}`}>
+                <button key={i} onClick={() => setStepVideo(i)} className={`rounded-full border px-3 py-1 ${stepVideo === i ? 'border-terra bg-peach text-terra' : 'border-line bg-surface'}`}>
                   {clock(s.videoAt)} · Etapa {i + 1}
                 </button>
               ))}
@@ -216,9 +216,9 @@ export default function Recipe() {
             <h2 className="text-xl font-bold">Ingredientes</h2>
             <div className="flex items-center gap-2 rounded-lg bg-peach px-2 py-1 text-xs">
               Rendimento:
-              <button aria-label="Menos porções" className="h-6 w-6 rounded bg-white font-bold" onClick={() => setServings(Math.max(1, servings - 1))}>−</button>
+              <button aria-label="Menos porções" className="h-6 w-6 rounded bg-surface font-bold" onClick={() => setServings(Math.max(1, servings - 1))}>−</button>
               <b className="text-terra">{servings}</b> porções
-              <button aria-label="Mais porções" className="h-6 w-6 rounded bg-white font-bold" onClick={() => setServings(Math.min(50, servings + 1))}>+</button>
+              <button aria-label="Mais porções" className="h-6 w-6 rounded bg-surface font-bold" onClick={() => setServings(Math.min(50, servings + 1))}>+</button>
             </div>
           </div>
           <ul className="divide-y divide-line">
@@ -301,7 +301,7 @@ export default function Recipe() {
             <article key={i} className={`grid gap-4 rounded-xl border border-line bg-cream p-4 ${s.image ? 'md:grid-cols-[1fr_160px]' : ''} ${doneSteps.includes(i) ? 'opacity-60' : ''}`}>
               <div className="space-y-2">
                 <div className="flex items-start gap-3">
-                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-terra text-sm font-bold text-white">{i + 1}</span>
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-terra text-sm font-bold text-on-accent">{i + 1}</span>
                   <h3 className="flex-1 text-base font-bold">{s.title}</h3>
                   <label className="flex items-center gap-1 text-[11px] text-ink-faint">
                     <input type="checkbox" checked={doneSteps.includes(i)} onChange={() => setDoneSteps(toggleArr(doneSteps, i))} /> Concluído
