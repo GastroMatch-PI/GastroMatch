@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://gastromatch-front.vercel.app/sitemap.xml

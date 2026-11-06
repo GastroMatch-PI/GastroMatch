@@ -51,10 +51,7 @@ public class RestauranteService {
     @Transactional
     public RestauranteResponse criarPerfil(Integer usuarioId, CadastroRestauranteRequest request) {
         String cnpj = Documentos.normalizarCnpj(request.cnpj());
-        // As duas coordenadas juntas ou nenhuma: uma só não marca ponto nenhum no mapa.
-        if ((request.latitude() == null) != (request.longitude() == null)) {
-            throw new RequisicaoInvalidaException("Informe latitude e longitude juntas, ou nenhuma das duas");
-        }
+        exigirCoordenadasJuntas(request);
         if (restauranteRepository.existsByCnpj(cnpj)) {
             throw new ConflitoException("CNPJ já cadastrado");
         }
@@ -63,6 +60,50 @@ public class RestauranteService {
 
         Restaurante restaurante = new Restaurante();
         restaurante.setProfissional(profissional);
+        preencher(restaurante, cnpj, request);
+        return RestauranteResponse.de(restauranteRepository.save(restaurante));
+    }
+
+    @Transactional(readOnly = true)
+    public RestauranteResponse meuPerfil(Integer usuarioId) {
+        return RestauranteResponse.de(restauranteDoUsuario(usuarioId));
+    }
+
+    /**
+     * Troca todos os dados do restaurante da conta logada (nome, bio, CNPJ, endereço e posição).
+     * O CNPJ novo não pode ser de outro restaurante; manter o mesmo é permitido. A bio fica
+     * igual no restaurante e no profissional, como no cadastro.
+     */
+    @Transactional
+    public RestauranteResponse atualizarPerfil(Integer usuarioId, CadastroRestauranteRequest request) {
+        Restaurante restaurante = restauranteDoUsuario(usuarioId);
+        String cnpj = Documentos.normalizarCnpj(request.cnpj());
+        exigirCoordenadasJuntas(request);
+        if (!cnpj.equals(restaurante.getCnpj()) && restauranteRepository.existsByCnpj(cnpj)) {
+            throw new ConflitoException("CNPJ já cadastrado");
+        }
+        preencher(restaurante, cnpj, request);
+        restaurante.getProfissional().setBio(restaurante.getBio());
+        return RestauranteResponse.de(restaurante);
+    }
+
+    private Restaurante restauranteDoUsuario(Integer usuarioId) {
+        Usuario usuario = usuarioRepository.findById(usuarioId).orElseThrow(UsuarioNaoEncontradoException::new);
+        if (usuario.getIdProfissional() == null) {
+            throw new RecursoNaoEncontradoException(SEM_PERFIL);
+        }
+        return restauranteRepository.findByProfissionalId(usuario.getIdProfissional())
+                .orElseThrow(() -> new RecursoNaoEncontradoException(SEM_PERFIL));
+    }
+
+    /** As duas coordenadas juntas ou nenhuma: uma só não marca ponto nenhum no mapa. */
+    private static void exigirCoordenadasJuntas(CadastroRestauranteRequest request) {
+        if ((request.latitude() == null) != (request.longitude() == null)) {
+            throw new RequisicaoInvalidaException("Informe latitude e longitude juntas, ou nenhuma das duas");
+        }
+    }
+
+    private static void preencher(Restaurante restaurante, String cnpj, CadastroRestauranteRequest request) {
         restaurante.setCnpj(cnpj);
         restaurante.setNome(request.nome().trim());
         restaurante.setBio(VinculoProfissional.textoOuNulo(request.bio()));
@@ -73,18 +114,6 @@ public class RestauranteService {
         restaurante.setCidade(VinculoProfissional.textoOuNulo(request.cidade()));
         restaurante.setEstado(VinculoProfissional.textoOuNulo(request.estado()));
         restaurante.setPosicao(request.latitude(), request.longitude());
-        return RestauranteResponse.de(restauranteRepository.save(restaurante));
-    }
-
-    @Transactional(readOnly = true)
-    public RestauranteResponse meuPerfil(Integer usuarioId) {
-        Usuario usuario = usuarioRepository.findById(usuarioId).orElseThrow(UsuarioNaoEncontradoException::new);
-        if (usuario.getIdProfissional() == null) {
-            throw new RecursoNaoEncontradoException(SEM_PERFIL);
-        }
-        return restauranteRepository.findByProfissionalId(usuario.getIdProfissional())
-                .map(RestauranteResponse::de)
-                .orElseThrow(() -> new RecursoNaoEncontradoException(SEM_PERFIL));
     }
 
     /** Diretório e mapa: restaurantes com filtros opcionais (texto, cidade, bairro, estado). */

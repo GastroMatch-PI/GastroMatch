@@ -6,6 +6,7 @@ import { useAuth } from '../context/Auth'
 import { pros } from '../data/data'
 import { useRecipes } from '../lib/useRecipes'
 import type { Papel } from '../lib/tipos'
+import { useSeo } from '../lib/seo'
 
 const tabs = ['Perfil Público', 'Minhas Receitas', 'Kits Ilustrativos'] as const
 const nomes: Record<Papel, string> = { CHEF: 'Chef', NUTRICIONISTA: 'Nutricionista', RESTAURANTE: 'Restaurante' }
@@ -16,6 +17,7 @@ const statusTxt = {
 }
 
 export default function Portal() {
+  useSeo({ titulo: 'Portal profissional' })
   const { usuario, meusPerfis, setPerfis } = useAuth()
   const receitas = useRecipes()
   const [tab, setTab] = useState<(typeof tabs)[number]>(tabs[0])

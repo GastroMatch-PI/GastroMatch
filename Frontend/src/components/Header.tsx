@@ -3,19 +3,31 @@ import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
 import {
   BadgeCheck, ChefHat, Heart, Home, LogIn, LogOut, Menu, PlusCircle, Refrigerator, Search, ShieldCheck, UserPlus, UserRound, Users, X,
 } from 'lucide-react'
+import { Moon, Sun, Store, LayoutDashboard, BookOpen } from 'lucide-react'
 import { useAuth } from '../context/Auth'
 
 const main = [
   { to: '/', label: 'Explorar receitas', icon: Home, end: true },
   { to: '/#geladeira', label: 'Na geladeira', icon: Refrigerator },
-  { to: '/profissionais', label: 'Chefs & restaurantes', icon: Users },
+  { to: '/receitas', label: 'Todas as receitas', icon: BookOpen },
+  { to: '/profissionais', label: 'Chefs & nutricionistas', icon: Users },
+  { to: '/restaurantes', label: 'Restaurantes', icon: Store },
   { to: '/favoritos', label: 'Favoritos', icon: Heart },
 ]
 
 export default function Header() {
   const { pathname } = useLocation()
   const nav = useNavigate()
-  const { usuario, sair } = useAuth()
+  const { usuario, meusPerfis, perfis, sair } = useAuth()
+  const [tema, setTema] = useState(() => document.documentElement.dataset.theme ?? (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'))
+  const pendentes = usuario?.admin ? perfis.filter((p) => p.status === 'PENDENTE').length : 0
+  const alternarTema = () => {
+    const novo = tema === 'light' ? 'dark' : 'light'
+    setTema(novo)
+    document.documentElement.dataset.theme = novo
+    try { localStorage.setItem('gm-tema', novo) } catch { /* sem storage */ }
+  }
+  const isChef = meusPerfis.some((p) => p.papel === 'CHEF')
   const [open, setOpen] = useState(false)
   const [q, setQ] = useState('')
   const closeRef = useRef<HTMLButtonElement>(null)
@@ -38,14 +50,14 @@ export default function Header() {
 
   const buscar = (e: React.FormEvent) => {
     e.preventDefault()
-    nav(q.trim() ? `/?q=${encodeURIComponent(q.trim())}` : '/')
+    nav(q.trim() ? `/receitas?q=${encodeURIComponent(q.trim())}` : '/receitas')
   }
 
   const item = 'flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-ink-soft transition duration-200 hover:bg-peach hover:text-terra'
 
   return (
     <>
-      <header className="sticky top-0 z-30 border-b border-line/60 bg-cream/70 backdrop-blur-xl">
+      <header role="banner" className="sticky top-0 z-30 border-b border-line/60 bg-cream/70 backdrop-blur-xl">
         <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-3">
           <Link to="/" className="flex items-center gap-2 font-display text-2xl font-extrabold tracking-tight text-terra">
             <span className="hidden min-[380px]:inline">GastroMatch</span>
@@ -114,7 +126,7 @@ export default function Header() {
           <input className="input !rounded-full !pl-10" placeholder="Buscar receitas" aria-label="Buscar receitas" value={q} onChange={(e) => setQ(e.target.value)} />
         </form>
 
-        <nav className="space-y-1" aria-label="Navegação">
+        <nav className="space-y-1" aria-label="Navegação principal">
           {main.map((l) =>
             l.to.includes('#') ? (
               <Link key={l.label} to={l.to} className={item} onClick={() => setOpen(false)}>
@@ -130,16 +142,21 @@ export default function Header() {
 
         <div className="space-y-1 border-t border-line pt-4">
           <p className="px-4 pb-1 text-xs font-semibold uppercase tracking-wide text-ink-faint">Profissionais</p>
-          <NavLink to="/portal" className={item}><ChefHat size={18} /> Portal profissional</NavLink>
-          <NavLink to="/publicar" className={item}><PlusCircle size={18} /> Publicar receita</NavLink>
-          <NavLink to="/onboarding" className={item}><BadgeCheck size={18} /> Criar perfil</NavLink>
-          <NavLink to="/admin" className={item}><ShieldCheck size={18} /> Curadoria</NavLink>
+          {meusPerfis.length > 0 && <NavLink to="/portal" className={item}><ChefHat size={18} /> Portal profissional</NavLink>}
+          {isChef && <NavLink to="/publicar" className={item}><PlusCircle size={18} /> Publicar receita</NavLink>}
+          {usuario && <NavLink to="/onboarding" className={item}><BadgeCheck size={18} /> Criar perfil profissional</NavLink>}
+          {isChef && <NavLink to="/painel" className={item}><LayoutDashboard size={18} /> Painel do chef</NavLink>}
+          {usuario?.admin && <NavLink to="/admin" className={item}><ShieldCheck size={18} /> Curadoria{pendentes > 0 && <span className="ml-auto rounded-full bg-terra px-2 py-0.5 text-[11px] font-bold text-on-accent" aria-label={`${pendentes} pendentes`}>{pendentes}</span>}</NavLink>}
         </div>
 
         <div className="mt-auto space-y-2 border-t border-line pt-4">
+          <button className={`${item} w-full cursor-pointer`} onClick={alternarTema} aria-pressed={tema === 'light'}>
+            {tema === 'light' ? <Moon size={18} /> : <Sun size={18} />} {tema === 'light' ? 'Tema escuro' : 'Tema claro'}
+          </button>
           {usuario ? (
             <>
-              <Link to="/conta" className={item}><UserRound size={18} /> {usuario.username}</Link>
+              <Link to="/perfil" className={item}><UserRound size={18} /> {usuario.username}</Link>
+              <Link to="/verificacao" className={item}><BadgeCheck size={18} /> Status da verificação</Link>
               <button className={`${item} w-full cursor-pointer`} onClick={() => { sair(); setOpen(false); nav('/') }}>
                 <LogOut size={18} /> Sair
               </button>

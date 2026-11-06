@@ -7,6 +7,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -41,6 +42,12 @@ public class RestauranteController {
     @GetMapping("/me")
     public ResponseEntity<RestauranteResponse> meuPerfil(@AuthenticationPrincipal Integer usuarioId) {
         return ResponseEntity.ok(restauranteService.meuPerfil(usuarioId));
+    }
+
+    @PutMapping("/me")
+    public ResponseEntity<RestauranteResponse> atualizar(@AuthenticationPrincipal Integer usuarioId,
+                                                         @Valid @RequestBody CadastroRestauranteRequest request) {
+        return ResponseEntity.ok(restauranteService.atualizarPerfil(usuarioId, request));
     }
 
     @GetMapping
