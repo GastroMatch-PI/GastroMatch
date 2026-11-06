@@ -61,7 +61,7 @@ export default function Onboarding() {
       enviadoEm: Date.now(),
     }
     if (papel === 'CHEF') Object.assign(base, { especializacao: v.especializacao, restauranteDoChef: v.restaurante || undefined })
-    if (papel === 'NUTRICIONISTA') Object.assign(base, { crn: v.crn, comprovante })
+    if (papel === 'NUTRICIONISTA') Object.assign(base, { crn: soDigitos(v.crn), comprovante })
     if (papel === 'RESTAURANTE')
       Object.assign(base, {
         nome: v.nome, cnpj: soDigitos(v.cnpj), cep: soDigitos(v.cep), rua: v.rua, numero: v.numero, bairro: v.bairro, cidadeNome: v.cidade, estado: v.estado,

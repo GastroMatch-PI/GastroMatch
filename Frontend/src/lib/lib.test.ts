@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { comCarregamento } from './carregamento'
 import { dataRelativa, fmtNum, paginasVisiveis } from './format'
 import { mascaraCEP, mascaraCNPJ, mascaraCRN, mascaraTelefone, soDigitos } from './mascaras'
 import { email, forcaSenha, igualA, numero, obrigatorio, primeiroErro, requisitosSenha, tamanho, url, validarCampo, validarTodos, youtube } from './validar'
@@ -69,5 +70,24 @@ describe('formatadores', () => {
     expect(paginasVisiveis(2, 3)).toEqual([1, 2, 3])
     expect(paginasVisiveis(25, 50)).toEqual([1, '…', 24, 25, 26, '…', 50])
     expect(paginasVisiveis(1, 50)).toEqual([1, 2, '…', 50])
+  })
+})
+
+describe('comCarregamento', () => {
+  it('marca aria-busy e desabilita os controles durante a promessa, e restaura no fim', async () => {
+    document.body.innerHTML = '<div id="x"><button id="b">ok</button><button id="d" disabled>off</button></div>'
+    const el = document.getElementById('x')!
+    let fim!: (v: number) => void
+    const p = comCarregamento(new Promise<number>((r) => { fim = r }), el)
+    expect(el.getAttribute('aria-busy')).toBe('true')
+    expect((document.getElementById('b') as HTMLButtonElement).disabled).toBe(true)
+    fim(7)
+    expect(await p).toBe(7)
+    expect(el.hasAttribute('aria-busy')).toBe(false)
+    expect((document.getElementById('b') as HTMLButtonElement).disabled).toBe(false)
+    expect((document.getElementById('d') as HTMLButtonElement).disabled).toBe(true)
+  })
+  it('sem elemento, apenas devolve a promessa', async () => {
+    expect(await comCarregamento(Promise.resolve(1), null)).toBe(1)
   })
 })

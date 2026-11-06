@@ -50,7 +50,7 @@ export default function Header() {
 
   const buscar = (e: React.FormEvent) => {
     e.preventDefault()
-    nav(q.trim() ? `/?q=${encodeURIComponent(q.trim())}` : '/')
+    nav(q.trim() ? `/receitas?q=${encodeURIComponent(q.trim())}` : '/receitas')
   }
 
   const item = 'flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-ink-soft transition duration-200 hover:bg-peach hover:text-terra'
