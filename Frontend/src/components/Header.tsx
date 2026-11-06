@@ -15,7 +15,8 @@ const main = [
 export default function Header() {
   const { pathname } = useLocation()
   const nav = useNavigate()
-  const { usuario, sair } = useAuth()
+  const { usuario, meusPerfis, sair } = useAuth()
+  const isChef = meusPerfis.some((p) => p.papel === 'CHEF')
   const [open, setOpen] = useState(false)
   const [q, setQ] = useState('')
   const closeRef = useRef<HTMLButtonElement>(null)
@@ -130,10 +131,10 @@ export default function Header() {
 
         <div className="space-y-1 border-t border-line pt-4">
           <p className="px-4 pb-1 text-xs font-semibold uppercase tracking-wide text-ink-faint">Profissionais</p>
-          <NavLink to="/portal" className={item}><ChefHat size={18} /> Portal profissional</NavLink>
-          <NavLink to="/publicar" className={item}><PlusCircle size={18} /> Publicar receita</NavLink>
-          <NavLink to="/onboarding" className={item}><BadgeCheck size={18} /> Criar perfil</NavLink>
-          <NavLink to="/admin" className={item}><ShieldCheck size={18} /> Curadoria</NavLink>
+          {meusPerfis.length > 0 && <NavLink to="/portal" className={item}><ChefHat size={18} /> Portal profissional</NavLink>}
+          {isChef && <NavLink to="/publicar" className={item}><PlusCircle size={18} /> Publicar receita</NavLink>}
+          {usuario && <NavLink to="/onboarding" className={item}><BadgeCheck size={18} /> Criar perfil profissional</NavLink>}
+          {usuario && <NavLink to="/admin" className={item}><ShieldCheck size={18} /> Curadoria</NavLink>}
         </div>
 
         <div className="mt-auto space-y-2 border-t border-line pt-4">
