@@ -102,7 +102,8 @@ Erros seguem sempre o formato `{ "status": 400, "mensagem": "...", "erros": { "c
 | `POST /receitas`, `PUT /receitas/{id}`, `DELETE /receitas/{id}` | Só chef, e só o chef **dono** edita ou apaga. O `PUT` troca os dados e a lista de ingredientes |
 | `POST /receitas/{id}/etapas`, `PUT`/`DELETE /receitas/{id}/etapas/{idEtapa}` | Etapas (sem `ordem`, entra no fim) |
 | `POST /receitas/{id}/etapas/{idEtapa}/dicas`, `PUT`/`DELETE .../dicas/{idDica}` | Dicas e erros comuns da etapa |
-| `POST /receitas/{id}/comentarios`, `PUT`/`DELETE /comentarios/{id}` | Comentar (texto + nota de 0 a 5, opcional); só o autor edita ou apaga |
+| `POST /receitas/{id}/comentarios`, `PUT`/`DELETE /comentarios/{id}` | Comentar (texto, nota de 0 a 5 e `foto`, os dois últimos opcionais); só o autor edita ou apaga |
+| `POST /imagens`, `GET /imagens/{nome}` | Envia uma imagem (multipart, campo `arquivo`; só JPG, PNG ou WEBP, até 5 MB, conferido pelo conteúdo) e devolve `{ "url": "/imagens/<nome>" }`. Essa `url` vai nos campos `imagem` (receita, etapa) e `foto` (comentário), que também aceitam link http(s). Ver a imagem é público. As imagens ficam na pasta `uploads/` (variável `UPLOADS_DIR`); no Render o disco some a cada deploy |
 | `PUT`/`DELETE /receitas/{id}/favorito`, `GET /usuarios/me/favoritos` | Favoritar, desfavoritar (ambos idempotentes) e listar os favoritos |
 
 Códigos: `400` dados inválidos, `401` sem login, `403` logado mas sem permissão (não é chef / receita de outro chef), `404` não existe, `409` conflito (email ou username repetido, conta que já tem perfil).
