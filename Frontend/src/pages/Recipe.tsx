@@ -1,4 +1,4 @@
-import { Check, Flag, Heart, Lightbulb, ShoppingBasket, Star } from 'lucide-react'
+import { Flag, Heart, Lightbulb, Star } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import Photo, { Avatar } from '../components/Photo'
@@ -52,7 +52,6 @@ export default function Recipe() {
   const [servings, setServings] = useState(r?.servings ?? 1)
   const [checked, setChecked] = useState<string[]>([])
   const [doneSteps, setDoneSteps] = useState<number[]>([])
-  const [listed, setListed] = useState(false)
   const [guided, setGuided] = useState<number | null>(null)
   const [stepVideo, setStepVideo] = useState(0)
   const [text, setText] = useState('')
@@ -64,12 +63,11 @@ export default function Recipe() {
 
   const [allComments, setAllComments] = useLocalState<Record<string, Comentario[]>>('gm-comentarios', {})
   const [allDicas, setAllDicas] = useLocalState<Record<string, Dica[]>>('gm-dicas', {})
-  const [, setShopping] = useLocalState<{ id: number; name: string; qty: string; done: boolean }[]>('gm-shopping', [])
   const [, setDenuncias] = useLocalState<Denuncia[]>('gm-denuncias', [])
 
   useEffect(() => {
     setServings(r?.servings ?? 1)
-    setChecked([]); setDoneSteps([]); setListed(false); setGuided(null)
+    setChecked([]); setDoneSteps([]); setGuided(null)
   }, [id, r?.servings])
 
   const nutri = useMemo(() => {
@@ -232,15 +230,6 @@ export default function Recipe() {
               </li>
             ))}
           </ul>
-          <button
-            className="w-full rounded-lg bg-leaf-soft py-2.5 text-xs font-semibold text-leaf"
-            onClick={() => {
-              setShopping((s) => [...s, ...detail.ing.filter((i) => !s.some((x) => x.name === i.name)).map((i, k) => ({ id: Date.now() + k, name: i.name, qty: `${fmt(i.qty * factor)} ${unidade(i.unit)}`, done: false }))])
-              setListed(true)
-            }}
-          >
-            {listed ? <><Check size={15} /> Adicionados à lista</> : <><ShoppingBasket size={15} /> Adicionar à lista de compras</>}
-          </button>
         </section>
 
         <div className="space-y-4">
