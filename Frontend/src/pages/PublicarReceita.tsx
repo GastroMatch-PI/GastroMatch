@@ -1,3 +1,4 @@
+import { X } from 'lucide-react'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Aviso, Campo, Opcoes } from '../components/Campo'
@@ -93,7 +94,7 @@ export default function PublicarReceita() {
               </select>
               <input className="input" type="number" step="any" min={0.01} required placeholder="Qtd" value={it.qty} onChange={(e) => upItem(i, 'qty', e.target.value)} />
               <select className="input" value={it.unit} onChange={(e) => upItem(i, 'unit', e.target.value)}><Opcoes mapa={ENUMS.unidade} /></select>
-              <button type="button" className="btn-ghost" onClick={() => setItens(itens.filter((_, j) => j !== i))} disabled={itens.length === 1}>✕</button>
+              <button type="button" className="btn-ghost" onClick={() => setItens(itens.filter((_, j) => j !== i))} disabled={itens.length === 1} aria-label="Remover ingrediente"><X size={15} /></button>
             </div>
           ))}
           <button type="button" className="btn-ghost" onClick={() => setItens([...itens, { cat: '', qty: '', unit: 'G' }])}>+ Ingrediente</button>

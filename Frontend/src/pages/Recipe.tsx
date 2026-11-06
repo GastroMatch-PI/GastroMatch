@@ -1,3 +1,4 @@
+import { Check, Flag, Heart, Lightbulb, ShoppingBasket, Star } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import Photo, { Avatar } from '../components/Photo'
@@ -133,7 +134,7 @@ export default function Recipe() {
       <div className="fixed inset-0 z-30 flex flex-col bg-ink p-6 text-white">
         <div className="flex items-center justify-between text-sm">
           <span>Modo Cozinhar Guiado • Passo {guided + 1} de {steps.length}</span>
-          <button className="rounded bg-white/10 px-3 py-1.5" onClick={() => setGuided(null)}>✕ Sair</button>
+          <button className="rounded bg-white/10 px-3 py-1.5" onClick={() => setGuided(null)}>Sair</button>
         </div>
         <div className="mx-auto flex max-w-3xl flex-1 flex-col justify-center gap-6">
           <h2 className="text-4xl font-extrabold">{s.title}</h2>
@@ -145,7 +146,7 @@ export default function Recipe() {
           {guided < steps.length - 1 ? (
             <button className="btn-primary" onClick={() => setGuided(guided + 1)}>Próximo →</button>
           ) : (
-            <button className="btn-primary" onClick={() => setGuided(null)}>Finalizar ✓</button>
+            <button className="btn-primary" onClick={() => setGuided(null)}>Finalizar</button>
           )}
         </div>
       </div>
@@ -195,10 +196,10 @@ export default function Recipe() {
               <span>• ⏱ {r.minutes} min • {r.difficulty}</span>
             </p>
             <div className="flex items-center gap-2 rounded-xl bg-peach p-3 text-xs">
-              <Avatar emoji={r.role === 'Chef' ? '👨‍🍳' : '🥗'} className="h-9 w-9" />
+              <Avatar className="h-9 w-9" />
               <div className="flex-1"><b>{r.author}</b></div>
               <button className="btn-ghost !px-3 !py-1 text-xs" onClick={() => (usuario ? toggle(r.id) : setAviso('Entre na sua conta para favoritar.'))}>
-                {favs.includes(r.id) ? '♥ Favorita' : '♡ Favoritar'}
+                <Heart size={14} className={favs.includes(r.id) ? 'fill-terra text-terra' : ''} /> {favs.includes(r.id) ? 'Favorita' : 'Favoritar'}
               </button>
             </div>
             {aviso && <p className="text-xs text-terra">{aviso}</p>}
@@ -238,7 +239,7 @@ export default function Recipe() {
               setListed(true)
             }}
           >
-            {listed ? '✓ Ingredientes adicionados à lista' : '🛒 Adicionar à Lista de Compras'}
+            {listed ? <><Check size={15} /> Adicionados à lista</> : <><ShoppingBasket size={15} /> Adicionar à lista de compras</>}
           </button>
         </section>
 
@@ -268,11 +269,11 @@ export default function Recipe() {
           </section>
 
           <section className="card space-y-3 p-5">
-            <h2 className="text-lg font-bold">💡 Dicas & Erros Comuns</h2>
+            <h2 className="flex items-center gap-2 text-lg font-bold"><Lightbulb size={18} className="text-gold" /> Dicas e erros comuns</h2>
             {dicas.length === 0 && <p className="text-xs text-ink-faint">Nenhuma dica ainda.</p>}
             {dicas.map((d) => (
               <div key={d.id} className={`rounded-lg border-l-4 p-3 text-xs ${d.tipo === 'ERRO_COMUM' ? 'border-alert bg-alert-soft' : 'border-gold bg-gold-soft'}`}>
-                <p className="font-bold">{d.tipo === 'ERRO_COMUM' ? '⚠ ' : '💡 '}{d.titulo} <span className="font-normal text-ink-faint">— {d.autor}</span></p>
+                <p className="font-bold">{d.titulo} <span className="font-normal text-ink-faint">— {d.autor}</span></p>
                 <p>{d.texto}</p>
               </div>
             ))}
@@ -294,7 +295,7 @@ export default function Recipe() {
         <section className="card space-y-4 p-5">
           <div className="flex flex-wrap items-end justify-between gap-2">
             <h2 className="text-2xl font-bold">Passo a Passo</h2>
-            <p className="text-xs text-leaf">✔ {doneSteps.length}/{steps.length} etapas</p>
+            <p className="text-xs text-leaf">{doneSteps.length}/{steps.length} etapas concluídas</p>
           </div>
           {steps.map((s, i) => (
             <article key={i} className={`grid gap-4 rounded-xl border border-line bg-cream p-4 ${s.image ? 'md:grid-cols-[1fr_160px]' : ''} ${doneSteps.includes(i) ? 'opacity-60' : ''}`}>
@@ -324,7 +325,7 @@ export default function Recipe() {
               <span className="flex items-center gap-1">
                 Sua nota:
                 {[1, 2, 3, 4, 5].map((n) => (
-                  <button key={n} type="button" aria-label={`${n} estrelas`} onClick={() => setRating(n)} className={n <= rating ? 'text-gold' : 'text-line'}>★</button>
+                  <button key={n} type="button" aria-label={`${n} estrelas`} onClick={() => setRating(n)} className="cursor-pointer"><Star size={18} className={n <= rating ? 'fill-gold text-gold' : 'text-line'} /></button>
                 ))}
               </span>
               <button className="btn-ghost !py-1.5 text-xs">Publicar</button>
@@ -339,7 +340,7 @@ export default function Recipe() {
         {comments.map((c) => (
           <article key={c.id} className="rounded-xl border border-line bg-cream p-4 text-sm">
             <div className="flex items-center gap-3">
-              <Avatar emoji="🙂" className="h-9 w-9" />
+              <Avatar className="h-9 w-9" />
               <div className="flex-1 text-xs"><b className="text-sm">{c.autor}</b><p className="text-ink-faint">{c.quando}</p></div>
               {c.nota > 0 && <Stars value={c.nota} className="text-xs" />}
             </div>
@@ -355,7 +356,7 @@ export default function Recipe() {
                     <button onClick={() => setDenunciando(null)}>Cancelar</button>
                   </span>
                 ) : (
-                  <button className="hover:text-alert" onClick={() => setDenunciando(c.id)}>⚑ Denunciar</button>
+                  <button className="hover:text-alert" onClick={() => setDenunciando(c.id)}><Flag size={12} className="mr-1 inline" /> Denunciar</button>
                 )}
               </div>
             )}

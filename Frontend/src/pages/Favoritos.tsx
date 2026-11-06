@@ -1,3 +1,4 @@
+import { Heart } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import Protegida from '../components/Protegida'
 import { useFavoritos, useRecipes } from '../lib/useRecipes'
@@ -21,7 +22,7 @@ export default function Favoritos() {
               {r.image && <img src={r.image} alt="" className="h-36 w-full rounded-xl object-cover" />}
               <Link to={`/receita/${r.id}`} className="block font-display text-lg font-bold hover:text-terra">{r.title}</Link>
               <p className="text-xs text-ink-soft">⏱ {r.minutes} min · {r.servings} porções</p>
-              <button className="btn-ghost w-full" onClick={() => toggle(r.id)}>♥ Remover</button>
+              <button className="btn-ghost w-full" onClick={() => toggle(r.id)}><Heart size={15} className="fill-terra text-terra" /> Remover</button>
             </article>
           ))}
         </div>
