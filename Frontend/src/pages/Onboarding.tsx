@@ -1,3 +1,4 @@
+import { ChefHat, Salad, Store, UploadCloud } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Aviso, Campo, Opcoes } from '../components/Campo'
@@ -6,10 +7,10 @@ import { useAuth } from '../context/Auth'
 import { ENUMS } from '../data/enums'
 import type { Papel, PerfilPro } from '../lib/tipos'
 
-const roles: { id: Papel; label: string }[] = [
-  { id: 'CHEF', label: '👨‍🍳 Chef' },
-  { id: 'NUTRICIONISTA', label: '🥗 Nutricionista' },
-  { id: 'RESTAURANTE', label: '🍽 Restaurante' },
+const roles: { id: Papel; label: string; icon: typeof ChefHat }[] = [
+  { id: 'CHEF', label: 'Chef', icon: ChefHat },
+  { id: 'NUTRICIONISTA', label: 'Nutricionista', icon: Salad },
+  { id: 'RESTAURANTE', label: 'Restaurante', icon: Store },
 ]
 
 export default function Onboarding() {
@@ -51,11 +52,11 @@ export default function Onboarding() {
     <Protegida>
       <form onSubmit={enviar} className="card mx-auto max-w-xl space-y-4 p-6">
         <h1 className="text-2xl font-bold">Criar perfil profissional</h1>
-        <div role="tablist" className="flex gap-1 rounded-xl border border-line bg-cream p-1 text-xs font-semibold">
+        <div role="tablist" className="flex gap-1 rounded-full border border-line bg-cream p-1 text-xs font-semibold">
           {roles.map((r) => (
             <button type="button" key={r.id} onClick={() => { setPapel(r.id); setErro(''); setOk('') }}
-              className={`flex-1 rounded-lg px-3 py-2 ${papel === r.id ? 'bg-white text-terra shadow-sm' : 'text-ink-soft'}`}>
-              {r.label}
+              className={`flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-full px-3 py-2 transition duration-200 ${papel === r.id ? 'bg-terra text-white shadow-soft' : 'text-ink-soft hover:text-terra'}`}>
+              <r.icon size={16} /> {r.label}
             </button>
           ))}
         </div>
@@ -85,7 +86,7 @@ export default function Onboarding() {
               <input ref={fileRef} type="file" accept=".pdf,image/*" hidden
                 onChange={(e) => { const a = e.target.files?.[0]; if (a) setF({ ...f, comprovante: `${a.name} • ${(a.size / 1048576).toFixed(1)} MB` }) }} />
               <button type="button" className="btn-ghost w-full" onClick={() => fileRef.current?.click()}>
-                {f.comprovante ?? '☁ Selecionar arquivo'}
+                <UploadCloud size={16} /> {f.comprovante ?? 'Selecionar arquivo'}
               </button>
               <span className="block font-normal text-ink-faint">Apenas o nome do arquivo é guardado nesta demonstração.</span>
             </div>

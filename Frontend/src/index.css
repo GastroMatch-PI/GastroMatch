@@ -1,48 +1,79 @@
 @import "tailwindcss";
 
 @theme {
-  --font-display: "Epilogue", system-ui, sans-serif;
-  --font-body: "Be Vietnam Pro", system-ui, sans-serif;
+  --font-display: "Poppins", system-ui, sans-serif;
+  --font-body: "Poppins", system-ui, sans-serif;
 
-  --color-cream: #fff6f2;
-  --color-peach: #fbe7df;
-  --color-peach-deep: #f6d3c5;
-  --color-ink: #2a1a14;
-  --color-ink-soft: #5b4a42;
-  --color-ink-faint: #8a7a72;
-  --color-line: #ecd9d0;
+  --color-cream: #fffaf5;
+  --color-peach: #fdeee4;
+  --color-peach-deep: #f9d9c6;
+  --color-ink: #241713;
+  --color-ink-soft: #5a4a43;
+  --color-ink-faint: #82726a;
+  --color-line: #f0dfd4;
 
-  --color-terra: #9a3a12;
-  --color-terra-dark: #7c2d0c;
-  --color-leaf: #3e6b4e;
-  --color-leaf-soft: #d9f0de;
-  --color-gold: #b7791f;
-  --color-gold-soft: #fde9c4;
+  --color-terra: #c2410c;
+  --color-terra-dark: #9a3412;
+  --color-leaf: #2f6b4a;
+  --color-leaf-soft: #dcf3e4;
+  --color-gold: #a86a0a;
+  --color-gold-soft: #fdecc8;
   --color-alert: #b42318;
   --color-alert-soft: #fde4e0;
+
+  --shadow-soft: 0 1px 2px rgb(88 40 16 / 0.05), 0 8px 24px -8px rgb(88 40 16 / 0.12);
+  --shadow-lift: 0 2px 4px rgb(88 40 16 / 0.06), 0 18px 36px -12px rgb(88 40 16 / 0.22);
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
 }
+
+html { scroll-behavior: smooth; }
 
 body {
   font-family: var(--font-body);
   background: var(--color-cream);
   color: var(--color-ink);
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 h1, h2, h3, h4 {
   font-family: var(--font-display);
-  letter-spacing: -0.01em;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+  font-weight: 700;
 }
+p { text-wrap: pretty; }
+
+::selection { background: var(--color-terra); color: #fff; }
+:focus-visible { outline: 2px solid var(--color-terra); outline-offset: 2px; border-radius: 6px; }
+
+* { scrollbar-width: thin; scrollbar-color: var(--color-peach-deep) transparent; }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: var(--color-peach-deep); border-radius: 999px; border: 2px solid var(--color-cream); }
+
+input::placeholder, textarea::placeholder { color: var(--color-ink-faint); }
+input[type="checkbox"] { accent-color: var(--color-terra); width: 1rem; height: 1rem; cursor: pointer; }
+input, select, textarea { caret-color: var(--color-terra); }
 
 .btn-primary {
-  @apply inline-flex items-center justify-center gap-2 rounded-md bg-terra px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-terra-dark;
+  @apply inline-flex cursor-pointer items-center justify-center gap-2 rounded-full bg-terra px-5 py-2.5 text-sm font-semibold text-white shadow-soft transition duration-200 hover:-translate-y-0.5 hover:bg-terra-dark hover:shadow-lift active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0;
 }
 .btn-ghost {
-  @apply inline-flex items-center justify-center gap-2 rounded-md border border-line bg-white px-4 py-2.5 text-sm font-semibold text-ink transition hover:bg-peach;
+  @apply inline-flex cursor-pointer items-center justify-center gap-2 rounded-full border border-line bg-white px-5 py-2.5 text-sm font-semibold text-ink transition duration-200 hover:border-terra/40 hover:bg-peach disabled:cursor-not-allowed disabled:opacity-50;
 }
 .card {
-  @apply rounded-2xl border border-line bg-white shadow-sm;
+  @apply rounded-3xl border border-line bg-white shadow-soft;
 }
+.card-hover { @apply transition duration-300 hover:-translate-y-1 hover:shadow-lift; }
 .input {
-  @apply w-full rounded-md border border-line bg-cream px-3 py-2.5 text-sm outline-none focus:border-terra;
+  @apply w-full rounded-xl border border-line bg-white px-3.5 py-2.5 text-sm outline-none transition duration-200 focus:border-terra focus:ring-4 focus:ring-terra/10;
+}
+.chip { @apply inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-xs font-semibold transition duration-200; }
+
+@keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+.rise { animation: rise 0.6s var(--ease-out-expo) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
 }
