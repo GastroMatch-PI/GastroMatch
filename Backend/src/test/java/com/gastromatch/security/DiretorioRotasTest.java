@@ -105,6 +105,8 @@ class DiretorioRotasTest {
                 .andExpect(status().isUnauthorized());
         mockMvc.perform(put("/nutricionistas/me").contentType("application/json").content("{}"))
                 .andExpect(status().isUnauthorized());
+        mockMvc.perform(put("/restaurantes/me").contentType("application/json").content("{}"))
+                .andExpect(status().isUnauthorized());
         mockMvc.perform(delete("/nutricionistas/1")).andExpect(status().isUnauthorized());
     }
 
