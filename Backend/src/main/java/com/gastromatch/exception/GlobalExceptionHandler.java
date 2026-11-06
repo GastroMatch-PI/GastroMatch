@@ -44,11 +44,12 @@ public class GlobalExceptionHandler {
                 .body(new ErroResponse(409, ex.getMessage()));
     }
 
-    // 409: duplicidade detectada pela constraint UNIQUE (cadastros simultâneos)
+    // 409: o banco recusou por conflito (UNIQUE, cadastros simultâneos). Não dá para saber qual campo,
+    // então a mensagem é neutra; as duplicidades conhecidas (e-mail, CNPJ, CRN...) têm erro próprio.
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ErroResponse> handleIntegridade(DataIntegrityViolationException ex) {
         return ResponseEntity.status(HttpStatus.CONFLICT)
-                .body(new ErroResponse(409, "Email ou username já cadastrado"));
+                .body(new ErroResponse(409, "Já existe um registro com esses dados"));
     }
 
     // 401: login errado ou refresh token inválido
