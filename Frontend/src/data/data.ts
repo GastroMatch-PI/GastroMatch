@@ -18,6 +18,12 @@ export type Recipe = {
   description?: string
   detail?: { ing: IngReceita[]; steps: EtapaR[] }
   owner?: string
+  tipo?: string
+  metodo?: string
+  ocasiao?: string
+  perfil?: string
+  createdAt?: number
+  deleted?: boolean
 }
 
 export const recipes: Recipe[] = [
@@ -122,7 +128,7 @@ export type Pro = {
 export const pros: Pro[] = [
   {
     id: 'bernardo',
-    image: 'https://images.unsplash.com/photo-1432139555190-58524dae6a55?auto=format&fit=crop&w=900&q=70',
+    image: '/img/chef-bernardo.jpg',
     name: 'Chef Bernardo Rossi',
     area: 'Chef Particular & Consultor Gastronômico (ex-Fasano)',
     place: 'Jardins (2.4 km)',
@@ -144,7 +150,7 @@ export const pros: Pro[] = [
   },
   {
     id: 'camila',
-    image: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=900&q=70',
+    image: '/img/chef-camila.jpg',
     name: 'Dra. Camila Vasconcelos',
     area: 'Nutrição Funcional & Gastronomia Terapêutica',
     place: 'Pinheiros (1.1 km)',
@@ -166,7 +172,7 @@ export const pros: Pro[] = [
   },
   {
     id: 'farina',
-    image: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=900&q=70',
+    image: '/img/chef-farina.jpg',
     name: 'Atelier Pastifício Farina & Fuoco',
     area: 'Restaurante Intimista & Fábrica de Massas Frescas',
     place: 'Vila Madalena (3.2 km)',
@@ -360,11 +366,21 @@ const det: Record<string, { ing: IngReceita[]; steps: EtapaR[] }> = {
 for (const r of recipes) if (det[r.id]) r.detail = det[r.id]
 
 const fotos: Record<string, string> = {
-  'shakshuka': 'https://images.unsplash.com/photo-1482049016688-2d3e1b311543?auto=format&fit=crop&w=900&q=70',
-  'risotto-abobora': 'https://images.unsplash.com/photo-1476718406336-bb5a9690ee2a?auto=format&fit=crop&w=900&q=70',
-  'massa-alho-negro': 'https://images.unsplash.com/photo-1473093295043-cdd812d0e601?auto=format&fit=crop&w=900&q=70',
-  'salmao-mousseline': 'https://images.unsplash.com/photo-1467003909585-2f8a72700288?auto=format&fit=crop&w=900&q=70',
-  'risotto-cogumelos': 'https://images.unsplash.com/photo-1547592180-85f173990554?auto=format&fit=crop&w=900&q=70',
+  'shakshuka': '/img/shakshuka.jpg',
+  'risotto-abobora': '/img/risotto-abobora.jpg',
+  'massa-alho-negro': '/img/massa-alho-negro.jpg',
+  'salmao-mousseline': '/img/salmao-mousseline.jpg',
+  'risotto-cogumelos': '/img/risotto-cogumelos.jpg',
 }
 for (const r of recipes) if (fotos[r.id]) r.image = fotos[r.id]
+
+const enums: Record<string, Pick<Recipe, 'tipo' | 'metodo' | 'ocasiao' | 'perfil'>> = {
+  shakshuka: { tipo: 'CAFE_DA_MANHA', metodo: 'FOGAO', ocasiao: 'DIA_A_DIA', perfil: 'VEGETARIANO' },
+  'risotto-abobora': { tipo: 'JANTAR', metodo: 'FOGAO', ocasiao: 'DIA_A_DIA', perfil: 'VEGETARIANO' },
+  'massa-alho-negro': { tipo: 'JANTAR', metodo: 'FOGAO', ocasiao: 'DIA_A_DIA', perfil: 'VEGETARIANO' },
+  'salmao-mousseline': { tipo: 'JANTAR', metodo: 'FOGAO', ocasiao: 'NATAL', perfil: 'LOW_CARB' },
+  'risotto-cogumelos': { tipo: 'JANTAR', metodo: 'FOGAO', ocasiao: 'DIA_A_DIA', perfil: 'VEGETARIANO' },
+}
+const base = Date.parse('2026-10-01T12:00:00Z')
+recipes.forEach((r, i) => Object.assign(r, enums[r.id], { createdAt: base - i * 86_400_000 }))
 

@@ -1,5 +1,6 @@
 import { ArrowUpRight, Clock, Heart, Users } from 'lucide-react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { useToast } from './Feedback'
 import { useAuth } from '../context/Auth'
 import type { Recipe } from '../data/data'
 import { useFavoritos } from '../lib/useRecipes'
@@ -16,6 +17,8 @@ export default function RecipeCard({
 }) {
   const { usuario } = useAuth()
   const nav = useNavigate()
+  const loc = useLocation()
+  const toast = useToast()
   const { favs, toggle } = useFavoritos()
   const saved = favs.includes(recipe.id)
 
@@ -44,7 +47,11 @@ export default function RecipeCard({
           <Clock size={13} /> {recipe.minutes} min
         </span>
         <button
-          onClick={() => (usuario ? toggle(recipe.id) : nav('/login'))}
+          onClick={() => {
+            if (!usuario) return nav('/login', { state: { from: loc.pathname + loc.search } })
+            toggle(recipe.id)
+            toast.sucesso(saved ? 'Removida dos favoritos.' : 'Adicionada aos favoritos.')
+          }}
           aria-pressed={saved}
           aria-label={saved ? 'Remover dos favoritos' : 'Favoritar receita'}
           className="pointer-events-auto relative z-10 flex h-11 w-11 cursor-pointer items-center justify-center rounded-full bg-black/55 text-white backdrop-blur-md transition duration-300 hover:scale-110 hover:bg-black/75"

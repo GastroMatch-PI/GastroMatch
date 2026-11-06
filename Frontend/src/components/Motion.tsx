@@ -1,12 +1,13 @@
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { Routes, useLocation } from 'react-router-dom'
+import { Routes, useLocation, useNavigationType } from 'react-router-dom'
 
 const ease = [0.16, 1, 0.3, 1] as const
 
 // Troca de tela: cortina laranja varre a tela e o conteúdo entra subindo.
 export function PageTransition({ children }: { children: ReactNode }) {
   const location = useLocation()
+  const navType = useNavigationType()
   const { pathname } = location
   const reduce = useReducedMotion()
   const prev = useRef(pathname)
@@ -15,8 +16,8 @@ export function PageTransition({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (prev.current !== pathname) setMoved(true)
     prev.current = pathname
-    if (!location.hash) window.scrollTo({ top: 0 })
-  }, [pathname, location.hash])
+    if (!location.hash && navType !== 'POP') window.scrollTo({ top: 0 })
+  }, [pathname, location.hash, navType])
 
   return (
     <>
