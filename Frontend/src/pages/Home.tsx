@@ -1,37 +1,38 @@
+import { ArrowRight, Plus, Refrigerator, Search, Sparkles, X } from 'lucide-react'
 import { useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
-import Photo, { Avatar } from '../components/Photo'
+import { Link, useSearchParams } from 'react-router-dom'
+import { motion, useScroll, useTransform } from 'motion/react'
+import { useRef } from 'react'
+import { Reveal, SplitWords } from '../components/Motion'
 import RecipeCard from '../components/RecipeCard'
-import { collections, fridgeItems, recipes, trending } from '../data/data'
-import { useLocalState } from '../hooks/useLocalState'
+import { collections, fridgeItems } from '../data/data'
+import Carrossel from '../components/Carrossel'
+import CardRestaurante from '../components/CardRestaurante'
+import { EstadoVazio } from '../components/Ui'
+import { useAuth } from '../context/Auth'
+import { useSeo } from '../lib/seo'
+import { useRecipes } from '../lib/useRecipes'
 
-type ShopItem = { id: number; name: string; qty: string; done: boolean }
-
-const initialShopping: ShopItem[] = [
-  { id: 1, name: 'Queijo de Cabra Artesanal', qty: '150g', done: false },
-  { id: 2, name: 'Tomates Sweet Grape', qty: '1 caixa', done: false },
-  { id: 3, name: 'Sálvia Fresca em Maço', qty: '1 unid.', done: false },
-  { id: 4, name: 'Pinoli ou Nozes Chilenas', qty: '80g', done: false },
-]
-
-const initialMenu = [
-  { day: 'SEG', title: 'Massa com Alho Negro', meta: 'Jantar • 18 min' },
-  { day: 'QUA', title: 'Shakshuka Rústica', meta: 'Almoço • 25 min' },
-  { day: 'SEX', title: 'Risotto de Abóbora & Sálvia', meta: 'Jantar • 35 min' },
-]
 
 export default function Home() {
-  const [selected, setSelected] = useState<string[]>(['Tomate', 'Queijo', 'Manjericão'])
+  useSeo({ titulo: 'GastroMatch' })
+  const { perfis } = useAuth()
+  const restaurantes = perfis.filter((p) => p.papel === 'RESTAURANTE' && p.status === 'APROVADO')
+  const recipes = useRecipes()
+  const heroRef = useRef<HTMLElement>(null)
+  const { scrollYProgress } = useScroll({ target: heroRef, offset: ['start start', 'end start'] })
+  const imgY = useTransform(scrollYProgress, [0, 1], ['0%', '18%'])
+  const imgScale = useTransform(scrollYProgress, [0, 1], [1.05, 1.25])
+  const [params] = useSearchParams()
+  const [maxMin, setMaxMin] = useState(0)
+  const [dif, setDif] = useState('')
+  const [selected, setSelected] = useState<string[]>([])
   const [searched, setSearched] = useState(false)
-  const [tab, setTab] = useState<'geladeira' | 'prato'>('geladeira')
-  const [dish, setDish] = useState('')
+  const [tab, setTab] = useState<'geladeira' | 'prato'>(params.get('q') ? 'prato' : 'geladeira')
+  const [dish, setDish] = useState(params.get('q') ?? '')
   const [collection, setCollection] = useState('Todos')
-  const [shopping, setShopping] = useLocalState<ShopItem[]>('gm-shopping', initialShopping)
-  const [menu, setMenu] = useLocalState('gm-menu', initialMenu)
-  const [newItem, setNewItem] = useState('')
 
-  const toggle = (item: string) =>
-    setSelected((s) => (s.includes(item) ? s.filter((i) => i !== item) : [...s, item]))
+  const toggle = (item: string) => setSelected((s) => (s.includes(item) ? s.filter((i) => i !== item) : [...s, item]))
 
   const matches = useMemo(
     () =>
@@ -40,273 +41,190 @@ export default function Home() {
           const hit = r.ingredients.filter((i) => selected.includes(i)).length
           return { recipe: r, match: Math.round((hit / r.ingredients.length) * 100) }
         })
-        .filter((m) => m.match > 0),
-    [selected],
+        .filter((m) => m.match > 0)
+        .sort((a, b) => b.match - a.match),
+    [selected, recipes],
   )
 
   const list = useMemo(() => {
     const term = dish.trim().toLowerCase()
     return recipes
       .filter((r) => collection === 'Todos' || r.collections.includes(collection))
-      .filter((r) => !term || r.title.toLowerCase().includes(term))
-  }, [collection, dish])
+      .filter((r) => !term || [r.title, r.author, ...r.ingredients, ...r.collections].some((t) => t.toLowerCase().includes(term)))
+      .filter((r) => !maxMin || r.minutes <= maxMin)
+      .filter((r) => !dif || r.difficulty === dif)
+  }, [collection, dish, recipes, maxMin, dif])
 
-  const addToMenu = (title: string) => {
-    const days = ['TER', 'QUI', 'SAB', 'DOM']
-    setMenu((m) => (m.some((x) => x.title === title) ? m : [...m, { day: days[m.length % 4], title, meta: 'Jantar' }]))
-  }
-
-  const pending = shopping.filter((i) => !i.done).length
 
   return (
-    <div className="space-y-10">
-      <section className="grid gap-6 rounded-3xl bg-peach p-6 md:grid-cols-2 md:p-10">
-        <div className="space-y-4">
-          <span className="inline-block rounded-full bg-leaf-soft px-3 py-1 text-xs font-semibold text-leaf">
-            🔓 Acesso Aberto • Zero Barreiras de Login
-          </span>
-          <h1 className="text-4xl font-extrabold leading-tight md:text-5xl">
-            Descubra a gastronomia autêntica feita para cozinhar agora
+    <div className="space-y-16">
+      <section ref={heroRef} className="grain relative -mx-4 -mt-6 overflow-hidden bg-cream sm:mx-0 sm:mt-0 sm:rounded-[2.25rem]">
+        <motion.img
+          src="/img/hero.jpg"
+          alt=""
+          style={{ y: imgY, scale: imgScale }}
+          className="absolute inset-0 h-full w-full object-cover opacity-55"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-cream via-cream/55 to-cream/20" />
+        <div className="glow absolute -left-32 top-10 h-[34rem] w-[34rem]" aria-hidden />
+        <div className="relative flex min-h-[34rem] flex-col justify-end gap-8 px-6 pb-12 pt-32 sm:min-h-[40rem] sm:px-12 sm:pb-16">
+          <h1 className="max-w-4xl font-display text-[clamp(2.75rem,9vw,7rem)] font-extrabold uppercase leading-[0.92] tracking-tight">
+            <SplitWords text="Cozinhe o que" delay={0.5} />
+            <br />
+            <span className="text-terra"><SplitWords text="você já tem" delay={0.8} /></span>
           </h1>
-          <p className="text-ink-soft">
-            Uma plataforma aberta com técnicas de alta cozinha, receitas validadas por chefs e nutricionistas, sem fricção:
-            guarde seus ingredientes e listas direto no seu navegador.
-          </p>
-          <ul className="flex flex-wrap gap-x-5 gap-y-1 text-xs font-medium text-ink-soft">
-            <li>✔ 1.400+ Fichas Validadas</li>
-            <li>🌿 Foco em Desperdício Zero</li>
-            <li>💾 Armazenamento Local Seguro</li>
-          </ul>
-        </div>
-        <Link to="/receita/risotto-cogumelos" className="group relative block overflow-hidden rounded-2xl">
-          <Photo emoji="🥖" seed={0} className="h-64 w-full md:h-full">
-            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-4 text-white">
-              <span className="rounded bg-gold px-2 py-0.5 text-[10px] font-bold uppercase">Destaque do Sommelier</span>
-              <p className="mt-1 font-display text-lg font-bold">Harmonização: Gnocchi Artesanal ao Pesto Selvagem</p>
-              <p className="text-xs opacity-90">Receita pelo Chef Rogério Bittencourt • 25 min</p>
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.9, delay: 1.3, ease: [0.16, 1, 0.3, 1] }}
+            className="flex flex-wrap items-end justify-between gap-6"
+          >
+            <p className="max-w-md text-base text-ink-soft">
+              Receitas de chefs, nutricionistas e restaurantes. Escolha o que tem na geladeira e veja o que dá para fazer agora.
+            </p>
+            <div className="flex flex-wrap gap-3">
+              <a href="#geladeira" className="btn-primary !px-7 !py-3.5">
+                <Refrigerator size={18} /> Usar minha geladeira
+              </a>
+              <Link to="/receitas" className="btn-ghost !px-7 !py-3.5">
+                Ver todas as receitas <ArrowRight size={16} />
+              </Link>
             </div>
-          </Photo>
-        </Link>
+          </motion.div>
+        </div>
       </section>
 
-      <section id="geladeira" className="card space-y-4 p-5 md:p-6">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex gap-4 text-sm font-semibold">
-            {(['geladeira', 'prato'] as const).map((t) => (
-              <button
-                key={t}
-                onClick={() => setTab(t)}
-                className={`border-b-2 pb-1 ${tab === t ? 'border-terra text-terra' : 'border-transparent text-ink-soft'}`}
-              >
-                {t === 'geladeira' ? '🧊 O que tenho na geladeira?' : '🔎 Busca por Prato ou Técnica'}
-              </button>
-            ))}
-          </div>
-          <span className="rounded-full bg-leaf-soft px-2.5 py-1 text-xs font-medium text-leaf">
-            ✨ Algoritmo de Compatibilidade GastroMatch
-          </span>
+      <Reveal><section id="geladeira" className="card scroll-mt-24 space-y-5 p-5 md:p-8">
+        <div role="tablist" className="inline-flex rounded-full border border-line bg-cream p-1 text-sm font-semibold">
+          {(['geladeira', 'prato'] as const).map((t) => (
+            <button
+              key={t}
+              role="tab"
+              aria-selected={tab === t}
+              onClick={() => setTab(t)}
+              className={`inline-flex cursor-pointer items-center gap-2 rounded-full px-4 py-2 transition duration-200 ${tab === t ? 'bg-terra text-on-accent shadow-soft' : 'text-ink-soft hover:text-terra'}`}
+            >
+              {t === 'geladeira' ? <><Refrigerator size={16} /> O que tenho em casa</> : <><Search size={16} /> Buscar receitas</>}
+            </button>
+          ))}
         </div>
 
         {tab === 'geladeira' ? (
-          <>
-            <p className="text-xs text-ink-faint">Selecione ao menos 2 itens para calibrar sugestões</p>
+          <div className="space-y-4">
+            <p className="text-sm text-ink-soft">Selecione ao menos 2 ingredientes.</p>
             <div className="flex flex-wrap gap-2">
               {fridgeItems.map((i) => (
                 <button
                   key={i}
                   onClick={() => toggle(i)}
                   aria-pressed={selected.includes(i)}
-                  className={`rounded-full border px-3 py-1 text-xs font-medium ${
-                    selected.includes(i) ? 'border-gold bg-gold-soft text-gold' : 'border-line bg-cream text-ink-soft hover:bg-peach'
-                  }`}
+                  className={`chip ${selected.includes(i) ? 'border-terra bg-terra text-on-accent' : 'border-line bg-surface text-ink-soft hover:bg-peach'}`}
                 >
-                  {selected.includes(i) ? '✓' : '+'} {i}
+                  {selected.includes(i) ? <X size={13} /> : <Plus size={13} />} {i}
                 </button>
               ))}
             </div>
-            <button
-              className="btn-primary w-full md:w-auto"
-              disabled={selected.length < 2}
-              onClick={() => setSearched(true)}
-            >
-              🔍 Encontrar receitas com estes ingredientes
-              <span className="rounded bg-white/20 px-1.5 py-0.5 text-[10px]">{matches.length} matches</span>
+            <button className="btn-primary" disabled={selected.length < 2} onClick={() => setSearched(true)}>
+              <Sparkles size={16} /> Encontrar receitas
+              <span className="rounded-full bg-surface/25 px-2 py-0.5 text-xs">{matches.length}</span>
             </button>
             {searched && (
-              <div className="grid gap-4 pt-2 sm:grid-cols-2 lg:grid-cols-3">
-                {matches
-                  .sort((a, b) => b.match - a.match)
-                  .map(({ recipe, match }) => (
-                    <RecipeCard
-                      key={recipe.id}
-                      recipe={recipe}
-                      match={match}
-                      planned={menu.some((m) => m.title === recipe.title)}
-                      onAdd={addToMenu}
-                    />
+              matches.length ? (
+                <div className="grid gap-5 pt-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {matches.map(({ recipe, match }) => (
+                    <RecipeCard key={recipe.id} recipe={recipe} match={match} />
                   ))}
-              </div>
+                </div>
+              ) : (
+                <p className="rounded-2xl bg-peach p-4 text-sm text-ink-soft">Nenhuma receita usa esses ingredientes.</p>
+              )
             )}
-          </>
+          </div>
         ) : (
-          <input
-            className="input"
-            placeholder="Ex.: risoto, emulsão, fermentação natural..."
-            value={dish}
-            onChange={(e) => setDish(e.target.value)}
-          />
+          <div className="space-y-3">
+            <div className="relative">
+              <Search size={17} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-ink-faint" />
+              <input className="input !rounded-full !py-3 !pl-11" placeholder="Nome, ingrediente, chef ou tipo..." aria-label="Buscar receitas" value={dish} onChange={(e) => setDish(e.target.value)} />
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <select className="input !w-auto !rounded-full" aria-label="Tempo máximo" value={maxMin} onChange={(e) => setMaxMin(Number(e.target.value))}>
+                <option value={0}>Qualquer tempo</option>
+                <option value={20}>Até 20 min</option>
+                <option value={30}>Até 30 min</option>
+                <option value={60}>Até 60 min</option>
+              </select>
+              <select className="input !w-auto !rounded-full" aria-label="Dificuldade" value={dif} onChange={(e) => setDif(e.target.value)}>
+                <option value="">Qualquer dificuldade</option>
+                <option>Fácil</option>
+                <option>Médio</option>
+                <option>Difícil</option>
+              </select>
+            </div>
+          </div>
+        )}
+      </section></Reveal>
+
+      <section id="receitas" className="space-y-8">
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <h2 className="font-display text-5xl font-extrabold uppercase leading-none tracking-tight sm:text-7xl">Receitas</h2>
+            <p className="mt-3 text-sm text-ink-soft">{list.length} {list.length === 1 ? 'receita' : 'receitas'} para cozinhar agora</p>
+          </div>
+        </div>
+
+        <div className="-mx-4 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0" role="group" aria-label="Filtrar por categoria">
+          <div className="flex w-max gap-2 sm:w-auto sm:flex-wrap">
+            {collections.map((c) => (
+              <button
+                key={c}
+                onClick={() => setCollection(c)}
+                aria-pressed={collection === c}
+                className={`chip !px-5 !py-2.5 text-sm ${collection === c ? 'border-terra bg-terra text-on-accent' : 'border-line bg-surface text-ink-soft hover:border-terra/50 hover:text-terra'}`}
+              >
+                {c}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {list.length === 0 ? (
+          <p className="card p-10 text-center text-sm text-ink-soft">Nenhuma receita encontrada com esses filtros.</p>
+        ) : (
+          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {list.map((r, i) => (
+              <Reveal key={r.id} delay={(i % 3) * 0.08} className={i === 0 && list.length > 2 ? 'sm:col-span-2' : ''}>
+                <RecipeCard recipe={r} featured={i === 0 && list.length > 2} />
+              </Reveal>
+            ))}
+          </div>
         )}
       </section>
 
-      <section id="colecoes" className="space-y-3">
-        <div className="flex flex-wrap items-end justify-between gap-2">
-          <h2 className="text-2xl font-bold">Explorar Coleções</h2>
-          <p className="text-xs text-ink-faint">Filtragem instantânea sem recarregar a tela</p>
+      <section id="restaurantes" className="space-y-5" aria-labelledby="rest-t">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <h2 id="rest-t" className="font-display text-4xl font-extrabold uppercase leading-none tracking-tight sm:text-6xl">Restaurantes</h2>
+          <Link to="/restaurantes" className="btn-ghost">Ver todos <ArrowRight size={16} /></Link>
         </div>
-        <div className="flex flex-wrap gap-2">
-          {collections.map((c) => (
-            <button
-              key={c}
-              onClick={() => setCollection(c)}
-              className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${
-                collection === c ? 'border-terra bg-terra text-white' : 'border-line bg-white text-ink-soft hover:bg-peach'
-              }`}
-            >
-              {c}
-            </button>
-          ))}
-        </div>
+        {restaurantes.length === 0 ? (
+          <EstadoVazio titulo="Ainda não há restaurantes cadastrados" texto="Cadastre o seu e ele aparece aqui." acao={{ to: '/onboarding', rotulo: 'Cadastrar restaurante' }} />
+        ) : (
+          <Carrossel rotulo="Restaurantes cadastrados" itens={restaurantes.map((r) => <CardRestaurante key={r.userId} restaurante={r} variante="carrossel" />)} />
+        )}
       </section>
 
-      <div className="grid gap-8 lg:grid-cols-[1fr_340px]">
-        <section>
-          <div className="mb-3 flex items-end justify-between">
-            <div>
-              <h2 className="text-3xl font-bold">Receitas em Destaque</h2>
-              <p className="text-xs text-ink-faint">
-                Execução precisa, cálculo de macronutrientes e passo a passo testado.
-              </p>
-            </div>
-            <span className="text-xs font-semibold text-terra">Ver todas (340) →</span>
+      <Reveal>
+        <section id="comunidade" className="grain relative overflow-hidden rounded-[2.25rem] bg-terra p-8 sm:p-14">
+          <h2 className="max-w-3xl font-display text-[clamp(2.25rem,7vw,5.5rem)] font-extrabold uppercase leading-[0.95] tracking-tight text-on-accent">
+            Quem cozinha por trás da receita
+          </h2>
+          <div className="mt-8 flex flex-wrap items-center justify-between gap-4">
+            <p className="max-w-sm text-sm font-semibold text-on-accent/80">Conheça chefs, nutricionistas e restaurantes cadastrados, ou crie o seu perfil.</p>
+            <Link to="/profissionais" className="inline-flex items-center gap-2 rounded-full bg-black px-7 py-3.5 text-sm font-bold text-white transition duration-300 hover:-translate-y-0.5 hover:shadow-lift">
+              Ver diretório <ArrowRight size={16} />
+            </Link>
           </div>
-          {list.length === 0 ? (
-            <p className="card p-6 text-sm text-ink-soft">Nenhuma receita encontrada nesta coleção.</p>
-          ) : (
-            <div className="grid gap-4 sm:grid-cols-2">
-              {list.map((r) => (
-                <RecipeCard
-                  key={r.id}
-                  recipe={r}
-                  planned={menu.some((m) => m.title === r.title)}
-                  onAdd={addToMenu}
-                />
-              ))}
-            </div>
-          )}
         </section>
-
-        <aside id="listas" className="space-y-4">
-          <div className="card space-y-4 bg-peach/60 p-5">
-            <div className="flex items-center justify-between">
-              <h3 className="font-display text-lg font-bold">📦 Minhas Listas Locais</h3>
-              <span className="rounded-full bg-leaf-soft px-2 py-0.5 text-[10px] font-semibold text-leaf">Offline First</span>
-            </div>
-            <p className="rounded-lg bg-white p-2 text-[11px] text-ink-soft">
-              ⚠ Estes dados são salvos diretamente na memória do seu navegador. Nenhum login ou cadastro obrigatório.
-            </p>
-            <div>
-              <p className="mb-2 flex justify-between text-xs font-semibold text-terra">
-                Lista de Compras <span className="text-ink-faint">{pending} itens pendentes</span>
-              </p>
-              <ul className="space-y-1.5">
-                {shopping.map((i) => (
-                  <li key={i.id} className="flex items-center gap-2 rounded-lg bg-white px-3 py-2 text-xs">
-                    <input
-                      type="checkbox"
-                      checked={i.done}
-                      onChange={() =>
-                        setShopping((s) => s.map((x) => (x.id === i.id ? { ...x, done: !x.done } : x)))
-                      }
-                    />
-                    <span className={`flex-1 ${i.done ? 'text-ink-faint line-through' : ''}`}>{i.name}</span>
-                    <span className="text-ink-faint">{i.qty}</span>
-                  </li>
-                ))}
-              </ul>
-              <form
-                className="mt-2 flex gap-2"
-                onSubmit={(e) => {
-                  e.preventDefault()
-                  if (!newItem.trim()) return
-                  setShopping((s) => [...s, { id: Date.now(), name: newItem.trim(), qty: '1 unid.', done: false }])
-                  setNewItem('')
-                }}
-              >
-                <input
-                  className="input !py-1.5 text-xs"
-                  placeholder="+ Acrescentar item à lista"
-                  value={newItem}
-                  onChange={(e) => setNewItem(e.target.value)}
-                />
-              </form>
-            </div>
-            <div>
-              <p className="mb-2 flex justify-between text-xs font-semibold text-terra">
-                📅 Cardápio da Semana <span className="text-ink-faint">{menu.length} planejados</span>
-              </p>
-              <ul className="space-y-1.5">
-                {menu.map((m) => (
-                  <li key={m.title} className="flex items-center gap-3 rounded-lg bg-white px-3 py-2">
-                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-peach-deep text-[10px] font-bold text-terra">
-                      {m.day}
-                    </span>
-                    <span className="flex-1 text-xs">
-                      <b className="block">{m.title}</b>
-                      <span className="text-ink-faint">{m.meta}</span>
-                    </span>
-                    <button
-                      aria-label={`Remover ${m.title}`}
-                      className="text-ink-faint hover:text-alert"
-                      onClick={() => setMenu((x) => x.filter((y) => y.title !== m.title))}
-                    >
-                      ✕
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-          <div className="card bg-peach p-4 text-xs text-ink-soft">
-            <p className="mb-1 font-semibold text-terra">📍 Dica do Sommelier GastroMatch</p>
-            Pratos com emulsões ácidas e tomates confitados harmonizam perfeitamente com vinhos brancos minerais ou tintos
-            leves como Pinot Noir servido a 14°C.
-          </div>
-        </aside>
-      </div>
-
-      <section id="comunidade" className="space-y-3">
-        <div className="flex flex-wrap items-end justify-between gap-2">
-          <div>
-            <h2 className="text-3xl font-bold">Chefs & Restaurantes em Alta</h2>
-            <p className="text-xs text-ink-faint">Criadores profissionais com validação técnica em tempo real na plataforma.</p>
-          </div>
-          <Link to="/profissionais" className="btn-ghost text-xs">
-            🗺 Ver no Mapa Gastronômico
-          </Link>
-        </div>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {trending.map((t) => (
-            <div key={t.name} className="card flex items-center gap-3 p-3">
-              <Avatar emoji={t.emoji} className="h-10 w-10" />
-              <div className="min-w-0 text-xs">
-                <p className="truncate text-sm font-semibold">{t.name} <span className="text-gold">✪</span></p>
-                <p className="truncate text-ink-faint">{t.sub}</p>
-                <p className="text-terra">{t.stat}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
+      </Reveal>
     </div>
   )
 }

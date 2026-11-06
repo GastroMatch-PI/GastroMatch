@@ -1,50 +1,174 @@
-import { NavLink, Link, useLocation } from 'react-router-dom'
+import { useEffect, useRef, useState } from 'react'
+import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
+import {
+  BadgeCheck, ChefHat, Heart, Home, LogIn, LogOut, Menu, PlusCircle, Refrigerator, Search, ShieldCheck, UserPlus, UserRound, Users, X,
+} from 'lucide-react'
+import { Moon, Sun, Store, LayoutDashboard, BookOpen } from 'lucide-react'
+import { useAuth } from '../context/Auth'
 
-const links = [
-  { to: '/', label: 'Explorar Receitas' },
-  { to: '/#geladeira', label: 'Na Geladeira' },
-  { to: '/profissionais', label: 'Chefs & Restaurantes' },
-  { to: '/#comunidade', label: 'Comunidade' },
-  { to: '/#listas', label: 'Minhas Listas' },
+const main = [
+  { to: '/', label: 'Explorar receitas', icon: Home, end: true },
+  { to: '/#geladeira', label: 'Na geladeira', icon: Refrigerator },
+  { to: '/receitas', label: 'Todas as receitas', icon: BookOpen },
+  { to: '/profissionais', label: 'Chefs & nutricionistas', icon: Users },
+  { to: '/restaurantes', label: 'Restaurantes', icon: Store },
+  { to: '/favoritos', label: 'Favoritos', icon: Heart },
 ]
 
 export default function Header() {
   const { pathname } = useLocation()
-  const pro = pathname.startsWith('/portal')
+  const nav = useNavigate()
+  const { usuario, meusPerfis, perfis, sair } = useAuth()
+  const [tema, setTema] = useState(() => document.documentElement.dataset.theme ?? (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'))
+  const pendentes = usuario?.admin ? perfis.filter((p) => p.status === 'PENDENTE').length : 0
+  const alternarTema = () => {
+    const novo = tema === 'light' ? 'dark' : 'light'
+    setTema(novo)
+    document.documentElement.dataset.theme = novo
+    try { localStorage.setItem('gm-tema', novo) } catch { /* sem storage */ }
+  }
+  const isChef = meusPerfis.some((p) => p.papel === 'CHEF')
+  const [open, setOpen] = useState(false)
+  const [q, setQ] = useState('')
+  const closeRef = useRef<HTMLButtonElement>(null)
+  const btnRef = useRef<HTMLButtonElement>(null)
+
+  useEffect(() => setOpen(false), [pathname])
+
+  useEffect(() => {
+    if (!open) return
+    document.body.style.overflow = 'hidden'
+    closeRef.current?.focus()
+    const esc = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false)
+    window.addEventListener('keydown', esc)
+    return () => {
+      document.body.style.overflow = ''
+      window.removeEventListener('keydown', esc)
+      btnRef.current?.focus()
+    }
+  }, [open])
+
+  const buscar = (e: React.FormEvent) => {
+    e.preventDefault()
+    nav(q.trim() ? `/receitas?q=${encodeURIComponent(q.trim())}` : '/receitas')
+  }
+
+  const item = 'flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-ink-soft transition duration-200 hover:bg-peach hover:text-terra'
+
   return (
-    <header className="sticky top-0 z-20 border-b border-line bg-cream/90 backdrop-blur">
-      <div className="mx-auto flex max-w-6xl items-center gap-4 px-4 py-3">
-        <Link to="/" className="flex items-center gap-1.5 font-display text-xl font-extrabold text-terra">
-          <span aria-hidden>🍴</span> GastroMatch
-        </Link>
-        {pro && (
-          <span className="hidden rounded-full bg-gold-soft px-3 py-1 text-xs font-semibold text-gold sm:inline">
-            Modo Profissional
-          </span>
-        )}
-        <input className="input hidden max-w-[220px] md:block" placeholder="Buscar prato, ingrediente..." />
-        <nav className="ml-auto hidden items-center gap-5 text-sm font-medium text-ink-soft lg:flex">
-          {links.map((l) =>
-            l.to.includes('#') ? (
-              <Link key={l.label} to={l.to} className="hover:text-terra">
-                {l.label}
+    <>
+      <header role="banner" className="sticky top-0 z-30 border-b border-line/60 bg-cream/70 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-3">
+          <Link to="/" className="flex items-center gap-2 font-display text-2xl font-extrabold tracking-tight text-terra">
+            <span className="hidden min-[380px]:inline">GastroMatch</span>
+          </Link>
+
+          <form onSubmit={buscar} role="search" className="relative ml-auto hidden w-full max-w-xs md:block">
+            <Search size={16} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-faint" />
+            <input
+              className="input !rounded-full !pl-10"
+              placeholder="Buscar prato, ingrediente..."
+              aria-label="Buscar receitas"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+            />
+          </form>
+
+          <div className="ml-auto flex items-center gap-2 md:ml-0">
+            {usuario ? (
+              <Link to="/conta" className="btn-ghost !px-4 !py-2">
+                <UserRound size={16} />
+                <span className="hidden max-w-[7rem] truncate sm:inline">{usuario.username}</span>
               </Link>
             ) : (
-              <NavLink
-                key={l.label}
-                to={l.to}
-                end
-                className={({ isActive }) => (isActive ? 'border-b-2 border-terra text-terra' : 'hover:text-terra')}
-              >
-                {l.label}
+              <Link to="/login" className="btn-ghost !px-4 !py-2">Entrar</Link>
+            )}
+            <Link to="/portal" className="btn-ghost hidden !px-4 !py-2 md:inline-flex">
+              <ChefHat size={16} /> Sou profissional
+            </Link>
+            <button
+            ref={btnRef}
+            onClick={() => setOpen(true)}
+            aria-label="Abrir menu"
+            aria-expanded={open}
+            aria-controls="menu-lateral"
+            className="flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-full bg-terra text-on-accent shadow-soft transition duration-300 hover:scale-105 hover:shadow-lift"
+          >
+            <Menu size={20} />
+          </button>
+          </div>
+        </div>
+      </header>
+
+      <div
+        className={`fixed inset-0 z-40 bg-black/70 backdrop-blur-sm transition-opacity duration-300 ${open ? 'opacity-100' : 'pointer-events-none opacity-0'}`}
+        onClick={() => setOpen(false)}
+        aria-hidden
+      />
+      <aside
+        id="menu-lateral"
+        aria-label="Menu principal"
+        aria-hidden={!open}
+        inert={!open}
+        className={`fixed inset-y-0 right-0 z-50 flex w-[88%] max-w-sm flex-col gap-6 overflow-y-auto border-l border-line bg-surface p-5 shadow-lift transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${open ? 'translate-x-0' : 'translate-x-full'}`}
+      >
+        <div className="flex items-center justify-between">
+          <span className="flex items-center gap-2 font-display text-lg font-extrabold text-terra">
+            GastroMatch
+          </span>
+          <button ref={closeRef} onClick={() => setOpen(false)} aria-label="Fechar menu" className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full border border-line bg-surface hover:bg-peach">
+            <X size={18} />
+          </button>
+        </div>
+
+        <form onSubmit={(e) => { buscar(e); setOpen(false) }} role="search" className="relative md:hidden">
+          <Search size={16} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-faint" />
+          <input className="input !rounded-full !pl-10" placeholder="Buscar receitas" aria-label="Buscar receitas" value={q} onChange={(e) => setQ(e.target.value)} />
+        </form>
+
+        <nav className="space-y-1" aria-label="Navegação principal">
+          {main.map((l) =>
+            l.to.includes('#') ? (
+              <Link key={l.label} to={l.to} className={item} onClick={() => setOpen(false)}>
+                <l.icon size={18} /> {l.label}
+              </Link>
+            ) : (
+              <NavLink key={l.label} to={l.to} end={l.end} className={({ isActive }) => `${item} ${isActive ? '!bg-peach !text-terra' : ''}`}>
+                <l.icon size={18} /> {l.label}
               </NavLink>
             ),
           )}
         </nav>
-        <Link to="/portal" className="btn-primary ml-auto lg:ml-0">
-          🛡 Sou Profissional
-        </Link>
-      </div>
-    </header>
+
+        <div className="space-y-1 border-t border-line pt-4">
+          <p className="px-4 pb-1 text-xs font-semibold uppercase tracking-wide text-ink-faint">Profissionais</p>
+          {meusPerfis.length > 0 && <NavLink to="/portal" className={item}><ChefHat size={18} /> Portal profissional</NavLink>}
+          {isChef && <NavLink to="/publicar" className={item}><PlusCircle size={18} /> Publicar receita</NavLink>}
+          {usuario && <NavLink to="/onboarding" className={item}><BadgeCheck size={18} /> Criar perfil profissional</NavLink>}
+          {isChef && <NavLink to="/painel" className={item}><LayoutDashboard size={18} /> Painel do chef</NavLink>}
+          {usuario?.admin && <NavLink to="/admin" className={item}><ShieldCheck size={18} /> Curadoria{pendentes > 0 && <span className="ml-auto rounded-full bg-terra px-2 py-0.5 text-[11px] font-bold text-on-accent" aria-label={`${pendentes} pendentes`}>{pendentes}</span>}</NavLink>}
+        </div>
+
+        <div className="mt-auto space-y-2 border-t border-line pt-4">
+          <button className={`${item} w-full cursor-pointer`} onClick={alternarTema} aria-pressed={tema === 'light'}>
+            {tema === 'light' ? <Moon size={18} /> : <Sun size={18} />} {tema === 'light' ? 'Tema escuro' : 'Tema claro'}
+          </button>
+          {usuario ? (
+            <>
+              <Link to="/perfil" className={item}><UserRound size={18} /> {usuario.username}</Link>
+              <Link to="/verificacao" className={item}><BadgeCheck size={18} /> Status da verificação</Link>
+              <button className={`${item} w-full cursor-pointer`} onClick={() => { sair(); setOpen(false); nav('/') }}>
+                <LogOut size={18} /> Sair
+              </button>
+            </>
+          ) : (
+            <>
+              <Link to="/login" className="btn-primary w-full"><LogIn size={16} /> Entrar</Link>
+              <Link to="/cadastro" className="btn-ghost w-full"><UserPlus size={16} /> Criar conta</Link>
+            </>
+          )}
+        </div>
+      </aside>
+    </>
   )
 }
