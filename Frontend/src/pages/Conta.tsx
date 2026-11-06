@@ -1,11 +1,13 @@
 import { Link, useNavigate } from 'react-router-dom'
 import Protegida from '../components/Protegida'
 import { useAuth } from '../context/Auth'
+import { useSeo } from '../lib/seo'
 
 const nomes = { CHEF: 'Chef', NUTRICIONISTA: 'Nutricionista', RESTAURANTE: 'Restaurante' }
 const cor = { PENDENTE: 'bg-gold-soft text-gold', APROVADO: 'bg-leaf-soft text-leaf', REJEITADO: 'bg-alert-soft text-alert' }
 
 export default function Conta() {
+  useSeo({ titulo: 'Minha conta' })
   const { usuario, meusPerfis, sair } = useAuth()
   const nav = useNavigate()
   return (
@@ -25,6 +27,7 @@ export default function Conta() {
         </div>
         <div className="flex flex-wrap gap-2">
           <Link to="/onboarding" className="btn-ghost">Criar perfil profissional</Link>
+          <Link to="/perfil" className="btn-ghost">Meu perfil</Link>
           <Link to="/portal" className="btn-ghost">Editar vitrine</Link>
           <Link to="/publicar" className="btn-ghost">Publicar receita</Link>
           <Link to="/favoritos" className="btn-ghost">Favoritos</Link>

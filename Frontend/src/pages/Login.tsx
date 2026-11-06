@@ -1,39 +1,41 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
-import { Aviso, Campo } from '../components/Campo'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { Aviso, Campo, CampoSenha } from '../components/Campo'
 import { useAuth } from '../context/Auth'
+import { useSeo } from '../lib/seo'
+import { useForm } from '../lib/useForm'
+import { email, obrigatorio } from '../lib/validar'
 
 export default function Login() {
+  useSeo({ titulo: 'Entrar' })
   const { entrar } = useAuth()
   const nav = useNavigate()
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
+  const loc = useLocation()
   const [erro, setErro] = useState('')
+  const f = useForm({ email: '', password: '' }, { email: [obrigatorio('Informe o e-mail'), email()], password: [obrigatorio('Informe a senha')] })
+  const destino = (loc.state as { from?: string } | null)?.from ?? '/'
 
-  const enviar = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const enviar = f.enviar(async (v) => {
     setErro('')
     try {
-      await entrar(email, password)
-      nav('/')
-    } catch (x) {
-      setErro((x as Error).message)
+      await entrar(v.email, v.password)
+      nav(destino, { replace: true }) // volta para a tela original
+    } catch {
+      setErro('Credenciais inválidas') // mesma mensagem para usuário inexistente e senha errada
     }
-  }
+  })
 
   return (
-    <form onSubmit={enviar} className="card mx-auto max-w-md space-y-4 p-6">
+    <form onSubmit={enviar} noValidate className="card mx-auto max-w-md space-y-4 p-6">
       <h1 className="text-2xl font-bold">Entrar</h1>
       {erro && <Aviso tipo="erro">{erro}</Aviso>}
-      <Campo label="Email">
-        <input className="input" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+      <Campo label="E-mail" erro={f.erros.email}>
+        <input name="email" className="input" type="email" autoComplete="username" value={f.v.email} onChange={f.onChange('email')} onBlur={f.onBlur('email')} />
       </Campo>
-      <Campo label="Senha">
-        <input className="input" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
-      </Campo>
+      <CampoSenha nome="password" label="Senha" value={f.v.password} onChange={f.set('password')} erro={f.erros.password} autoComplete="current-password" />
       <button className="btn-primary w-full">Entrar</button>
       <p className="text-xs text-ink-soft">
-        Sem conta? <Link to="/cadastro" className="font-semibold text-terra">Criar conta</Link>
+        Sem conta? <Link to="/cadastro" state={loc.state} className="font-semibold text-terra">Criar conta</Link>
       </p>
     </form>
   )

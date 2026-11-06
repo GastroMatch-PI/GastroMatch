@@ -6,10 +6,18 @@ import { useRef } from 'react'
 import { Reveal, SplitWords } from '../components/Motion'
 import RecipeCard from '../components/RecipeCard'
 import { collections, fridgeItems } from '../data/data'
+import Carrossel from '../components/Carrossel'
+import CardRestaurante from '../components/CardRestaurante'
+import { EstadoVazio } from '../components/Ui'
+import { useAuth } from '../context/Auth'
+import { useSeo } from '../lib/seo'
 import { useRecipes } from '../lib/useRecipes'
 
 
 export default function Home() {
+  useSeo({ titulo: 'GastroMatch' })
+  const { perfis } = useAuth()
+  const restaurantes = perfis.filter((p) => p.papel === 'RESTAURANTE' && p.status === 'APROVADO')
   const recipes = useRecipes()
   const heroRef = useRef<HTMLElement>(null)
   const { scrollYProgress } = useScroll({ target: heroRef, offset: ['start start', 'end start'] })
@@ -52,7 +60,7 @@ export default function Home() {
     <div className="space-y-16">
       <section ref={heroRef} className="grain relative -mx-4 -mt-6 overflow-hidden bg-cream sm:mx-0 sm:mt-0 sm:rounded-[2.25rem]">
         <motion.img
-          src="https://images.unsplash.com/photo-1555939594-58d7cb561ad1?auto=format&fit=crop&w=1800&q=70"
+          src="/img/hero.jpg"
           alt=""
           style={{ y: imgY, scale: imgScale }}
           className="absolute inset-0 h-full w-full object-cover opacity-55"
@@ -78,8 +86,8 @@ export default function Home() {
               <a href="#geladeira" className="btn-primary !px-7 !py-3.5">
                 <Refrigerator size={18} /> Usar minha geladeira
               </a>
-              <Link to="/profissionais" className="btn-ghost !px-7 !py-3.5">
-                Ver profissionais <ArrowRight size={16} />
+              <Link to="/receitas" className="btn-ghost !px-7 !py-3.5">
+                Ver todas as receitas <ArrowRight size={16} />
               </Link>
             </div>
           </motion.div>
@@ -189,6 +197,18 @@ export default function Home() {
               </Reveal>
             ))}
           </div>
+        )}
+      </section>
+
+      <section id="restaurantes" className="space-y-5" aria-labelledby="rest-t">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <h2 id="rest-t" className="font-display text-4xl font-extrabold uppercase leading-none tracking-tight sm:text-6xl">Restaurantes</h2>
+          <Link to="/restaurantes" className="btn-ghost">Ver todos <ArrowRight size={16} /></Link>
+        </div>
+        {restaurantes.length === 0 ? (
+          <EstadoVazio titulo="Ainda não há restaurantes cadastrados" texto="Cadastre o seu e ele aparece aqui." acao={{ to: '/onboarding', rotulo: 'Cadastrar restaurante' }} />
+        ) : (
+          <Carrossel rotulo="Restaurantes cadastrados" itens={restaurantes.map((r) => <CardRestaurante key={r.userId} restaurante={r} variante="carrossel" />)} />
         )}
       </section>
 

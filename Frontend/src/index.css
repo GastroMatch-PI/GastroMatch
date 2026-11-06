@@ -94,3 +94,45 @@ select option { background: #15110e; color: #f7efe8; }
   html { scroll-behavior: auto; }
   *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
 }
+
+/* ---------- impressão: sem menu, com ingredientes e passos ---------- */
+@media print {
+  :root { color-scheme: light; }
+  body { background: #fff !important; color: #000 !important; }
+  header, footer, #menu-lateral, .print\:hidden { display: none !important; }
+  .card, .bg-cream, .bg-peach, .bg-surface { background: #fff !important; box-shadow: none !important; border-color: #ccc !important; }
+  * { color: #000 !important; }
+  .imprimir-sem-nutri .nutri { display: none !important; }
+  main { padding: 0 !important; max-width: none !important; }
+  li { break-inside: avoid; }
+}
+
+.skip-link {
+  position: absolute; left: 1rem; top: -4rem; z-index: 100; padding: 0.75rem 1.25rem; border-radius: 999px;
+  background: var(--color-terra); color: var(--color-on-accent); font-weight: 700; transition: top 0.2s;
+}
+.skip-link:focus { top: 1rem; }
+
+/* ---------- tema claro (alternância manual ou prefers-color-scheme) ---------- */
+:root[data-theme="light"] {
+  color-scheme: light;
+  --color-cream: #fffaf5;
+  --color-surface: #ffffff;
+  --color-peach: #fdeee4;
+  --color-peach-deep: #f3d6c3;
+  --color-ink: #241713;
+  --color-ink-soft: #52423b;
+  --color-ink-faint: #6f5f56;
+  --color-line: #ecd9cd;
+  --color-terra: #b8400c;
+  --color-leaf: #1f6b43;
+  --color-leaf-soft: #dcf3e4;
+  --color-gold: #8f5a05;
+  --color-gold-soft: #fdecc8;
+  --color-alert: #b42318;
+  --color-alert-soft: #fde4e0;
+  --color-on-accent: #ffffff;
+  --grad: linear-gradient(135deg, #a93a0a 0%, #bb4410 50%, #c2410c 100%);
+}
+:root[data-theme="light"] ::selection { background: #b8400c; color: #fff; }
+:root[data-theme="light"] select option { background: #fff; color: #241713; }

@@ -68,3 +68,36 @@ jobs:
           # O mvnw foi versionado sem permissão de execução.
           chmod +x mvnw
           ./mvnw -B test
+
+  testes-frontend:
+    name: Testes e build do frontend
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    defaults:
+      run:
+        working-directory: Frontend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: Frontend/package-lock.json
+
+      - run: npm ci
+
+      # Falha de teste ou cobertura abaixo de 80% em src/lib bloqueia o PR.
+      - name: Testes unitários com cobertura
+        run: npm run coverage
+
+      - name: Build de produção
+        run: npm run build
+
+      - name: Publicar o relatório de cobertura
+        uses: actions/upload-artifact@v4
+        with:
+          name: cobertura-frontend
+          path: Frontend/coverage

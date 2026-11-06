@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import Photo from '../components/Photo'
 import { useAuth } from '../context/Auth'
 import { pros, type Pro } from '../data/data'
+import { useSeo } from '../lib/seo'
 
 const types = ['Todos', 'Chef Particular', 'Nutricionista', 'Restaurante'] as const
 const papelKind = { CHEF: 'Chef Particular', NUTRICIONISTA: 'Nutricionista', RESTAURANTE: 'Restaurante' } as const
@@ -10,6 +11,7 @@ const emoji = { CHEF: '👨‍🍳', NUTRICIONISTA: '🥗', RESTAURANTE: '🍽' 
 type Item = Pro & { instagram?: string; whatsapp?: string; demo: boolean }
 
 export default function Directory() {
+  useSeo({ titulo: 'Chefs, nutricionistas e restaurantes' })
   const { perfis, usuario } = useAuth()
   const [type, setType] = useState<(typeof types)[number]>('Todos')
   const [texto, setTexto] = useState('')

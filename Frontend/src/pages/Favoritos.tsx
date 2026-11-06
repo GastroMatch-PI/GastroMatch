@@ -1,31 +1,35 @@
 import { Heart } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import { useState } from 'react'
 import Protegida from '../components/Protegida'
+import RecipeCard from '../components/RecipeCard'
+import { EstadoVazio, Paginacao } from '../components/Ui'
+import { useSeo } from '../lib/seo'
 import { useFavoritos, useRecipes } from '../lib/useRecipes'
 
+const POR_PAGINA = 6
+
 export default function Favoritos() {
+  useSeo({ titulo: 'Meus favoritos' })
   const todas = useRecipes()
-  const { favs, toggle } = useFavoritos()
-  const lista = todas.filter((r) => favs.includes(r.id))
+  const { favs } = useFavoritos()
+  const [pagina, setPagina] = useState(1)
+  const lista = todas.filter((r) => favs.includes(r.id)) // receita removida pelo chef some sem erro
+  const total = Math.max(1, Math.ceil(lista.length / POR_PAGINA))
+  const atual = Math.min(pagina, total)
+
   return (
     <Protegida>
-      <div className="space-y-4">
-        <h1 className="text-2xl font-bold">Minhas receitas favoritas</h1>
-        {lista.length === 0 && (
-          <p className="text-sm text-ink-soft">
-            Nenhum favorito ainda. <Link to="/" className="text-terra">Explorar receitas</Link>
-          </p>
-        )}
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {lista.map((r) => (
-            <article key={r.id} className="card space-y-2 p-4">
-              {r.image && <img src={r.image} alt="" className="h-36 w-full rounded-xl object-cover" />}
-              <Link to={`/receita/${r.id}`} className="block font-display text-lg font-bold hover:text-terra">{r.title}</Link>
-              <p className="text-xs text-ink-soft">⏱ {r.minutes} min · {r.servings} porções</p>
-              <button className="btn-ghost w-full" onClick={() => toggle(r.id)}><Heart size={15} className="fill-terra text-terra" /> Remover</button>
-            </article>
-          ))}
+      <div className="space-y-6">
+        <div>
+          <h1 className="flex items-center gap-3 text-3xl font-extrabold"><Heart className="fill-terra text-terra" /> Meus favoritos</h1>
+          <p className="mt-1 text-sm text-ink-soft" role="status">{lista.length} {lista.length === 1 ? 'receita salva' : 'receitas salvas'}</p>
         </div>
+        {lista.length === 0 ? (
+          <EstadoVazio titulo="Nenhum favorito ainda" texto="Toque no coração de uma receita para guardá-la aqui." acao={{ to: '/receitas', rotulo: 'Explorar receitas' }} />
+        ) : (
+          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">{lista.slice((atual - 1) * POR_PAGINA, atual * POR_PAGINA).map((r) => <RecipeCard key={r.id} recipe={r} />)}</div>
+        )}
+        <Paginacao pagina={atual} total={total} onMudar={setPagina} />
       </div>
     </Protegida>
   )
