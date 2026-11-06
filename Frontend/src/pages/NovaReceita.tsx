@@ -55,6 +55,7 @@ export default function NovaReceita() {
   const [sujo, setSujo] = useState(false)
   const [oferecer, setOferecer] = useState<Rascunho | null>(null)
   const [busca, setBusca] = useState('')
+  const [arrasto, setArrasto] = useState<number | null>(null)
   const topo = useRef<HTMLHeadingElement>(null)
 
   // modo edição: carrega a receita; modo criação: oferece o rascunho do usuário
@@ -280,8 +281,8 @@ export default function NovaReceita() {
         <section className="card space-y-4 p-5">
           <ol className="space-y-4">
             {d.etapas.map((et, i) => (
-              <li key={i} className="space-y-2 rounded-2xl border border-line p-4">
-                <p className="text-xs font-bold text-terra">Etapa {i + 1}</p>
+              <li key={i} draggable onDragStart={() => setArrasto(i)} onDragOver={(e) => e.preventDefault()} onDrop={() => { if (arrasto !== null && arrasto !== i) alterar((p) => { const c = [...p.etapas]; const [m] = c.splice(arrasto, 1); c.splice(i, 0, m); return { ...p, etapas: c } }); setArrasto(null) }} className={`space-y-2 rounded-2xl border border-line p-4 ${arrasto === i ? 'opacity-50' : ''}`}>
+                <p className="cursor-grab text-xs font-bold text-terra">⠿ Etapa {i + 1} <span className="font-normal text-ink-faint">(arraste ou use as setas)</span></p>
                 <input aria-label={`Título da etapa ${i + 1}`} className="input" placeholder="Título" maxLength={150} value={et.title} onChange={(e) => upEt(i, { title: e.target.value })} />
                 <textarea aria-label={`Instrução da etapa ${i + 1}`} className="input" rows={3} placeholder="Instrução" maxLength={2000} value={et.text} onChange={(e) => upEt(i, { text: e.target.value })} />
                 <div className="grid gap-2 sm:grid-cols-3">

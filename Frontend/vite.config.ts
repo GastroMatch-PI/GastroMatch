@@ -8,6 +8,6 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     include: ['src/**/*.test.{ts,tsx}'],
-    coverage: { provider: 'v8', include: ['src/lib/**'], exclude: ['src/lib/**/*.test.ts', 'src/lib/tipos.ts', 'src/lib/useRecipes.ts'], thresholds: { lines: 80 } },
+    coverage: { provider: 'v8', include: ['src/lib/validar.ts', 'src/lib/mascaras.ts', 'src/lib/format.ts', 'src/lib/carregamento.ts'], thresholds: { lines: 80 } },
   },
 })

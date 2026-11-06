@@ -6,6 +6,7 @@ import { EstadoVazio, Paginacao } from '../components/Ui'
 import { useAuth } from '../context/Auth'
 import { useLocalState } from '../hooks/useLocalState'
 import { dataRelativa } from '../lib/format'
+import { mascaraCRN } from '../lib/mascaras'
 import { useSeo } from '../lib/seo'
 import type { Decisao, Denuncia, Papel, PerfilPro } from '../lib/tipos'
 
@@ -70,7 +71,7 @@ export default function Admin() {
                 <li key={`${p.userId}-${p.papel}`} className="flex flex-wrap items-center gap-3 rounded-2xl border border-line p-4 text-sm">
                   <div className="min-w-0 flex-1 space-y-0.5">
                     <p><b>{p.nome}</b> · {nomes[p.papel]}</p>
-                    {p.crn && <p className="text-xs text-ink-soft">CRN: {p.crn}</p>}
+                    {p.crn && <p className="text-xs text-ink-soft">CRN: {mascaraCRN(p.crn)}</p>}
                     {p.cnpj && <p className="text-xs text-ink-soft">CNPJ: {p.cnpj}</p>}
                     {p.bio && <p className="line-clamp-2 text-xs text-ink-soft">{p.bio}</p>}
                     <p className="text-xs text-ink-faint">{p.comprovante ?? 'Sem comprovante'} · enviado {p.enviadoEm ? dataRelativa(p.enviadoEm) : 'em data desconhecida'}</p>

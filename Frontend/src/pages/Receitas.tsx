@@ -49,15 +49,16 @@ export default function Receitas() {
 
   useEffect(() => { if (carregando) { const t = setTimeout(() => setCarregando(false), 350); return () => clearTimeout(t) } }, [carregando])
 
-  // volta do detalhe: restaura o scroll
+  // guarda o scroll ao sair por um link e restaura ao voltar (botão voltar do navegador)
+  const chaveScroll = `scroll:${loc.pathname}${loc.search}`
+  const salvarScroll = () => { try { sessionStorage.setItem(chaveScroll, String(window.scrollY)) } catch { /* sem storage */ } }
   useLayoutEffect(() => {
-    if (navType === 'POP') {
-      const y = Number(sessionStorage.getItem(`scroll:${loc.pathname}${loc.search}`))
-      if (y) requestAnimationFrame(() => window.scrollTo({ top: y }))
-    }
-    const key = `scroll:${loc.pathname}${loc.search}`
-    return () => { try { sessionStorage.setItem(key, String(window.scrollY)) } catch { /* sem storage */ } }
-  }, [loc.pathname, loc.search, navType])
+    if (navType !== 'POP') return
+    const y = Number(sessionStorage.getItem(chaveScroll))
+    if (!y) return
+    const t = setTimeout(() => window.scrollTo({ top: y, behavior: 'instant' as ScrollBehavior }), 120)
+    return () => clearTimeout(t)
+  }, [chaveScroll, navType])
 
   const set = (k: string, v: string) => {
     const p = new URLSearchParams(params)
@@ -132,7 +133,7 @@ export default function Receitas() {
   )
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8" onClickCapture={salvarScroll}>
       <header className="space-y-3">
         <h1 className="font-display text-5xl font-extrabold uppercase leading-none tracking-tight sm:text-7xl">Receitas</h1>
         <p className="text-sm text-ink-soft" role="status" aria-live="polite">{lista.length} {lista.length === 1 ? 'resultado' : 'resultados'}{q ? ` para “${q}”` : ''} · ordenação: {ORDENS[ordem]}</p>
