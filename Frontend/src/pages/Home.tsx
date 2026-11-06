@@ -1,4 +1,4 @@
-import { ArrowRight, CalendarDays, Plus, Refrigerator, Search, ShoppingBasket, Sparkles, X } from 'lucide-react'
+import { ArrowRight, Plus, Refrigerator, Search, Sparkles, X } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { motion, useScroll, useTransform } from 'motion/react'
@@ -6,11 +6,8 @@ import { useRef } from 'react'
 import { Reveal, SplitWords } from '../components/Motion'
 import RecipeCard from '../components/RecipeCard'
 import { collections, fridgeItems } from '../data/data'
-import { useLocalState } from '../hooks/useLocalState'
 import { useRecipes } from '../lib/useRecipes'
 
-type ShopItem = { id: number; name: string; qty: string; done: boolean }
-type MenuItem = { day: string; title: string; meta: string }
 
 export default function Home() {
   const recipes = useRecipes()
@@ -26,9 +23,6 @@ export default function Home() {
   const [tab, setTab] = useState<'geladeira' | 'prato'>(params.get('q') ? 'prato' : 'geladeira')
   const [dish, setDish] = useState(params.get('q') ?? '')
   const [collection, setCollection] = useState('Todos')
-  const [shopping, setShopping] = useLocalState<ShopItem[]>('gm-shopping', [])
-  const [menu, setMenu] = useLocalState<MenuItem[]>('gm-menu', [])
-  const [newItem, setNewItem] = useState('')
 
   const toggle = (item: string) => setSelected((s) => (s.includes(item) ? s.filter((i) => i !== item) : [...s, item]))
 
@@ -53,12 +47,6 @@ export default function Home() {
       .filter((r) => !dif || r.difficulty === dif)
   }, [collection, dish, recipes, maxMin, dif])
 
-  const addToMenu = (title: string) => {
-    const days = ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB', 'DOM']
-    setMenu((m) => (m.some((x) => x.title === title) ? m : [...m, { day: days[m.length % 7], title, meta: 'Planejado' }]))
-  }
-
-  const pending = shopping.filter((i) => !i.done).length
 
   return (
     <div className="space-y-16">
@@ -136,7 +124,7 @@ export default function Home() {
               matches.length ? (
                 <div className="grid gap-5 pt-3 sm:grid-cols-2 lg:grid-cols-3">
                   {matches.map(({ recipe, match }) => (
-                    <RecipeCard key={recipe.id} recipe={recipe} match={match} planned={menu.some((m) => m.title === recipe.title)} onAdd={addToMenu} />
+                    <RecipeCard key={recipe.id} recipe={recipe} match={match} />
                   ))}
                 </div>
               ) : (
@@ -168,81 +156,41 @@ export default function Home() {
         )}
       </section></Reveal>
 
-      <div className="grid gap-10 lg:grid-cols-[1fr_340px]">
-        <section className="space-y-6" id="receitas">
-          <div className="flex flex-wrap items-end justify-between gap-3">
-            <h2 className="font-display text-4xl font-extrabold uppercase tracking-tight sm:text-5xl">Receitas</h2>
-            <span className="text-sm text-ink-faint">{list.length} {list.length === 1 ? 'receita' : 'receitas'}</span>
+      <section id="receitas" className="space-y-8">
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <h2 className="font-display text-5xl font-extrabold uppercase leading-none tracking-tight sm:text-7xl">Receitas</h2>
+            <p className="mt-3 text-sm text-ink-soft">{list.length} {list.length === 1 ? 'receita' : 'receitas'} para cozinhar agora</p>
           </div>
-          <div className="flex flex-wrap gap-2">
+        </div>
+
+        <div className="-mx-4 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0" role="group" aria-label="Filtrar por categoria">
+          <div className="flex w-max gap-2 sm:w-auto sm:flex-wrap">
             {collections.map((c) => (
               <button
                 key={c}
                 onClick={() => setCollection(c)}
                 aria-pressed={collection === c}
-                className={`chip ${collection === c ? 'border-terra bg-terra text-on-accent' : 'border-line bg-surface text-ink-soft hover:bg-peach'}`}
+                className={`chip !px-5 !py-2.5 text-sm ${collection === c ? 'border-terra bg-terra text-on-accent' : 'border-line bg-surface text-ink-soft hover:border-terra/50 hover:text-terra'}`}
               >
                 {c}
               </button>
             ))}
           </div>
-          {list.length === 0 ? (
-            <p className="card p-8 text-center text-sm text-ink-soft">Nenhuma receita encontrada com esses filtros.</p>
-          ) : (
-            <div className="grid gap-5 sm:grid-cols-2">
-              {list.map((r, i) => (
-                <Reveal key={r.id} delay={(i % 2) * 0.1}>
-                  <RecipeCard recipe={r} planned={menu.some((m) => m.title === r.title)} onAdd={addToMenu} />
-                </Reveal>
-              ))}
-            </div>
-          )}
-        </section>
+        </div>
 
-        <aside id="listas" className="space-y-5 lg:sticky lg:top-24 lg:self-start">
-          <div className="card space-y-4 p-5">
-            <h3 className="flex items-center gap-2 text-lg font-semibold"><ShoppingBasket size={18} className="text-terra" /> Lista de compras</h3>
-            <p className="text-xs text-ink-faint">{pending} pendentes • salva só neste navegador</p>
-            {shopping.length === 0 && <p className="rounded-xl bg-cream p-3 text-xs text-ink-soft">Vazia. Adicione itens ou envie os ingredientes de uma receita.</p>}
-            <ul className="space-y-1.5">
-              {shopping.map((i) => (
-                <li key={i.id} className="flex items-center gap-2.5 rounded-xl bg-cream px-3 py-2 text-sm">
-                  <input type="checkbox" aria-label={i.name} checked={i.done} onChange={() => setShopping((s) => s.map((x) => (x.id === i.id ? { ...x, done: !x.done } : x)))} />
-                  <span className={`flex-1 ${i.done ? 'text-ink-faint line-through' : ''}`}>{i.name}</span>
-                  <span className="text-xs text-ink-faint">{i.qty}</span>
-                  <button aria-label={`Remover ${i.name}`} className="cursor-pointer text-ink-faint hover:text-alert" onClick={() => setShopping((s) => s.filter((x) => x.id !== i.id))}><X size={14} /></button>
-                </li>
-              ))}
-            </ul>
-            <form
-              onSubmit={(e) => {
-                e.preventDefault()
-                if (!newItem.trim()) return
-                setShopping((s) => [...s, { id: Date.now(), name: newItem.trim(), qty: '1 un.', done: false }])
-                setNewItem('')
-              }}
-            >
-              <input className="input" placeholder="Adicionar item" aria-label="Adicionar item" value={newItem} onChange={(e) => setNewItem(e.target.value)} />
-            </form>
+        {list.length === 0 ? (
+          <p className="card p-10 text-center text-sm text-ink-soft">Nenhuma receita encontrada com esses filtros.</p>
+        ) : (
+          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {list.map((r, i) => (
+              <Reveal key={r.id} delay={(i % 3) * 0.08} className={i === 0 && list.length > 2 ? 'sm:col-span-2' : ''}>
+                <RecipeCard recipe={r} featured={i === 0 && list.length > 2} />
+              </Reveal>
+            ))}
           </div>
-
-          <div className="card space-y-4 p-5">
-            <h3 className="flex items-center gap-2 text-lg font-semibold"><CalendarDays size={18} className="text-terra" /> Cardápio da semana</h3>
-            {menu.length === 0 && <p className="rounded-xl bg-cream p-3 text-xs text-ink-soft">Nada planejado. Use “Adicionar ao cardápio” nas receitas.</p>}
-            <ul className="space-y-2">
-              {menu.map((m) => (
-                <li key={m.title} className="flex items-center gap-3 rounded-xl bg-cream px-3 py-2">
-                  <span className="flex h-9 w-9 items-center justify-center rounded-full bg-peach-deep text-[10px] font-bold text-terra">{m.day}</span>
-                  <span className="flex-1 text-sm font-medium leading-tight">{m.title}</span>
-                  <button aria-label={`Remover ${m.title}`} className="cursor-pointer text-ink-faint hover:text-alert" onClick={() => setMenu((x) => x.filter((y) => y.title !== m.title))}>
-                    <X size={15} />
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </aside>
-      </div>
+        )}
+      </section>
 
       <Reveal>
         <section id="comunidade" className="grain relative overflow-hidden rounded-[2.25rem] bg-terra p-8 sm:p-14">
