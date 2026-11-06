@@ -62,7 +62,7 @@ export default function Portal() {
             <div role="tablist" className="flex flex-wrap gap-1 rounded-full border border-line bg-cream p-1 text-xs font-semibold">
               {tabs.map((t) => (
                 <button key={t} role="tab" aria-selected={tab === t} onClick={() => setTab(t)}
-                  className={`cursor-pointer rounded-full px-4 py-2 transition duration-200 ${tab === t ? 'bg-terra text-white shadow-soft' : 'text-ink-soft hover:text-terra'}`}>
+                  className={`cursor-pointer rounded-full px-4 py-2 transition duration-200 ${tab === t ? 'bg-terra text-on-accent shadow-soft' : 'text-ink-soft hover:text-terra'}`}>
                   {t}
                 </button>
               ))}

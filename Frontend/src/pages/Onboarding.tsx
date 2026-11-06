@@ -55,7 +55,7 @@ export default function Onboarding() {
         <div role="tablist" className="flex gap-1 rounded-full border border-line bg-cream p-1 text-xs font-semibold">
           {roles.map((r) => (
             <button type="button" key={r.id} onClick={() => { setPapel(r.id); setErro(''); setOk('') }}
-              className={`flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-full px-3 py-2 transition duration-200 ${papel === r.id ? 'bg-terra text-white shadow-soft' : 'text-ink-soft hover:text-terra'}`}>
+              className={`flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-full px-3 py-2 transition duration-200 ${papel === r.id ? 'bg-terra text-on-accent shadow-soft' : 'text-ink-soft hover:text-terra'}`}>
               <r.icon size={16} /> {r.label}
             </button>
           ))}

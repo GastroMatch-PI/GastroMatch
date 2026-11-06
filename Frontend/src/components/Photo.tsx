@@ -1,11 +1,11 @@
 import { UserRound } from 'lucide-react'
 // Placeholder visual das receitas/perfis: gradiente quente + emoji de comida (conteúdo, não ícone de interface).
 const palettes = [
-  'from-amber-100 via-orange-200 to-orange-400',
-  'from-rose-100 via-rose-200 to-red-400',
-  'from-lime-100 via-emerald-200 to-emerald-500',
-  'from-yellow-50 via-amber-200 to-amber-500',
-  'from-stone-100 via-stone-300 to-stone-500',
+  'from-orange-950 via-orange-800 to-orange-500',
+  'from-stone-900 via-red-900 to-orange-600',
+  'from-stone-900 via-amber-900 to-amber-500',
+  'from-neutral-900 via-orange-900 to-orange-400',
+  'from-stone-950 via-stone-700 to-orange-500',
 ]
 
 export default function Photo({

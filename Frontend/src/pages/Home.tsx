@@ -1,7 +1,9 @@
-import { ArrowRight, CalendarDays, Clock, Plus, Refrigerator, Search, ShoppingBasket, Sparkles, X } from 'lucide-react'
+import { ArrowRight, CalendarDays, Plus, Refrigerator, Search, ShoppingBasket, Sparkles, X } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import Photo from '../components/Photo'
+import { motion, useScroll, useTransform } from 'motion/react'
+import { useRef } from 'react'
+import { Reveal, SplitWords } from '../components/Motion'
 import RecipeCard from '../components/RecipeCard'
 import { collections, fridgeItems } from '../data/data'
 import { useLocalState } from '../hooks/useLocalState'
@@ -12,6 +14,10 @@ type MenuItem = { day: string; title: string; meta: string }
 
 export default function Home() {
   const recipes = useRecipes()
+  const heroRef = useRef<HTMLElement>(null)
+  const { scrollYProgress } = useScroll({ target: heroRef, offset: ['start start', 'end start'] })
+  const imgY = useTransform(scrollYProgress, [0, 1], ['0%', '18%'])
+  const imgScale = useTransform(scrollYProgress, [0, 1], [1.05, 1.25])
   const [params] = useSearchParams()
   const [maxMin, setMaxMin] = useState(0)
   const [dif, setDif] = useState('')
@@ -53,42 +59,60 @@ export default function Home() {
   }
 
   const pending = shopping.filter((i) => !i.done).length
-  const destaque = recipes.find((r) => r.id === 'risotto-cogumelos') ?? recipes[0]
 
   return (
-    <div className="space-y-14">
-      <section className="rise relative grid items-center gap-8 overflow-hidden rounded-[2rem] bg-gradient-to-br from-peach via-peach to-peach-deep p-6 md:grid-cols-[1.1fr_1fr] md:p-12">
-        <div className="space-y-6">
-          <h1 className="text-4xl font-extrabold leading-[1.08] sm:text-5xl lg:text-6xl">
-            Cozinhe o que você <span className="text-terra">já tem</span> em casa
+    <div className="space-y-16">
+      <section ref={heroRef} className="grain relative -mx-4 -mt-6 overflow-hidden bg-cream sm:mx-0 sm:mt-0 sm:rounded-[2.25rem]">
+        <motion.img
+          src="https://images.unsplash.com/photo-1555939594-58d7cb561ad1?auto=format&fit=crop&w=1800&q=70"
+          alt=""
+          style={{ y: imgY, scale: imgScale }}
+          className="absolute inset-0 h-full w-full object-cover opacity-55"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-cream via-cream/55 to-cream/20" />
+        <div className="glow absolute -left-32 top-10 h-[34rem] w-[34rem]" aria-hidden />
+        <div className="relative flex min-h-[34rem] flex-col justify-end gap-8 px-6 pb-12 pt-32 sm:min-h-[40rem] sm:px-12 sm:pb-16">
+          <h1 className="max-w-4xl font-display text-[clamp(2.75rem,9vw,7rem)] font-extrabold uppercase leading-[0.92] tracking-tight">
+            <SplitWords text="Cozinhe o que" delay={0.5} />
+            <br />
+            <span className="text-terra"><SplitWords text="você já tem" delay={0.8} /></span>
           </h1>
-          <p className="max-w-md text-base text-ink-soft">
-            Receitas de chefs, nutricionistas e restaurantes. Escolha os ingredientes da geladeira e veja o que dá para fazer agora.
-          </p>
-          <div className="flex flex-wrap gap-3">
-            <a href="#geladeira" className="btn-primary !px-6 !py-3">
-              <Refrigerator size={18} /> Usar minha geladeira
-            </a>
-            <Link to="/profissionais" className="btn-ghost !px-6 !py-3">
-              Ver profissionais <ArrowRight size={16} />
-            </Link>
-          </div>
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.9, delay: 1.3, ease: [0.16, 1, 0.3, 1] }}
+            className="flex flex-wrap items-end justify-between gap-6"
+          >
+            <p className="max-w-md text-base text-ink-soft">
+              Receitas de chefs, nutricionistas e restaurantes. Escolha o que tem na geladeira e veja o que dá para fazer agora.
+            </p>
+            <div className="flex flex-wrap gap-3">
+              <a href="#geladeira" className="btn-primary !px-7 !py-3.5">
+                <Refrigerator size={18} /> Usar minha geladeira
+              </a>
+              <Link to="/profissionais" className="btn-ghost !px-7 !py-3.5">
+                Ver profissionais <ArrowRight size={16} />
+              </Link>
+            </div>
+          </motion.div>
         </div>
-        {destaque && (
-          <Link to={`/receita/${destaque.id}`} className="group relative block overflow-hidden rounded-3xl shadow-lift">
-            <Photo emoji={destaque.emoji} seed={destaque.seed} className="h-72 w-full transition duration-700 group-hover:scale-105 md:h-96">
-              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 via-black/30 to-transparent p-5 text-white">
-                <p className="font-display text-xl font-semibold leading-snug">{destaque.title}</p>
-                <p className="mt-1 flex items-center gap-2 text-xs opacity-90">
-                  {destaque.author} <span aria-hidden>•</span> <Clock size={12} /> {destaque.minutes} min
-                </p>
-              </div>
-            </Photo>
-          </Link>
-        )}
       </section>
 
-      <section id="geladeira" className="card scroll-mt-24 space-y-5 p-5 md:p-8">
+      <div className="-mx-4 overflow-hidden sm:mx-0 sm:rounded-full" aria-hidden>
+        <div className="-rotate-1 scale-105 bg-terra py-3.5">
+          <div className="marquee flex w-max gap-10 whitespace-nowrap font-display text-lg font-extrabold uppercase tracking-tight text-on-accent">
+            {Array.from({ length: 2 }).map((_, k) => (
+              <div key={k} className="flex gap-10">
+                {['Receitas', 'Chefs', 'Restaurantes', 'Nutricionistas', 'Passo a passo', 'Geladeira'].map((w) => (
+                  <span key={w} className="flex items-center gap-10">{w} <span className="opacity-60">✦</span></span>
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <Reveal><section id="geladeira" className="card scroll-mt-24 space-y-5 p-5 md:p-8">
         <div role="tablist" className="inline-flex rounded-full border border-line bg-cream p-1 text-sm font-semibold">
           {(['geladeira', 'prato'] as const).map((t) => (
             <button
@@ -96,7 +120,7 @@ export default function Home() {
               role="tab"
               aria-selected={tab === t}
               onClick={() => setTab(t)}
-              className={`inline-flex cursor-pointer items-center gap-2 rounded-full px-4 py-2 transition duration-200 ${tab === t ? 'bg-terra text-white shadow-soft' : 'text-ink-soft hover:text-terra'}`}
+              className={`inline-flex cursor-pointer items-center gap-2 rounded-full px-4 py-2 transition duration-200 ${tab === t ? 'bg-terra text-on-accent shadow-soft' : 'text-ink-soft hover:text-terra'}`}
             >
               {t === 'geladeira' ? <><Refrigerator size={16} /> O que tenho em casa</> : <><Search size={16} /> Buscar receitas</>}
             </button>
@@ -112,7 +136,7 @@ export default function Home() {
                   key={i}
                   onClick={() => toggle(i)}
                   aria-pressed={selected.includes(i)}
-                  className={`chip ${selected.includes(i) ? 'border-terra bg-terra text-white' : 'border-line bg-white text-ink-soft hover:bg-peach'}`}
+                  className={`chip ${selected.includes(i) ? 'border-terra bg-terra text-on-accent' : 'border-line bg-surface text-ink-soft hover:bg-peach'}`}
                 >
                   {selected.includes(i) ? <X size={13} /> : <Plus size={13} />} {i}
                 </button>
@@ -120,7 +144,7 @@ export default function Home() {
             </div>
             <button className="btn-primary" disabled={selected.length < 2} onClick={() => setSearched(true)}>
               <Sparkles size={16} /> Encontrar receitas
-              <span className="rounded-full bg-white/25 px-2 py-0.5 text-xs">{matches.length}</span>
+              <span className="rounded-full bg-surface/25 px-2 py-0.5 text-xs">{matches.length}</span>
             </button>
             {searched && (
               matches.length ? (
@@ -156,12 +180,12 @@ export default function Home() {
             </div>
           </div>
         )}
-      </section>
+      </section></Reveal>
 
       <div className="grid gap-10 lg:grid-cols-[1fr_340px]">
         <section className="space-y-6" id="receitas">
           <div className="flex flex-wrap items-end justify-between gap-3">
-            <h2 className="text-3xl font-bold">Receitas</h2>
+            <h2 className="font-display text-4xl font-extrabold uppercase tracking-tight sm:text-5xl">Receitas</h2>
             <span className="text-sm text-ink-faint">{list.length} {list.length === 1 ? 'receita' : 'receitas'}</span>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -170,7 +194,7 @@ export default function Home() {
                 key={c}
                 onClick={() => setCollection(c)}
                 aria-pressed={collection === c}
-                className={`chip ${collection === c ? 'border-terra bg-terra text-white' : 'border-line bg-white text-ink-soft hover:bg-peach'}`}
+                className={`chip ${collection === c ? 'border-terra bg-terra text-on-accent' : 'border-line bg-surface text-ink-soft hover:bg-peach'}`}
               >
                 {c}
               </button>
@@ -180,8 +204,10 @@ export default function Home() {
             <p className="card p-8 text-center text-sm text-ink-soft">Nenhuma receita encontrada com esses filtros.</p>
           ) : (
             <div className="grid gap-5 sm:grid-cols-2">
-              {list.map((r) => (
-                <RecipeCard key={r.id} recipe={r} planned={menu.some((m) => m.title === r.title)} onAdd={addToMenu} />
+              {list.map((r, i) => (
+                <Reveal key={r.id} delay={(i % 2) * 0.1}>
+                  <RecipeCard recipe={r} planned={menu.some((m) => m.title === r.title)} onAdd={addToMenu} />
+                </Reveal>
               ))}
             </div>
           )}
@@ -232,15 +258,19 @@ export default function Home() {
         </aside>
       </div>
 
-      <section id="comunidade" className="flex flex-wrap items-center justify-between gap-4 rounded-[2rem] bg-terra p-8 text-white md:p-10">
-        <div>
-          <h2 className="text-2xl font-bold md:text-3xl">Chefs, nutricionistas e restaurantes</h2>
-          <p className="mt-1 text-sm text-white/80">Conheça os perfis cadastrados ou crie o seu.</p>
-        </div>
-        <Link to="/profissionais" className="inline-flex items-center gap-2 rounded-full bg-white px-6 py-3 text-sm font-semibold text-terra transition duration-200 hover:-translate-y-0.5 hover:shadow-lift">
-          Ver diretório <ArrowRight size={16} />
-        </Link>
-      </section>
+      <Reveal>
+        <section id="comunidade" className="grain relative overflow-hidden rounded-[2.25rem] bg-terra p-8 sm:p-14">
+          <h2 className="max-w-3xl font-display text-[clamp(2.25rem,7vw,5.5rem)] font-extrabold uppercase leading-[0.95] tracking-tight text-on-accent">
+            Quem cozinha por trás da receita
+          </h2>
+          <div className="mt-8 flex flex-wrap items-center justify-between gap-4">
+            <p className="max-w-sm text-sm font-semibold text-on-accent/80">Conheça chefs, nutricionistas e restaurantes cadastrados, ou crie o seu perfil.</p>
+            <Link to="/profissionais" className="inline-flex items-center gap-2 rounded-full bg-black px-7 py-3.5 text-sm font-bold text-white transition duration-300 hover:-translate-y-0.5 hover:shadow-lift">
+              Ver diretório <ArrowRight size={16} />
+            </Link>
+          </div>
+        </section>
+      </Reveal>
     </div>
   )
 }
