@@ -98,20 +98,6 @@ export default function Home() {
         </div>
       </section>
 
-      <div className="-mx-4 overflow-hidden sm:mx-0 sm:rounded-full" aria-hidden>
-        <div className="-rotate-1 scale-105 bg-terra py-3.5">
-          <div className="marquee flex w-max gap-10 whitespace-nowrap font-display text-lg font-extrabold uppercase tracking-tight text-on-accent">
-            {Array.from({ length: 2 }).map((_, k) => (
-              <div key={k} className="flex gap-10">
-                {['Receitas', 'Chefs', 'Restaurantes', 'Nutricionistas', 'Passo a passo', 'Geladeira'].map((w) => (
-                  <span key={w} className="flex items-center gap-10">{w} <span className="opacity-60">✦</span></span>
-                ))}
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
       <Reveal><section id="geladeira" className="card scroll-mt-24 space-y-5 p-5 md:p-8">
         <div role="tablist" className="inline-flex rounded-full border border-line bg-cream p-1 text-sm font-semibold">
           {(['geladeira', 'prato'] as const).map((t) => (
