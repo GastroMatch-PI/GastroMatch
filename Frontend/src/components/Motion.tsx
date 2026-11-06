@@ -1,5 +1,5 @@
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
-import { useEffect, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Routes, useLocation } from 'react-router-dom'
 
 const ease = [0.16, 1, 0.3, 1] as const
@@ -9,8 +9,12 @@ export function PageTransition({ children }: { children: ReactNode }) {
   const location = useLocation()
   const { pathname } = location
   const reduce = useReducedMotion()
+  const prev = useRef(pathname)
+  const [moved, setMoved] = useState(false)
 
   useEffect(() => {
+    if (prev.current !== pathname) setMoved(true)
+    prev.current = pathname
     if (!location.hash) window.scrollTo({ top: 0 })
   }, [pathname, location.hash])
 
@@ -27,7 +31,7 @@ export function PageTransition({ children }: { children: ReactNode }) {
           <Routes location={location}>{children}</Routes>
         </motion.div>
       </AnimatePresence>
-      {!reduce && (
+      {!reduce && moved && (
         <motion.div
           key={`curtain-${pathname}`}
           aria-hidden
@@ -47,7 +51,7 @@ export function Reveal({ children, delay = 0, className = '', y = 40 }: { childr
   const reduce = useReducedMotion()
   return (
     <motion.div
-      className={className}
+      className={`h-full ${className}`}
       initial={reduce ? false : { opacity: 0, y }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: '0px 0px -80px 0px' }}

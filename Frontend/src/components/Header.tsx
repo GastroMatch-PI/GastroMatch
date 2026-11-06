@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
 import {
-  BadgeCheck, ChefHat, Heart, Home, LogIn, LogOut, Menu, PlusCircle, Refrigerator, Search, ShieldCheck, UserPlus, UserRound, Users, Utensils, X,
+  BadgeCheck, ChefHat, Heart, Home, LogIn, LogOut, Menu, PlusCircle, Refrigerator, Search, ShieldCheck, UserPlus, UserRound, Users, X,
 } from 'lucide-react'
 import { useAuth } from '../context/Auth'
 
@@ -47,8 +47,7 @@ export default function Header() {
     <>
       <header className="sticky top-0 z-30 border-b border-line/60 bg-cream/70 backdrop-blur-xl">
         <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-3">
-          <Link to="/" className="flex items-center gap-2 font-display text-xl font-extrabold tracking-tight text-terra">
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-terra text-on-accent"><Utensils size={18} /></span>
+          <Link to="/" className="flex items-center gap-2 font-display text-2xl font-extrabold tracking-tight text-terra">
             <span className="hidden min-[380px]:inline">GastroMatch</span>
           </Link>
 
@@ -103,7 +102,6 @@ export default function Header() {
       >
         <div className="flex items-center justify-between">
           <span className="flex items-center gap-2 font-display text-lg font-extrabold text-terra">
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-terra text-on-accent"><Utensils size={18} /></span>
             GastroMatch
           </span>
           <button ref={closeRef} onClick={() => setOpen(false)} aria-label="Fechar menu" className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full border border-line bg-surface hover:bg-peach">
