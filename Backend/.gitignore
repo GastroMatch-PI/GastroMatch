@@ -34,3 +34,6 @@ build/
 
 ### Segredos locais (nunca commitar) ###
 .env
+
+### Imagens enviadas pelos usuarios ###
+uploads/
