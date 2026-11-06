@@ -98,7 +98,7 @@ Erros seguem sempre o formato `{ "status": 400, "mensagem": "...", "erros": { "c
 |---|---|
 | `POST /chefs`, `GET /chefs/me`, `PUT /chefs/me` | Cria / consulta / edita o perfil de chef da conta (`bio` e `especializacao`; o `PUT` troca os dois, e bio em branco vira vazia). Uma conta tem no máximo um perfil profissional, de chef, nutricionista **ou** restaurante |
 | `POST /nutricionistas`, `GET /nutricionistas/me` | Cria / consulta o perfil de nutricionista (`crn` obrigatório). Não há aprovação: nasce `APROVADO` e já aparece no diretório. O `GET /me` mostra o `statusVerificacao` |
-| `POST /restaurantes`, `GET /restaurantes/me` | Cria / consulta o restaurante (`nome` e `cnpj` obrigatórios; o CNPJ é conferido e guardado como `00.000.000/0000-00`). `latitude` e `longitude` são opcionais, mas vêm **juntas** |
+| `POST /restaurantes`, `GET /restaurantes/me`, `PUT /restaurantes/me` | Cria / consulta / edita o restaurante (`nome` e `cnpj` obrigatórios; o CNPJ é conferido e guardado como `00.000.000/0000-00`). `latitude` e `longitude` são opcionais, mas vêm **juntas**. O `PUT` troca todos os campos (o que não for enviado fica vazio) e dá `409` se o CNPJ for de outro restaurante |
 | `POST /receitas`, `PUT /receitas/{id}`, `DELETE /receitas/{id}` | Só chef, e só o chef **dono** edita ou apaga. O `PUT` troca os dados e a lista de ingredientes |
 | `POST /receitas/{id}/etapas`, `PUT`/`DELETE /receitas/{id}/etapas/{idEtapa}` | Etapas (sem `ordem`, entra no fim) |
 | `POST /receitas/{id}/etapas/{idEtapa}/dicas`, `PUT`/`DELETE .../dicas/{idDica}` | Dicas e erros comuns da etapa |
