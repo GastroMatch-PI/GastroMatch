@@ -59,10 +59,10 @@ export default function Portal() {
           </section>
 
           <section className="card space-y-5 p-5 md:p-6">
-            <div role="tablist" className="flex flex-wrap gap-1 rounded-xl border border-line bg-cream p-1 text-xs font-semibold">
+            <div role="tablist" className="flex flex-wrap gap-1 rounded-full border border-line bg-cream p-1 text-xs font-semibold">
               {tabs.map((t) => (
                 <button key={t} role="tab" aria-selected={tab === t} onClick={() => setTab(t)}
-                  className={`rounded-lg px-3 py-2 ${tab === t ? 'bg-white text-terra shadow-sm' : 'text-ink-soft'}`}>
+                  className={`cursor-pointer rounded-full px-4 py-2 transition duration-200 ${tab === t ? 'bg-terra text-white shadow-soft' : 'text-ink-soft hover:text-terra'}`}>
                   {t}
                 </button>
               ))}
@@ -71,7 +71,7 @@ export default function Portal() {
             {tab === 'Perfil Público' && (
               <div className="grid gap-5 md:grid-cols-[220px_1fr]">
                 <div className="rounded-xl border border-line bg-peach p-4 text-center">
-                  <Avatar emoji={perfil.papel === 'NUTRICIONISTA' ? '🥗' : perfil.papel === 'RESTAURANTE' ? '🍽' : '👨‍🍳'} className="mx-auto h-20 w-20 text-4xl" />
+                  <Avatar className="mx-auto h-20 w-20" />
                   <p className="mt-2 font-display text-lg font-bold">{draft.nome}</p>
                   <p className="text-[11px] font-semibold text-terra">{nomes[perfil.papel]}</p>
                   {perfil.crn && <p className="mt-2 text-[11px] text-ink-soft">CRN {perfil.crn}</p>}
@@ -99,7 +99,7 @@ export default function Portal() {
                   </div>
                   <p className="text-[11px] text-ink-faint">Os contatos viram links externos no diretório. Não há mensagens nem agendamento na plataforma.</p>
                   <div className="flex items-center justify-end gap-3">
-                    {saved && <span className="text-xs font-semibold text-leaf">✓ Salvo</span>}
+                    {saved && <span className="text-xs font-semibold text-leaf">Salvo</span>}
                     <button className="btn-primary" onClick={() => {
                       setPerfis((l) => l.map((p) => (p.userId === perfil.userId && p.papel === perfil.papel ? { ...p, ...draft } : p)))
                       setSaved(true)
