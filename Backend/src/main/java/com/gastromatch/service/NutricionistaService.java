@@ -56,12 +56,31 @@ public class NutricionistaService {
     /** Perfil da própria pessoa, mesmo que a equipe a tenha escondido do diretório. */
     @Transactional(readOnly = true)
     public NutricionistaResponse meuPerfil(Integer usuarioId) {
+        return NutricionistaResponse.de(nutricionistaDoUsuario(usuarioId));
+    }
+
+    /**
+     * Troca bio e CRN do perfil da conta logada. O status de verificação não é tocado: continua
+     * só nas mãos da equipe. O CRN novo não pode ser de outra pessoa; manter o mesmo é permitido.
+     */
+    @Transactional
+    public NutricionistaResponse atualizarPerfil(Integer usuarioId, CadastroNutricionistaRequest request) {
+        Nutricionista nutricionista = nutricionistaDoUsuario(usuarioId);
+        String crn = Documentos.normalizarCrn(request.crn());
+        if (!crn.equals(nutricionista.getCrn()) && nutricionistaRepository.existsByCrn(crn)) {
+            throw new ConflitoException("CRN já cadastrado");
+        }
+        nutricionista.setCrn(crn);
+        nutricionista.getProfissional().setBio(VinculoProfissional.textoOuNulo(request.bio()));
+        return NutricionistaResponse.de(nutricionista);
+    }
+
+    private Nutricionista nutricionistaDoUsuario(Integer usuarioId) {
         Usuario usuario = usuarioRepository.findById(usuarioId).orElseThrow(UsuarioNaoEncontradoException::new);
         if (usuario.getIdProfissional() == null) {
             throw new RecursoNaoEncontradoException(SEM_PERFIL);
         }
         return nutricionistaRepository.findByProfissionalId(usuario.getIdProfissional())
-                .map(NutricionistaResponse::de)
                 .orElseThrow(() -> new RecursoNaoEncontradoException(SEM_PERFIL));
     }
 

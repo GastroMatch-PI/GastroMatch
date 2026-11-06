@@ -58,6 +58,10 @@ public class Nutricionista extends EntidadeComDatas {
         return crn;
     }
 
+    public void setCrn(String crn) {
+        this.crn = crn;
+    }
+
     public Profissional getProfissional() {
         return profissional;
     }
