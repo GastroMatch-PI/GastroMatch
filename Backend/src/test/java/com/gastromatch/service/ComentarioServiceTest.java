@@ -54,7 +54,7 @@ class ComentarioServiceTest {
         when(comentarioRepository.findById(1)).thenReturn(Optional.of(comentario));
 
         assertThrows(AcessoNegadoException.class,
-                () -> service.atualizar(OUTRA_PESSOA, 1, new ComentarioRequest("Troquei", 1f)));
+                () -> service.atualizar(OUTRA_PESSOA, 1, new ComentarioRequest("Troquei", 1f, null)));
         verify(comentarioRepository, never()).save(any());
     }
 
@@ -87,7 +87,7 @@ class ComentarioServiceTest {
         when(receitaRepository.findById(9)).thenReturn(Optional.empty());
 
         assertThrows(ReceitaNaoEncontradaException.class,
-                () -> service.criar(AUTOR, 9, new ComentarioRequest("Oi", null)));
+                () -> service.criar(AUTOR, 9, new ComentarioRequest("Oi", null, null)));
         verify(comentarioRepository, never()).save(any());
     }
 }

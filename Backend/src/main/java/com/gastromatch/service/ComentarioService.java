@@ -51,9 +51,9 @@ public class ComentarioService {
         var receita = receitaRepository.findById(idReceita).orElseThrow(ReceitaNaoEncontradaException::new);
         var usuario = usuarioRepository.findById(usuarioId).orElseThrow(UsuarioNaoEncontradoException::new);
 
-        Comentario comentario = comentarioRepository.save(
-                new Comentario(receita, usuario, request.texto().trim(), request.nota()));
-        return comRegistroDoBanco(comentario);
+        Comentario novo = new Comentario(receita, usuario, request.texto().trim(), request.nota());
+        novo.setFoto(fotoOuNulo(request.foto()));
+        return comRegistroDoBanco(comentarioRepository.save(novo));
     }
 
     @Transactional
@@ -61,7 +61,13 @@ public class ComentarioService {
         Comentario comentario = comentarioDoAutor(usuarioId, idComentario);
         comentario.setTexto(request.texto().trim());
         comentario.setNota(request.nota());
+        comentario.setFoto(fotoOuNulo(request.foto()));
         return comRegistroDoBanco(comentarioRepository.save(comentario));
+    }
+
+    // Foto em branco vira "sem foto".
+    private static String fotoOuNulo(String foto) {
+        return (foto == null || foto.isBlank()) ? null : foto.trim();
     }
 
     @Transactional
