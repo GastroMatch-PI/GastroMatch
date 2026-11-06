@@ -29,19 +29,19 @@ export default function RecipeCard({
             {recipe.image && <img src={recipe.image} alt="" className="absolute inset-0 h-full w-full object-cover" />}
           </Photo>
         </Link>
-        <span className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full bg-white/95 px-3 py-1 text-xs font-semibold shadow-soft">
+        <span className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full bg-black/60 text-white backdrop-blur px-3 py-1 text-xs font-semibold shadow-soft">
           <Clock size={13} /> {recipe.minutes} min
         </span>
         <button
           onClick={() => (usuario ? toggle(recipe.id) : nav('/login'))}
           aria-pressed={saved}
           aria-label={saved ? 'Remover dos favoritos' : 'Favoritar receita'}
-          className="absolute right-3 top-3 flex h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-white/95 shadow-soft transition duration-200 hover:scale-110"
+          className="absolute right-3 top-3 flex h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-black/60 text-white backdrop-blur shadow-soft transition duration-200 hover:scale-110"
         >
           <Heart size={17} className={saved ? 'fill-terra text-terra' : 'text-ink-soft'} />
         </button>
         {match !== undefined && (
-          <span className="absolute bottom-3 left-3 rounded-full bg-leaf px-3 py-1 text-xs font-semibold text-white shadow-soft">
+          <span className="absolute bottom-3 left-3 rounded-full bg-leaf px-3 py-1 text-xs font-semibold text-on-accent shadow-soft">
             {match}% na geladeira
           </span>
         )}

@@ -78,8 +78,9 @@ export default function Directory() {
       <section className="grid gap-4 lg:grid-cols-2">
         {list.map((p) => (
           <article key={p.id} className="card overflow-hidden">
-            <Photo emoji={p.emoji} seed={p.seed} className="h-32 w-full">
-              {p.demo && <span className="absolute right-3 top-3 rounded-full bg-white/90 px-2.5 py-1 text-xs font-semibold text-gold">Demonstração</span>}
+            <Photo emoji={p.emoji} seed={p.seed} className="h-44 w-full">
+              {p.image && <img src={p.image} alt="" className="absolute inset-0 h-full w-full object-cover" />}
+              {p.demo && <span className="absolute right-3 top-3 rounded-full bg-surface/90 px-2.5 py-1 text-xs font-semibold text-gold">Demonstração</span>}
             </Photo>
             <div className="space-y-3 p-5">
               <div>

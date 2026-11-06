@@ -1,6 +1,7 @@
-import { Route, Routes } from 'react-router-dom'
+import { Route } from 'react-router-dom'
 import Footer from './components/Footer'
 import Header from './components/Header'
+import { PageTransition } from './components/Motion'
 import Directory from './pages/Directory'
 import Home from './pages/Home'
 import Portal from './pages/Portal'
@@ -17,8 +18,8 @@ export default function App() {
   return (
     <div className="flex min-h-screen flex-col">
       <Header />
-      <main className="mx-auto w-full max-w-6xl flex-1 px-4 pb-16 pt-6">
-        <Routes>
+      <main className="mx-auto w-full max-w-6xl flex-1 px-4 pb-20 pt-6">
+        <PageTransition>
           <Route path="/" element={<Home />} />
           <Route path="/profissionais" element={<Directory />} />
           <Route path="/portal" element={<Portal />} />
@@ -31,7 +32,7 @@ export default function App() {
           <Route path="/conta" element={<Conta />} />
           <Route path="/admin" element={<Admin />} />
           <Route path="*" element={<Home />} />
-        </Routes>
+        </PageTransition>
       </main>
       <Footer />
     </div>

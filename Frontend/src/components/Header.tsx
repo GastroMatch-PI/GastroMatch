@@ -41,24 +41,14 @@ export default function Header() {
     nav(q.trim() ? `/?q=${encodeURIComponent(q.trim())}` : '/')
   }
 
-  const item = 'flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium text-ink-soft transition duration-200 hover:bg-peach hover:text-terra'
+  const item = 'flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-ink-soft transition duration-200 hover:bg-peach hover:text-terra'
 
   return (
     <>
-      <header className="sticky top-0 z-30 border-b border-line/70 bg-cream/85 backdrop-blur-xl">
+      <header className="sticky top-0 z-30 border-b border-line/60 bg-cream/70 backdrop-blur-xl">
         <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-3">
-          <button
-            ref={btnRef}
-            onClick={() => setOpen(true)}
-            aria-label="Abrir menu"
-            aria-expanded={open}
-            aria-controls="menu-lateral"
-            className="flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-full border border-line bg-white text-ink shadow-soft transition duration-200 hover:bg-peach hover:text-terra"
-          >
-            <Menu size={20} />
-          </button>
           <Link to="/" className="flex items-center gap-2 font-display text-xl font-extrabold tracking-tight text-terra">
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-terra text-white"><Utensils size={18} /></span>
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-terra text-on-accent"><Utensils size={18} /></span>
             <span className="hidden min-[380px]:inline">GastroMatch</span>
           </Link>
 
@@ -82,15 +72,25 @@ export default function Header() {
             ) : (
               <Link to="/login" className="btn-ghost !px-4 !py-2">Entrar</Link>
             )}
-            <Link to="/portal" className="btn-primary hidden !px-4 !py-2 md:inline-flex">
+            <Link to="/portal" className="btn-ghost hidden !px-4 !py-2 md:inline-flex">
               <ChefHat size={16} /> Sou profissional
             </Link>
+            <button
+            ref={btnRef}
+            onClick={() => setOpen(true)}
+            aria-label="Abrir menu"
+            aria-expanded={open}
+            aria-controls="menu-lateral"
+            className="flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-full bg-terra text-on-accent shadow-soft transition duration-300 hover:scale-105 hover:shadow-lift"
+          >
+            <Menu size={20} />
+          </button>
           </div>
         </div>
       </header>
 
       <div
-        className={`fixed inset-0 z-40 bg-ink/40 backdrop-blur-sm transition-opacity duration-300 ${open ? 'opacity-100' : 'pointer-events-none opacity-0'}`}
+        className={`fixed inset-0 z-40 bg-black/70 backdrop-blur-sm transition-opacity duration-300 ${open ? 'opacity-100' : 'pointer-events-none opacity-0'}`}
         onClick={() => setOpen(false)}
         aria-hidden
       />
@@ -99,14 +99,14 @@ export default function Header() {
         aria-label="Menu principal"
         aria-hidden={!open}
         inert={!open}
-        className={`fixed inset-y-0 left-0 z-50 flex w-[86%] max-w-sm flex-col gap-6 overflow-y-auto bg-cream p-5 shadow-lift transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${open ? 'translate-x-0' : '-translate-x-full'}`}
+        className={`fixed inset-y-0 right-0 z-50 flex w-[88%] max-w-sm flex-col gap-6 overflow-y-auto border-l border-line bg-surface p-5 shadow-lift transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${open ? 'translate-x-0' : 'translate-x-full'}`}
       >
         <div className="flex items-center justify-between">
           <span className="flex items-center gap-2 font-display text-lg font-extrabold text-terra">
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-terra text-white"><Utensils size={18} /></span>
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-terra text-on-accent"><Utensils size={18} /></span>
             GastroMatch
           </span>
-          <button ref={closeRef} onClick={() => setOpen(false)} aria-label="Fechar menu" className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full border border-line bg-white hover:bg-peach">
+          <button ref={closeRef} onClick={() => setOpen(false)} aria-label="Fechar menu" className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full border border-line bg-surface hover:bg-peach">
             <X size={18} />
           </button>
         </div>
