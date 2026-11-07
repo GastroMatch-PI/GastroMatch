@@ -1,98 +1,74 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, type ReactNode } from 'react'
 import { useLocalState } from '../hooks/useLocalState'
-import { cadastroApi, loginApi, logoutApi, refreshApi, type AuthDto, type UsuarioDto } from '../api/auth'
-import type { PerfilPro } from '../lib/tipos'
-
-const REFRESH_KEY = 'gm-refresh-token'
+import { hash, type Conta, type PerfilPro } from '../lib/tipos'
 
 type Ctx = {
-  usuario: UsuarioDto | null
-  accessToken: string | null
-  carregando: boolean
+  usuario: Conta | null
   perfis: PerfilPro[]
   meusPerfis: PerfilPro[]
   setPerfis: (f: (p: PerfilPro[]) => PerfilPro[]) => void
   entrar: (email: string, password: string) => Promise<void>
   cadastrar: (email: string, username: string, password: string) => Promise<void>
   sair: () => void
+  atualizarConta: (dados: { username?: string; capa?: string }) => void
+  trocarSenha: (atual: string, nova: string) => Promise<void>
 }
 const AuthCtx = createContext<Ctx | null>(null)
 
+// Contas ficam só neste navegador (demonstração, sem servidor).
 export function AuthProvider({ children }: { children: ReactNode }) {
-  // Perfis profissionais continuam locais até a etapa de onboarding ser integrada
+  const [contas, setContas] = useLocalState<Conta[]>('gm-contas', [])
+  const [sessao, setSessao] = useLocalState<string | null>('gm-sessao', null)
   const [perfis, setPerfis] = useLocalState<PerfilPro[]>('gm-perfis', [])
 
-  const [usuario, setUsuario] = useState<UsuarioDto | null>(null)
-  const [accessToken, setAccessToken] = useState<string | null>(null)
-  const [carregando, setCarregando] = useState(true)
-  const iniciado = useRef(false) // evita dupla chamada de refresh no StrictMode
-
-  const guardarSessao = useCallback((s: AuthDto) => {
-    setAccessToken(s.accessToken)
-    setUsuario(s.usuario)
-    localStorage.setItem(REFRESH_KEY, s.refreshToken) // o refresh é rotacionado a cada uso
-  }, [])
-
-  const limparSessao = useCallback(() => {
-    localStorage.removeItem(REFRESH_KEY)
-    setAccessToken(null)
-    setUsuario(null)
-  }, [])
-
-  // Restaura a sessão ao abrir o site e remove as contas de demonstração antigas
-  useEffect(() => {
-    localStorage.removeItem('gm-contas')
-    localStorage.removeItem('gm-sessao')
-    if (iniciado.current) return
-    iniciado.current = true
-
-    const rt = localStorage.getItem(REFRESH_KEY)
-    if (!rt) {
-      setCarregando(false)
-      return
-    }
-    refreshApi(rt)
-      .then((s) => {
-        if (s) guardarSessao(s)
-      })
-      .catch(limparSessao)
-      .finally(() => setCarregando(false))
-  }, [guardarSessao, limparSessao])
+  const usuario = contas.find((c) => c.id === sessao) ?? null
 
   const entrar = useCallback(
     async (email: string, password: string) => {
-      const s = await loginApi(email, password)
-      if (s) guardarSessao(s)
+      const h = await hash(password)
+      const c = contas.find((x) => x.email.toLowerCase() === email.toLowerCase() && x.hash === h)
+      if (!c) throw new Error('Email ou senha inválidos.')
+      setSessao(c.id)
     },
-    [guardarSessao],
+    [contas, setSessao],
   )
 
   const cadastrar = useCallback(
     async (email: string, username: string, password: string) => {
-      await cadastroApi(email, username, password)
-      await entrar(email, password) // o cadastro não devolve tokens, então entra em seguida
+      if (contas.some((c) => c.email.toLowerCase() === email.toLowerCase())) throw new Error('Email já cadastrado.')
+      if (contas.some((c) => c.username.toLowerCase() === username.toLowerCase())) throw new Error('Username já cadastrado.')
+      // A primeira conta criada neste navegador é a administradora (demonstração, sem servidor).
+      const c: Conta = { id: String(Date.now()), email, username, hash: await hash(password), admin: contas.length === 0 }
+      setContas((l) => [...l, c])
+      setSessao(c.id)
     },
-    [entrar],
+    [contas, setContas, setSessao],
   )
 
-  const sair = useCallback(() => {
-    const rt = localStorage.getItem(REFRESH_KEY)
-    if (rt) logoutApi(rt).catch(() => {}) // limpa localmente mesmo se a API falhar
-    limparSessao()
-  }, [limparSessao])
+  const sair = useCallback(() => setSessao(null), [setSessao])
 
-  // Ponte temporária: PerfilPro.userId é string, usuario.id é number vindo da API
-  const meusPerfis = useMemo(
-    () => (usuario ? perfis.filter((p) => p.userId === String(usuario.id)) : []),
-    [perfis, usuario],
+  const atualizarConta = useCallback(
+    (dados: { username?: string; capa?: string }) => setContas((l) => l.map((c) => (c.id === sessao ? { ...c, ...dados } : c))),
+    [sessao, setContas],
   )
 
-  const value = useMemo(
-    () => ({ usuario, accessToken, carregando, perfis, meusPerfis, setPerfis, entrar, cadastrar, sair }),
-    [usuario, accessToken, carregando, perfis, meusPerfis, setPerfis, entrar, cadastrar, sair],
+  const trocarSenha = useCallback(
+    async (atual: string, nova: string) => {
+      const c = contas.find((x) => x.id === sessao)
+      if (!c || c.hash !== (await hash(atual))) throw new Error('Não foi possível trocar a senha. Confira os dados.')
+      const h = await hash(nova)
+      setContas((l) => l.map((x) => (x.id === c.id ? { ...x, hash: h } : x)))
+    },
+    [contas, sessao, setContas],
   )
 
-  return <AuthCtx.Provider value={value}>{children}</AuthCtx.Provider>
+  const meusPerfis = perfis.filter((p) => p.userId === usuario?.id)
+
+  return (
+    <AuthCtx.Provider value={{ usuario, perfis, meusPerfis, setPerfis, entrar, cadastrar, sair, atualizarConta, trocarSenha }}>
+      {children}
+    </AuthCtx.Provider>
+  )
 }
 
 export function useAuth() {
