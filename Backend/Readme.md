@@ -112,6 +112,8 @@ Vídeo da receita (`videoUrl`): só link do YouTube (`youtube.com/watch?v=ID`, `
 
 Com o profile `dev`, o Swagger lista tudo em http://localhost:8080/swagger-ui.html.
 
+Um job diário (`LimpezaTokensExpiradosJob`, `@Scheduled`) apaga os refresh tokens expirados há mais de 7 dias, em lotes; dá para desligar ou ajustar por variável de ambiente (`APP_CLEANUP_ENABLED`, `APP_CLEANUP_RETENCAO_DIAS`, `APP_CLEANUP_CRON` — veja `SETUP-BANCO.md`).
+
 ---
 
 ## 4. Package by Layer vs. Package by Feature
