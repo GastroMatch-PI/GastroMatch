@@ -54,6 +54,10 @@ public class SecurityConfig {
                 .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                 // Namespace administrativo (B35): só quem tem ROLE_ADMIN (ver JwtAuthFilter).
                 .requestMatchers("/admin/**").hasRole("ADMIN")
+                // Catálogo de ingredientes (B39): o GET já é público acima; escrever é só ADMIN.
+                .requestMatchers(HttpMethod.POST, "/ingredientes").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.PUT, "/ingredientes/*").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.DELETE, "/ingredientes/*").hasRole("ADMIN")
                 .anyRequest().authenticated())
             // Sem isso o padrão seria 403 para quem não enviou token. O correto é 401.
             .exceptionHandling(e -> e.authenticationEntryPoint((req, res, ex) -> {

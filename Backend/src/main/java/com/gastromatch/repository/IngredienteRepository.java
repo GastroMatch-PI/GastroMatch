@@ -20,4 +20,13 @@ public interface IngredienteRepository extends JpaRepository<Ingrediente, Intege
     default List<Ingrediente> buscarPorNome(String nome) {
         return buscarPorPadraoDeNome(BuscaTexto.padraoContem(nome));
     }
+
+    /**
+     * Já existe outro ingrediente com esse nome, ignorando maiúscula e acento? idExcluido é o
+     * próprio ingrediente ao editar (não deve colidir com ele mesmo); null ao criar.
+     */
+    @Query("select count(i) > 0 from Ingrediente i "
+            + "where function('unaccent', lower(i.nome)) = function('unaccent', lower(:nome)) "
+            + "and (:idExcluido is null or i.id <> :idExcluido)")
+    boolean existeOutroComMesmoNome(@Param("nome") String nome, @Param("idExcluido") Integer idExcluido);
 }
