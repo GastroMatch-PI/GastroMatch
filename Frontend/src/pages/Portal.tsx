@@ -1,147 +1,126 @@
-import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { Aviso, Campo, Opcoes } from '../components/Campo'
+import { useToast } from '../components/Feedback'
 import { Avatar } from '../components/Photo'
 import Protegida from '../components/Protegida'
+import { Carregando, EstadoVazio } from '../components/Ui'
 import { useAuth } from '../context/Auth'
-import { pros } from '../data/data'
-import { useRecipes } from '../lib/useRecipes'
-import type { Papel } from '../lib/tipos'
+import { ENUMS } from '../data/enums'
+import { errosDeCampo, mensagem, put } from '../lib/api'
+import type { PerfilProfissional } from '../lib/apiTipos'
+import { mascaraCNPJ, mascaraCRN } from '../lib/mascaras'
 import { useSeo } from '../lib/seo'
+import { useForm } from '../lib/useForm'
+import { obrigatorio, tamanho } from '../lib/validar'
+import { useState } from 'react'
+import type { Pagina, RestauranteResumo } from '../lib/apiTipos'
+import { useApi } from '../lib/useApi'
 
-const tabs = ['Perfil Público', 'Minhas Receitas', 'Kits Ilustrativos'] as const
-const nomes: Record<Papel, string> = { CHEF: 'Chef', NUTRICIONISTA: 'Nutricionista', RESTAURANTE: 'Restaurante' }
-const statusTxt = {
-  PENDENTE: 'Em análise: verificação manual pendente. Seu perfil não aparece no diretório até a aprovação.',
-  APROVADO: 'Perfil aprovado e visível no diretório.',
-  REJEITADO: 'Perfil reprovado na verificação.',
+const nomes = { CHEF: 'Chef', NUTRICIONISTA: 'Nutricionista', RESTAURANTE: 'Restaurante' }
+
+function Formulario({ perfil }: { perfil: PerfilProfissional }) {
+  const { recarregarPerfil } = useAuth()
+  const toast = useToast()
+  const [erro, setErro] = useState('')
+  const d = perfil.dados
+  const restaurantes = useApi<Pagina<RestauranteResumo>>(perfil.papel === 'CHEF' ? '/restaurantes?tamanho=50' : null)
+  const f = useForm(
+    {
+      bio: ('bio' in d && d.bio) || '',
+      especializacao: perfil.papel === 'CHEF' ? (perfil.dados.especializacao ?? '') : '',
+      restaurante: perfil.papel === 'CHEF' ? String(perfil.dados.idRestaurante ?? '') : '',
+      crn: perfil.papel === 'NUTRICIONISTA' ? perfil.dados.crn : '',
+      nome: perfil.papel === 'RESTAURANTE' ? perfil.dados.nome : '',
+      numero: perfil.papel === 'RESTAURANTE' ? String(perfil.dados.numero ?? '') : '',
+      rua: perfil.papel === 'RESTAURANTE' ? (perfil.dados.rua ?? '') : '',
+      cep: perfil.papel === 'RESTAURANTE' ? (perfil.dados.cep ?? '') : '',
+      bairro: perfil.papel === 'RESTAURANTE' ? (perfil.dados.bairro ?? '') : '',
+      cidade: perfil.papel === 'RESTAURANTE' ? (perfil.dados.cidade ?? '') : '',
+      estado: perfil.papel === 'RESTAURANTE' ? (perfil.dados.estado ?? '') : '',
+    },
+    { bio: [tamanho(0, 500)], ...(perfil.papel === 'NUTRICIONISTA' ? { crn: [obrigatorio('Informe o CRN'), tamanho(1, 20)] } : {}), ...(perfil.papel === 'RESTAURANTE' ? { nome: [obrigatorio('Informe o nome')] } : {}) },
+  )
+
+  const salvar = f.enviar(async (v) => {
+    setErro('')
+    // O PUT troca todos os campos: o que não for enviado fica vazio.
+    const corpo =
+      perfil.papel === 'CHEF' ? { bio: v.bio, especializacao: v.especializacao || undefined, idRestaurante: v.restaurante ? Number(v.restaurante) : undefined } // sem idRestaurante o chef sai do restaurante
+      
+      : perfil.papel === 'NUTRICIONISTA' ? { bio: v.bio, crn: v.crn }
+      : { nome: v.nome.trim(), bio: v.bio, cnpj: perfil.dados.cnpj, numero: v.numero ? Number(v.numero) : undefined, rua: v.rua, cep: v.cep || undefined, bairro: v.bairro, cidade: v.cidade, estado: v.estado, latitude: perfil.dados.latitude ?? undefined, longitude: perfil.dados.longitude ?? undefined }
+    try {
+      await put(perfil.papel === 'CHEF' ? '/chefs/me' : perfil.papel === 'NUTRICIONISTA' ? '/nutricionistas/me' : '/restaurantes/me', corpo)
+      await recarregarPerfil()
+      toast.sucesso('Perfil atualizado.')
+    } catch (e) {
+      f.setErros(errosDeCampo(e))
+      setErro(mensagem(e))
+    }
+  })
+
+  return (
+    <form onSubmit={salvar} noValidate className="space-y-4">
+      {erro && <Aviso tipo="erro">{erro}</Aviso>}
+      {perfil.papel === 'RESTAURANTE' && (
+        <>
+          <Campo label="Nome" erro={f.erros.nome}><input name="nome" className="input" maxLength={150} value={f.v.nome} onChange={f.onChange('nome')} /></Campo>
+          <Campo label="CNPJ" dica="O CNPJ não pode ser alterado aqui."><input className="input" value={mascaraCNPJ(perfil.dados.cnpj)} readOnly /></Campo>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Campo label="Rua"><input name="rua" className="input" value={f.v.rua} onChange={f.onChange('rua')} /></Campo>
+            <Campo label="Número" erro={f.erros.numero}><input name="numero" className="input" inputMode="numeric" value={f.v.numero} onChange={(e) => f.set('numero')(e.target.value.replace(/\D/g, ''))} /></Campo>
+            <Campo label="CEP" erro={f.erros.cep}><input name="cep" className="input" value={f.v.cep} onChange={f.onChange('cep')} /></Campo>
+            <Campo label="Bairro"><input name="bairro" className="input" value={f.v.bairro} onChange={f.onChange('bairro')} /></Campo>
+            <Campo label="Cidade"><input name="cidade" className="input" value={f.v.cidade} onChange={f.onChange('cidade')} /></Campo>
+            <Campo label="Estado"><input name="estado" className="input" value={f.v.estado} onChange={f.onChange('estado')} /></Campo>
+          </div>
+        </>
+      )}
+      {perfil.papel === 'NUTRICIONISTA' && (
+        <Campo label="CRN" erro={f.erros.crn}><input name="crn" className="input" maxLength={20} value={f.v.crn} onChange={(e) => f.set('crn')(mascaraCRN(e.target.value))} /></Campo>
+      )}
+      {perfil.papel === 'CHEF' && (
+        <>
+          <Campo label="Especialização" erro={f.erros.especializacao}>
+            <select name="especializacao" className="input" value={f.v.especializacao} onChange={f.onChange('especializacao')}><option value="">Selecione</option><Opcoes mapa={ENUMS.especializacao} /></select>
+          </Campo>
+          <Campo label="Restaurante onde trabalha" erro={f.erros.idRestaurante}>
+            <select name="restaurante" className="input" value={f.v.restaurante} onChange={f.onChange('restaurante')}>
+              <option value="">Nenhum</option>
+              {(restaurantes.dados?.conteudo ?? []).map((r) => <option key={r.id} value={r.id}>{r.nome}</option>)}
+            </select>
+          </Campo>
+        </>
+      )}
+      <Campo label="Bio (até 500)" erro={f.erros.bio} dica={`${f.v.bio.length} / 500`}><textarea name="bio" className="input" rows={4} maxLength={500} value={f.v.bio} onChange={f.onChange('bio')} /></Campo>
+      <button className="btn-primary">Salvar perfil</button>
+    </form>
+  )
 }
 
 export default function Portal() {
-  useSeo({ titulo: 'Portal profissional' })
-  const { usuario, meusPerfis, setPerfis } = useAuth()
-  const receitas = useRecipes()
-  const [tab, setTab] = useState<(typeof tabs)[number]>(tabs[0])
-  const [papel, setPapel] = useState<Papel | ''>('')
-  const perfil = meusPerfis.find((p) => p.papel === (papel || meusPerfis[0]?.papel))
-  const [draft, setDraft] = useState({ nome: '', bio: '', instagram: '', whatsapp: '' })
-  const [saved, setSaved] = useState(false)
-
-  useEffect(() => {
-    if (perfil) setDraft({ nome: perfil.nome, bio: perfil.bio, instagram: perfil.instagram ?? '', whatsapp: perfil.whatsapp ?? '' })
-  }, [perfil?.papel, perfil?.userId]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  const set = (k: keyof typeof draft) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    setSaved(false)
-    setDraft({ ...draft, [k]: e.target.value })
-  }
-
-  const minhas = receitas.filter((r) => r.owner === usuario?.id)
-
+  useSeo({ titulo: 'Meu perfil profissional' })
+  const { usuario, perfil, carregandoPerfil } = useAuth()
   return (
     <Protegida>
-      {!perfil ? (
-        <div className="card mx-auto max-w-md space-y-3 p-6 text-center">
-          <h1 className="text-xl font-bold">Você ainda não tem perfil profissional</h1>
-          <Link to="/onboarding" className="btn-primary">Criar perfil</Link>
-        </div>
+      {carregandoPerfil ? (
+        <Carregando texto="Carregando seu perfil" />
+      ) : !perfil ? (
+        <EstadoVazio titulo="Você ainda não tem perfil profissional" texto="Crie um perfil de chef, nutricionista ou restaurante." acao={{ to: '/onboarding', rotulo: 'Criar perfil' }} />
       ) : (
-        <div className="space-y-6">
-          <section className="flex flex-wrap items-center gap-4 rounded-2xl border border-line bg-peach p-4">
+        <div className="mx-auto max-w-2xl space-y-5">
+          <div className="card flex items-center gap-4 p-5">
+            <Avatar className="h-16 w-16" />
             <div className="min-w-0 flex-1">
-              <h1 className="font-display text-lg font-bold">
-                {nomes[perfil.papel]} · {perfil.status}
-              </h1>
-              <p className="text-xs text-ink-soft">{statusTxt[perfil.status]}</p>
+              <p className="text-xs font-semibold text-terra">{nomes[perfil.papel]}</p>
+              <h1 className="truncate font-display text-2xl font-extrabold">{perfil.papel === 'RESTAURANTE' ? perfil.dados.nome : usuario?.username}</h1>
+              <p className="text-xs text-ink-faint">Perfil ativo e visível nas listas públicas.</p>
             </div>
-            {meusPerfis.length > 1 && (
-              <select className="input !w-auto" value={perfil.papel} onChange={(e) => setPapel(e.target.value as Papel)}>
-                {meusPerfis.map((p) => <option key={p.papel} value={p.papel}>{nomes[p.papel]}</option>)}
-              </select>
-            )}
-          </section>
-
-          <section className="card space-y-5 p-5 md:p-6">
-            <div role="tablist" className="flex flex-wrap gap-1 rounded-full border border-line bg-cream p-1 text-xs font-semibold">
-              {tabs.map((t) => (
-                <button key={t} role="tab" aria-selected={tab === t} onClick={() => setTab(t)}
-                  className={`cursor-pointer rounded-full px-4 py-2 transition duration-200 ${tab === t ? 'bg-terra text-on-accent shadow-soft' : 'text-ink-soft hover:text-terra'}`}>
-                  {t}
-                </button>
-              ))}
-            </div>
-
-            {tab === 'Perfil Público' && (
-              <div className="grid gap-5 md:grid-cols-[220px_1fr]">
-                <div className="rounded-xl border border-line bg-peach p-4 text-center">
-                  <Avatar className="mx-auto h-20 w-20" />
-                  <p className="mt-2 font-display text-lg font-bold">{draft.nome}</p>
-                  <p className="text-[11px] font-semibold text-terra">{nomes[perfil.papel]}</p>
-                  {perfil.crn && <p className="mt-2 text-[11px] text-ink-soft">CRN {perfil.crn}</p>}
-                  {perfil.comprovante && <p className="mt-1 text-[11px] text-ink-faint">{perfil.comprovante}</p>}
-                </div>
-                <div className="space-y-4">
-                  <label className="block text-[11px] font-semibold">
-                    Nome de exibição
-                    <input className="input mt-1" value={draft.nome} onChange={set('nome')} />
-                  </label>
-                  <label className="block text-[11px] font-semibold">
-                    Biografia
-                    <textarea className="input mt-1 h-24 resize-y" maxLength={500} value={draft.bio} onChange={set('bio')} />
-                  </label>
-                  <p className="text-right text-[10px] text-ink-faint">{draft.bio.length} / 500</p>
-                  <div className="grid gap-3 md:grid-cols-2">
-                    <label className="text-[11px] font-semibold">
-                      Instagram
-                      <input className="input mt-1" placeholder="usuario" value={draft.instagram} onChange={set('instagram')} />
-                    </label>
-                    <label className="text-[11px] font-semibold">
-                      WhatsApp
-                      <input className="input mt-1" placeholder="(11) 98765-4321" value={draft.whatsapp} onChange={set('whatsapp')} />
-                    </label>
-                  </div>
-                  <p className="text-[11px] text-ink-faint">Os contatos viram links externos no diretório. Não há mensagens nem agendamento na plataforma.</p>
-                  <div className="flex items-center justify-end gap-3">
-                    {saved && <span className="text-xs font-semibold text-leaf">Salvo</span>}
-                    <button className="btn-primary" onClick={() => {
-                      setPerfis((l) => l.map((p) => (p.userId === perfil.userId && p.papel === perfil.papel ? { ...p, ...draft } : p)))
-                      setSaved(true)
-                    }}>Salvar perfil</button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {tab === 'Minhas Receitas' && (
-              <div className="space-y-3">
-                {perfil.papel === 'CHEF' ? (
-                  <Link to="/publicar" className="btn-primary">+ Publicar nova receita</Link>
-                ) : (
-                  <p className="text-sm text-ink-soft">Apenas chefs publicam receitas.</p>
-                )}
-                {minhas.length === 0 && <p className="text-sm text-ink-soft">Nenhuma receita publicada.</p>}
-                <ul className="divide-y divide-line">
-                  {minhas.map((r) => (
-                    <li key={r.id} className="py-2 text-sm"><Link className="font-semibold hover:text-terra" to={`/receita/${r.id}`}>{r.title}</Link></li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            {tab === 'Kits Ilustrativos' && (
-              <div className="space-y-3">
-                <p className="text-xs text-ink-soft">Kits são só ilustrativos: não há compra, reserva nem pagamento.</p>
-                <div className="grid gap-3 md:grid-cols-3">
-                  {pros.map((p) => (
-                    <div key={p.id} className="rounded-xl border border-line bg-peach/60 p-4 text-xs">
-                      <p className="font-bold uppercase text-gold">{p.kit.label}</p>
-                      <p className="mt-1 text-sm font-semibold">{p.kit.title}</p>
-                      <p className="text-terra">{p.kit.price}</p>
-                      <p className="text-ink-faint">{p.kit.detail}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+            {perfil.papel === 'CHEF' && <Link to="/publicar" className="btn-primary">Nova receita</Link>}
+          </div>
+          <section className="card space-y-4 p-5">
+            <h2 className="text-lg font-bold">Editar perfil</h2>
+            <Formulario key={perfil.papel} perfil={perfil} />
           </section>
         </div>
       )}

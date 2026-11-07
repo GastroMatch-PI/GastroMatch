@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
 import {
-  BadgeCheck, ChefHat, Heart, Home, LogIn, LogOut, Menu, PlusCircle, Refrigerator, Search, ShieldCheck, UserPlus, UserRound, Users, X,
+  BadgeCheck, ChefHat, Heart, Home, LogIn, LogOut, Menu, PlusCircle, Refrigerator, Search, UserPlus, UserRound, Users, X,
 } from 'lucide-react'
-import { Moon, Sun, Store, LayoutDashboard, BookOpen } from 'lucide-react'
+import { Moon, Sun, Store, BookOpen } from 'lucide-react'
 import { useAuth } from '../context/Auth'
 
 const main = [
@@ -18,16 +18,15 @@ const main = [
 export default function Header() {
   const { pathname } = useLocation()
   const nav = useNavigate()
-  const { usuario, meusPerfis, perfis, sair } = useAuth()
+  const { usuario, perfil, sair } = useAuth()
   const [tema, setTema] = useState(() => document.documentElement.dataset.theme ?? (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'))
-  const pendentes = usuario?.admin ? perfis.filter((p) => p.status === 'PENDENTE').length : 0
   const alternarTema = () => {
     const novo = tema === 'light' ? 'dark' : 'light'
     setTema(novo)
     document.documentElement.dataset.theme = novo
     try { localStorage.setItem('gm-tema', novo) } catch { /* sem storage */ }
   }
-  const isChef = meusPerfis.some((p) => p.papel === 'CHEF')
+  const isChef = perfil?.papel === 'CHEF'
   const [open, setOpen] = useState(false)
   const [q, setQ] = useState('')
   const closeRef = useRef<HTMLButtonElement>(null)
@@ -142,11 +141,9 @@ export default function Header() {
 
         <div className="space-y-1 border-t border-line pt-4">
           <p className="px-4 pb-1 text-xs font-semibold uppercase tracking-wide text-ink-faint">Profissionais</p>
-          {meusPerfis.length > 0 && <NavLink to="/portal" className={item}><ChefHat size={18} /> Portal profissional</NavLink>}
+          
           {isChef && <NavLink to="/publicar" className={item}><PlusCircle size={18} /> Publicar receita</NavLink>}
-          {usuario && <NavLink to="/onboarding" className={item}><BadgeCheck size={18} /> Criar perfil profissional</NavLink>}
-          {isChef && <NavLink to="/painel" className={item}><LayoutDashboard size={18} /> Painel do chef</NavLink>}
-          {usuario?.admin && <NavLink to="/admin" className={item}><ShieldCheck size={18} /> Curadoria{pendentes > 0 && <span className="ml-auto rounded-full bg-terra px-2 py-0.5 text-[11px] font-bold text-on-accent" aria-label={`${pendentes} pendentes`}>{pendentes}</span>}</NavLink>}
+          {usuario && <NavLink to={perfil ? '/portal' : '/onboarding'} className={item}><BadgeCheck size={18} /> {perfil ? 'Meu perfil profissional' : 'Criar perfil profissional'}</NavLink>}
         </div>
 
         <div className="mt-auto space-y-2 border-t border-line pt-4">
@@ -155,8 +152,7 @@ export default function Header() {
           </button>
           {usuario ? (
             <>
-              <Link to="/perfil" className={item}><UserRound size={18} /> {usuario.username}</Link>
-              <Link to="/verificacao" className={item}><BadgeCheck size={18} /> Status da verificação</Link>
+              <Link to="/conta" className={item}><UserRound size={18} /> {usuario.username}</Link>
               <button className={`${item} w-full cursor-pointer`} onClick={() => { sair(); setOpen(false); nav('/') }}>
                 <LogOut size={18} /> Sair
               </button>

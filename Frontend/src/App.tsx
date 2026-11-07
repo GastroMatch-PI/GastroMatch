@@ -3,7 +3,6 @@ import { AcessoNegado, NotFound } from './components/Erros'
 import Footer from './components/Footer'
 import Header from './components/Header'
 import { PageTransition } from './components/Motion'
-import Admin from './pages/Admin'
 import Cadastro from './pages/Cadastro'
 import Chef from './pages/Chef'
 import Conta from './pages/Conta'
@@ -13,15 +12,11 @@ import Home from './pages/Home'
 import Login from './pages/Login'
 import NovaReceita from './pages/NovaReceita'
 import Onboarding from './pages/Onboarding'
-import Painel from './pages/Painel'
-import Perfil from './pages/Perfil'
 import Portal from './pages/Portal'
 import Receitas from './pages/Receitas'
 import Recipe from './pages/Recipe'
 import Restaurante from './pages/Restaurante'
 import Restaurantes from './pages/Restaurantes'
-import Senha from './pages/Senha'
-import Verificacao from './pages/Verificacao'
 
 export default function App() {
   return (
@@ -35,7 +30,6 @@ export default function App() {
           <Route path="/receita/:id" element={<Recipe />} />
           <Route path="/receita/:id/editar" element={<NovaReceita />} />
           <Route path="/publicar" element={<NovaReceita />} />
-          <Route path="/painel" element={<Painel />} />
           <Route path="/profissionais" element={<Directory />} />
           <Route path="/restaurantes" element={<Restaurantes />} />
           <Route path="/restaurante/:id" element={<Restaurante />} />
@@ -46,10 +40,6 @@ export default function App() {
           <Route path="/onboarding" element={<Onboarding />} />
           <Route path="/favoritos" element={<Favoritos />} />
           <Route path="/conta" element={<Conta />} />
-          <Route path="/perfil" element={<Perfil />} />
-          <Route path="/senha" element={<Senha />} />
-          <Route path="/verificacao" element={<Verificacao />} />
-          <Route path="/admin" element={<Admin />} />
           <Route path="/acesso-negado" element={<AcessoNegado />} />
           <Route path="*" element={<NotFound />} />
         </PageTransition>
