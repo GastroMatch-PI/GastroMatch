@@ -9,6 +9,8 @@ public record ComentarioResponse(
         Integer idReceita,
         Integer idUsuario,
         String username,
+        // Capa (avatar) do autor do comentário, não da receita.
+        String capaAutor,
         String texto,
         Float nota,
         String foto,
@@ -18,6 +20,7 @@ public record ComentarioResponse(
     public static ComentarioResponse de(Comentario c) {
         return new ComentarioResponse(
                 c.getId(), c.getReceita().getId(), c.getUsuario().getId(), c.getUsuario().getUsername(),
-                c.getTexto(), c.getNota(), c.getFoto(), c.getCriadoEm(), c.getAtualizadoEm());
+                c.getUsuario().getCapa(), c.getTexto(), c.getNota(), c.getFoto(),
+                c.getCriadoEm(), c.getAtualizadoEm());
     }
 }
