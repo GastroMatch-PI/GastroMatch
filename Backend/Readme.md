@@ -114,6 +114,14 @@ Com o profile `dev`, o Swagger lista tudo em http://localhost:8080/swagger-ui.ht
 
 ---
 
+## Testes
+
+`./mvnw test` roda a suíte inteira (unitários, `@WebMvcTest` da camada web/segurança e o `ApplicationTests`, que sobe o contexto completo contra um Postgres real). Sem banco configurado, use `./mvnw "-Dtest=!ApplicationTests" test` para rodar só o que não depende dele (veja `SETUP-BANCO.md`).
+
+Os testes de segurança (`SecurityConfigTest`, `RotasPublicasTest`, `DiretorioRotasTest`, `ImagensRotasTest`, `CorsRotasTest`) conferem, sem banco, que toda rota responde com o código esperado: `401` sem token, `403` sem permissão, e que o CORS (`CorsConfig`) só libera a(s) origem(ns) de `app.cors.allowed-origins` (origem de fora recebe `403`). O workflow `.github/workflows/ci.yml` roda `mvn test` a cada PR para `develop`/`main`, com um Postgres descartável só para a rodada.
+
+---
+
 ## 4. Package by Layer vs. Package by Feature
 
 Atualmente existem duas grandes correntes de organização:
