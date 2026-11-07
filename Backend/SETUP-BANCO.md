@@ -70,11 +70,31 @@ docker exec gastromatch-postgres psql -U postgres -d gastromatch -c "\dt"
 
 A API fica em http://localhost:8080 e o Swagger em http://localhost:8080/swagger-ui.html (só no profile `dev`).
 
-## Outras variáveis (opcionais)
+## Perfis (dev, test, prod)
 
-| Variável | Para quê |
-|---|---|
-| `CAPA_ALLOWED_HOSTS` | Domínios https liberados para `capa` em `PUT /usuarios/me`, separados por vírgula (ex.: `cdn.seusite.com`). Vazio (padrão): só o caminho devolvido por `POST /imagens` é aceito |
+| Profile | Quando é usado | O que muda |
+|---|---|---|
+| `dev` | No seu PC, no dia a dia (`-Dspring-boot.run.profiles=dev`) | Swagger ligado (`/swagger-ui.html`) e log de SQL |
+| `test` | Automático nos testes (`spring.profiles.active=test` no `maven-surefire-plugin`, pom.xml) | Swagger desligado, sem log de SQL, job de limpeza (B25) desligado |
+| `prod` | No ar (o Dockerfile já ativa) | Sem log de SQL, log em INFO, encerramento gracioso |
+
+Nenhum profile tem segredo fixo: todos leem `DB_PASSWORD` e `JWT_SECRET` de variável de ambiente (ou do `.env`). Se `JWT_SECRET` tiver menos de 32 caracteres, a API se recusa a subir em qualquer profile (`JwtService`), não só em prod.
+
+## Variáveis de ambiente
+
+Todas ficam no `.env` (veja `.env.example`); nenhuma tem valor real no repositório.
+
+| Variável | Obrigatória | Padrão | Para quê |
+|---|---|---|---|
+| `DB_URL` | Não | Postgres do Docker local | Endereço JDBC do banco (Supabase ou Docker) |
+| `DB_USERNAME` | Não | `postgres` | Usuário do banco |
+| `DB_PASSWORD` | **Sim** | — | Senha do banco |
+| `JWT_SECRET` | **Sim** | — | Assina os tokens de login; precisa de 32+ caracteres |
+| `CORS_ORIGINS` | Não | `http://localhost:5173` | Endereço(s) do front liberados no CORS |
+| `UPLOADS_DIR` | Não | `uploads` | Pasta onde ficam as imagens enviadas (sem Supabase Storage) |
+| `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `SUPABASE_BUCKET` | Não | — (usa o disco) | Guardar imagens no Supabase Storage em produção |
+| `PORT` | Não | `8080` | Porta da API (o host define a dele) |
+| `CAPA_ALLOWED_HOSTS` | Não | — (só o upload da API) | Domínios https liberados para `capa` em `PUT /usuarios/me`, separados por vírgula (ex.: `cdn.seusite.com`) |
 
 ## Comandos do dia a dia (Docker)
 
