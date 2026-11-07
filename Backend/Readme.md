@@ -116,11 +116,11 @@ Com o profile `dev`, o Swagger lista tudo em http://localhost:8080/swagger-ui.ht
 
 ---
 
-## Testes
+## Testes e cobertura
 
-`./mvnw test` roda a suíte inteira (unitários, `@WebMvcTest` da camada web/segurança e o `ApplicationTests`, que sobe o contexto completo contra um Postgres real). Sem banco configurado, use `./mvnw "-Dtest=!ApplicationTests" test` para rodar só o que não depende dele (veja `SETUP-BANCO.md`).
+`./mvnw test` roda a suíte inteira (unitários, `@WebMvcTest` da camada web/segurança e o `ApplicationTests`, que sobe o contexto completo contra um Postgres real) e, ao final, o `jacoco-maven-plugin` (pom.xml) gera o relatório HTML em `target/site/jacoco/index.html` e **falha o build** se `AuthService`, `UsuarioService` ou as classes de `security`/`validation` caírem abaixo de 80% de linhas cobertas. Sem banco configurado, use `./mvnw "-Dtest=!ApplicationTests" test` (veja `SETUP-BANCO.md`) — a cobertura ainda é calculada, só o `ApplicationTests` fica de fora.
 
-Os testes de segurança (`SecurityConfigTest`, `RotasPublicasTest`, `DiretorioRotasTest`, `ImagensRotasTest`, `CorsRotasTest`) conferem, sem banco, que toda rota responde com o código esperado: `401` sem token, `403` sem permissão, e que o CORS (`CorsConfig`) só libera a(s) origem(ns) de `app.cors.allowed-origins` (origem de fora recebe `403`). O workflow `.github/workflows/ci.yml` roda `mvn test` a cada PR para `develop`/`main`, com um Postgres descartável só para a rodada.
+Os testes de segurança (`SecurityConfigTest`, `RotasPublicasTest`, `DiretorioRotasTest`, `ImagensRotasTest`, `CorsRotasTest`) conferem, sem banco, que toda rota responde com o código esperado: `401` sem token, `403` sem permissão, e que o CORS (`CorsConfig`) só libera a(s) origem(ns) de `app.cors.allowed-origins` (origem de fora recebe `403`). O workflow `.github/workflows/ci.yml` roda `mvn test` a cada PR para `develop`/`main`, com um Postgres descartável só para a rodada, e publica o relatório de cobertura como artefato (`cobertura-backend`).
 
 ---
 
