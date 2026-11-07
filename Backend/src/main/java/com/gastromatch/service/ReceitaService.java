@@ -45,17 +45,20 @@ public class ReceitaService {
     private final DicaRepository dicaRepository;
     private final IngredienteReceitaRepository ingredienteReceitaRepository;
     private final UsuarioRepository usuarioRepository;
+    private final ComentarioService comentarioService;
 
     public ReceitaService(ReceitaRepository receitaRepository,
                           EtapaReceitaRepository etapaRepository,
                           DicaRepository dicaRepository,
                           IngredienteReceitaRepository ingredienteReceitaRepository,
-                          UsuarioRepository usuarioRepository) {
+                          UsuarioRepository usuarioRepository,
+                          ComentarioService comentarioService) {
         this.receitaRepository = receitaRepository;
         this.etapaRepository = etapaRepository;
         this.dicaRepository = dicaRepository;
         this.ingredienteReceitaRepository = ingredienteReceitaRepository;
         this.usuarioRepository = usuarioRepository;
+        this.comentarioService = comentarioService;
     }
 
     @Transactional(readOnly = true)
@@ -113,7 +116,8 @@ public class ReceitaService {
                 .toList();
 
         String username = usernamesDosChefs(List.of(receita)).get(receita.getChef().getProfissional().getId());
-        return ReceitaDetalheResponse.de(receita, porcoesDesejadas, username, ingredientes, nutricao, etapas);
+        var avaliacao = comentarioService.agregarAvaliacoes(id);
+        return ReceitaDetalheResponse.de(receita, porcoesDesejadas, username, ingredientes, nutricao, etapas, avaliacao);
     }
 
     // idProfissional -> username da conta ligada a ele.

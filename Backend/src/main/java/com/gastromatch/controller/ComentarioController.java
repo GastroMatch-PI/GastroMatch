@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.gastromatch.dto.ComentarioRequest;
 import com.gastromatch.dto.ComentarioResponse;
-import com.gastromatch.dto.PaginaResponse;
+import com.gastromatch.dto.ComentariosDaReceitaResponse;
 import com.gastromatch.service.ComentarioService;
 
 import jakarta.validation.Valid;
@@ -33,13 +33,17 @@ public class ComentarioController {
     }
 
     @GetMapping("/receitas/{id}/comentarios")
-    public ResponseEntity<PaginaResponse<ComentarioResponse>> listar(
+    public ResponseEntity<ComentariosDaReceitaResponse> listar(
             @PathVariable Integer id,
             @RequestParam(defaultValue = "0") int pagina,
-            @RequestParam(defaultValue = "20") int tamanho) {
+            @RequestParam(defaultValue = "20") int tamanho,
+            // Padrão: mais recente primeiro. "nota": maior nota primeiro (sem nota vai para o fim).
+            @RequestParam(required = false) String ordenarPor) {
+        Sort sort = "nota".equals(ordenarPor)
+                ? Sort.by(Sort.Order.desc("nota").nullsLast(), Sort.Order.desc("criadoEm"))
+                : Sort.by(Sort.Direction.DESC, "criadoEm", "id");
         var pageable = PageRequest.of(
-                Math.max(pagina, 0), Math.min(Math.max(tamanho, 1), ReceitaController.TAMANHO_MAXIMO),
-                Sort.by(Sort.Direction.DESC, "criadoEm", "id"));
+                Math.max(pagina, 0), Math.min(Math.max(tamanho, 1), ReceitaController.TAMANHO_MAXIMO), sort);
         return ResponseEntity.ok(comentarioService.listar(id, pageable));
     }
 
