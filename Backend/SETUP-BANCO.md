@@ -111,6 +111,18 @@ Todas ficam no `.env` (veja `.env.example`); nenhuma tem valor real no repositó
 
 Use o `down -v` sempre que o `GastroDB_v2.0.0_postgres.sql` mudar: o script só roda quando o banco é criado. No Supabase, mudanças no esquema são aplicadas à mão no SQL Editor (e o time avisa no grupo).
 
+**Esquema mudou nesta versão (coluna `usuario.role`, B35):** quem já tinha o banco criado (Docker ou Supabase) precisa rodar `Data/Modelagem/GastroDB_v2.2.0_role_usuario.sql` (ou `docker compose down -v` + `up -d` no Docker). Quem cria o banco agora já recebe a coluna pelo `GastroDB_v2.0.0_postgres.sql` atual.
+
+## Administrador inicial (B35)
+
+Com as três variáveis abaixo definidas no `.env`, a API cria esse administrador uma única vez ao subir (`AdminInicialRunner`); sem elas, nenhum admin é criado. Depois do primeiro admin, promover alguém é direto no banco (`UPDATE usuario SET role = 'ADMIN' WHERE email = '...'`).
+
+| Variável | Para quê |
+|---|---|
+| `ADMIN_EMAIL` | E-mail do administrador inicial |
+| `ADMIN_USERNAME` | Username do administrador inicial |
+| `ADMIN_PASSWORD` | Senha do administrador inicial (nunca fixa no código nem no repositório) |
+
 ## Dados de exemplo
 
 O banco nasce com 18 ingredientes e 5 receitas (`Data/Modelagem/GastroDB_dados_exemplo.sql`), para testar `GET /receitas` sem cadastrar nada. O chef de exemplo não tem conta, então ninguém loga como ele. O script pode rodar mais de uma vez sem duplicar nada.

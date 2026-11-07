@@ -41,6 +41,9 @@ public class JwtService {
         return Jwts.builder()
                 .subject(String.valueOf(usuario.getId()))
                 .claim("email", usuario.getEmail())
+                // Informativa: quem decide a autoridade de verdade é o JwtAuthFilter, pela
+                // role atual no banco (evita um token antigo manter um privilégio já revogado).
+                .claim("role", usuario.getRole().name())
                 .issuedAt(Date.from(agora))
                 .expiration(Date.from(agora.plusSeconds(accessExpirationSeconds)))
                 .signWith(key)

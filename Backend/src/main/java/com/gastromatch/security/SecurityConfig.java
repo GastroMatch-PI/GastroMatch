@@ -52,6 +52,8 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/actuator/health").permitAll()
                 // Swagger: só existe quando habilitado (profile dev); em produção dá 404.
                 .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
+                // Namespace administrativo (B35): só quem tem ROLE_ADMIN (ver JwtAuthFilter).
+                .requestMatchers("/admin/**").hasRole("ADMIN")
                 .anyRequest().authenticated())
             // Sem isso o padrão seria 403 para quem não enviou token. O correto é 401.
             .exceptionHandling(e -> e.authenticationEntryPoint((req, res, ex) -> {
