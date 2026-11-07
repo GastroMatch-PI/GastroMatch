@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { Aviso, Campo, CampoSenha } from '../components/Campo'
+import { ApiError, mensagem } from '../lib/api'
 import { useAuth } from '../context/Auth'
 import { useSeo } from '../lib/seo'
 import { useForm } from '../lib/useForm'
@@ -20,8 +21,9 @@ export default function Login() {
     try {
       await entrar(v.email, v.password)
       nav(destino, { replace: true }) // volta para a tela original
-    } catch {
-      setErro('Credenciais inválidas') // mesma mensagem para usuário inexistente e senha errada
+    } catch (e) {
+      // 401: mensagem genérica de propósito (não diz se foi o e-mail ou a senha)
+      setErro(e instanceof ApiError && e.status === 401 ? 'Credenciais inválidas' : mensagem(e))
     }
   })
 

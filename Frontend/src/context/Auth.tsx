@@ -1,97 +1,109 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { useLocalState } from '../hooks/useLocalState'
-import { cadastroApi, loginApi, logoutApi, refreshApi, type AuthDto, type UsuarioDto } from '../api/auth'
-import type { PerfilPro } from '../lib/tipos'
-
-const REFRESH_KEY = 'gm-refresh-token'
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { api, del, get, guardarSessao, lerRefreshToken, post, put, registrarOuvinteSessao, renovarSessao } from '../lib/api'
+import type { ChefMe, NutricionistaMe, Pagina, PerfilProfissional, ReceitaResumo, RestauranteMe, SessaoDto, Usuario } from '../lib/apiTipos'
 
 type Ctx = {
-  usuario: UsuarioDto | null
-  accessToken: string | null
-  carregando: boolean
-  perfis: PerfilPro[]
-  meusPerfis: PerfilPro[]
-  setPerfis: (f: (p: PerfilPro[]) => PerfilPro[]) => void
+  usuario: Usuario | null
+  carregando: boolean // restaurando a sessão ao abrir o site
+  perfil: PerfilProfissional | null // a conta tem no máximo UM perfil profissional
+  carregandoPerfil: boolean
+  recarregarPerfil: () => Promise<void>
+  favoritos: Set<number>
+  alternarFavorito: (idReceita: number) => Promise<void>
   entrar: (email: string, password: string) => Promise<void>
   cadastrar: (email: string, username: string, password: string) => Promise<void>
-  sair: () => void
+  sair: () => Promise<void>
 }
 const AuthCtx = createContext<Ctx | null>(null)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  // Perfis profissionais continuam locais até a etapa de onboarding ser integrada
-  const [perfis, setPerfis] = useLocalState<PerfilPro[]>('gm-perfis', [])
+  const [usuario, setUsuario] = useState<Usuario | null>(null)
+  const [carregando, setCarregando] = useState(() => lerRefreshToken() !== null)
+  const [perfil, setPerfil] = useState<PerfilProfissional | null>(null)
+  const [carregandoPerfil, setCarregandoPerfil] = useState(false)
+  const [favoritos, setFavoritos] = useState<Set<number>>(new Set())
 
-  const [usuario, setUsuario] = useState<UsuarioDto | null>(null)
-  const [accessToken, setAccessToken] = useState<string | null>(null)
-  const [carregando, setCarregando] = useState(true)
-  const iniciado = useRef(false) // evita dupla chamada de refresh no StrictMode
-
-  const guardarSessao = useCallback((s: AuthDto) => {
-    setAccessToken(s.accessToken)
-    setUsuario(s.usuario)
-    localStorage.setItem(REFRESH_KEY, s.refreshToken) // o refresh é rotacionado a cada uso
+  // A API avisa quando a sessão muda (renovação ou refresh vencido)
+  useEffect(() => {
+    registrarOuvinteSessao((s) => setUsuario(s?.usuario ?? null))
+    return () => registrarOuvinteSessao(null)
   }, [])
 
-  const limparSessao = useCallback(() => {
-    localStorage.removeItem(REFRESH_KEY)
-    setAccessToken(null)
+  // Restaura a sessão ao abrir o site (e limpa as contas de demonstração antigas do navegador)
+  useEffect(() => {
+    ;['gm-contas', 'gm-sessao', 'gm-perfis'].forEach((k) => { try { localStorage.removeItem(k) } catch { /* ok */ } })
+    if (!lerRefreshToken()) return
+    renovarSessao().finally(() => setCarregando(false))
+  }, [])
+
+  const recarregarPerfil = useCallback(async () => {
+    setCarregandoPerfil(true)
+    // Uma rota por papel; a que não for da conta responde 404 (esperado).
+    const [chef, nutri, rest] = await Promise.allSettled([get<ChefMe>('/chefs/me'), get<NutricionistaMe>('/nutricionistas/me'), get<RestauranteMe>('/restaurantes/me')])
+    if (chef.status === 'fulfilled') setPerfil({ papel: 'CHEF', dados: chef.value })
+    else if (nutri.status === 'fulfilled') setPerfil({ papel: 'NUTRICIONISTA', dados: nutri.value })
+    else if (rest.status === 'fulfilled') setPerfil({ papel: 'RESTAURANTE', dados: rest.value })
+    else setPerfil(null)
+    setCarregandoPerfil(false)
+  }, [])
+
+  const carregarFavoritos = useCallback(async () => {
+    const ids = new Set<number>()
+    for (let p = 0; p < 20; p++) {
+      const pg = await get<Pagina<ReceitaResumo>>(`/usuarios/me/favoritos?pagina=${p}&tamanho=50`)
+      pg.conteudo.forEach((r) => ids.add(r.id))
+      if (p + 1 >= pg.totalPaginas) break
+    }
+    setFavoritos(ids)
+  }, [])
+
+  // Ao logar/deslogar: carrega o perfil profissional e os favoritos da conta
+  const idUsuario = usuario?.id
+  useEffect(() => {
+    if (idUsuario === undefined) { setPerfil(null); setFavoritos(new Set()); return }
+    void recarregarPerfil()
+    carregarFavoritos().catch(() => undefined)
+  }, [idUsuario, recarregarPerfil, carregarFavoritos])
+
+  const guardar = useCallback((s: SessaoDto) => {
+    guardarSessao(s)
+    setUsuario(s.usuario)
+  }, [])
+
+  const entrar = useCallback(async (email: string, password: string) => {
+    guardar(await api<SessaoDto>('/auth/login', { method: 'POST', body: { email, password }, auth: false }))
+  }, [guardar])
+
+  const cadastrar = useCallback(async (email: string, username: string, password: string) => {
+    await api('/auth/cadastro', { method: 'POST', body: { email, username, password }, auth: false })
+    await entrar(email, password) // o cadastro não devolve token: entra em seguida
+  }, [entrar])
+
+  const sair = useCallback(async () => {
+    const rt = lerRefreshToken()
+    try { if (rt) await post('/auth/logout', { refreshToken: rt }) } catch { /* encerra localmente mesmo se a API falhar */ }
+    guardarSessao(null)
     setUsuario(null)
   }, [])
 
-  // Restaura a sessão ao abrir o site e remove as contas de demonstração antigas
-  useEffect(() => {
-    localStorage.removeItem('gm-contas')
-    localStorage.removeItem('gm-sessao')
-    if (iniciado.current) return
-    iniciado.current = true
-
-    const rt = localStorage.getItem(REFRESH_KEY)
-    if (!rt) {
-      setCarregando(false)
-      return
+  // Atualização otimista: o coração muda na hora e volta atrás se a API falhar.
+  const alternarFavorito = useCallback(async (id: number) => {
+    const tinha = favoritos.has(id)
+    const aplicar = (tem: boolean) => setFavoritos((s) => { const n = new Set(s); if (tem) n.add(id); else n.delete(id); return n })
+    aplicar(!tinha)
+    try {
+      if (tinha) await del(`/receitas/${id}/favorito`)
+      else await put(`/receitas/${id}/favorito`)
+    } catch (e) {
+      aplicar(tinha)
+      throw e
     }
-    refreshApi(rt)
-      .then((s) => {
-        if (s) guardarSessao(s)
-      })
-      .catch(limparSessao)
-      .finally(() => setCarregando(false))
-  }, [guardarSessao, limparSessao])
-
-  const entrar = useCallback(
-    async (email: string, password: string) => {
-      const s = await loginApi(email, password)
-      if (s) guardarSessao(s)
-    },
-    [guardarSessao],
-  )
-
-  const cadastrar = useCallback(
-    async (email: string, username: string, password: string) => {
-      await cadastroApi(email, username, password)
-      await entrar(email, password) // o cadastro não devolve tokens, então entra em seguida
-    },
-    [entrar],
-  )
-
-  const sair = useCallback(() => {
-    const rt = localStorage.getItem(REFRESH_KEY)
-    if (rt) logoutApi(rt).catch(() => {}) // limpa localmente mesmo se a API falhar
-    limparSessao()
-  }, [limparSessao])
-
-  // Ponte temporária: PerfilPro.userId é string, usuario.id é number vindo da API
-  const meusPerfis = useMemo(
-    () => (usuario ? perfis.filter((p) => p.userId === String(usuario.id)) : []),
-    [perfis, usuario],
-  )
+  }, [favoritos])
 
   const value = useMemo(
-    () => ({ usuario, accessToken, carregando, perfis, meusPerfis, setPerfis, entrar, cadastrar, sair }),
-    [usuario, accessToken, carregando, perfis, meusPerfis, setPerfis, entrar, cadastrar, sair],
+    () => ({ usuario, carregando, perfil, carregandoPerfil, recarregarPerfil, favoritos, alternarFavorito, entrar, cadastrar, sair }),
+    [usuario, carregando, perfil, carregandoPerfil, recarregarPerfil, favoritos, alternarFavorito, entrar, cadastrar, sair],
   )
-
   return <AuthCtx.Provider value={value}>{children}</AuthCtx.Provider>
 }
 
