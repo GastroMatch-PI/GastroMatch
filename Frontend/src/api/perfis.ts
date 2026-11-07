@@ -1,7 +1,8 @@
-
 import { apiAutenticada, ApiError } from './http'
+import { listarTodasAsPaginas } from './receitas'
 
 export type PapelApi = 'CHEF' | 'NUTRICIONISTA' | 'RESTAURANTE'
+export type StatusApi = 'PENDENTE' | 'APROVADO' | 'REJEITADO'
 
 // confirmar: campos reais de CadastroChefRequest
 export type CadastroChefBody = { especializacao: string; bio?: string }
@@ -23,31 +24,60 @@ export type CadastroRestauranteBody = {
 }
 
 // confirmar: campos reais de ChefPerfilResponse
+export type ChefPerfilDto = {
+  id: number
+  nome: string
+  bio?: string | null
+  especializacao?: string | null
+}
+
 export type ChefOpcao = { id: number; nome: string }
 
-/** Retorna null quando o perfil ainda não existe (404). */
-async function existe(path: string, token: string): Promise<boolean> {
+// confirmar: campo status e motivo em ChefResponse e NutricionistaResponse
+type PerfilStatusDto = { status?: StatusApi; motivoRejeicao?: string | null }
+
+export type StatusPerfil = { papel: PapelApi; status: StatusApi; motivo?: string | null }
+
+/** Lê um perfil. Devolve null quando ele não existe (404). */
+async function lerOuNulo<T>(path: string, token: string): Promise<T | null> {
   try {
-    await apiAutenticada(path, token)
-    return true
+    return await apiAutenticada<T>(path, token)
   } catch (e) {
-    if (e instanceof ApiError && e.status === 404) return false
+    if (e instanceof ApiError && e.status === 404) return null
     throw e
   }
 }
 
+/** Status de cada perfil profissional do usuário logado. */
+export async function buscarStatusPerfis(token: string): Promise<StatusPerfil[]> {
+  const [chefR, nutriR] = await Promise.allSettled([
+    lerOuNulo<PerfilStatusDto>('/chefs/me', token),
+    lerOuNulo<PerfilStatusDto>('/nutricionistas/me', token),
+    // confirmar: se existir GET /restaurantes/me, inclua aqui
+  ])
+
+  // Se os dois falharam, ou se a falha é de rede/sessão (0 ou 401), não dá para saber: propaga o erro.
+  const falhas = [chefR, nutriR].filter((r): r is PromiseRejectedResult => r.status === 'rejected')
+  const grave = falhas.find((f) => !(f.reason instanceof ApiError) || f.reason.status === 0 || f.reason.status === 401)
+  if (grave || falhas.length === 2) throw (grave ?? falhas[0]).reason
+
+  const lista: StatusPerfil[] = []
+  if (chefR.status === 'fulfilled' && chefR.value)
+    lista.push({ papel: 'CHEF', status: chefR.value.status ?? 'APROVADO', motivo: chefR.value.motivoRejeicao })
+  if (nutriR.status === 'fulfilled' && nutriR.value)
+    lista.push({ papel: 'NUTRICIONISTA', status: nutriR.value.status ?? 'PENDENTE', motivo: nutriR.value.motivoRejeicao })
+  return lista
+}
+
 /** Papéis que o usuário logado já possui. */
 export async function buscarPapeisDoUsuario(token: string): Promise<PapelApi[]> {
-  const [chef, nutri] = await Promise.all([
-    existe('/chefs/me', token),
-    existe('/nutricionistas/me', token),
-    // confirmar: não recebi RestauranteController. Se existir GET /restaurantes/me, adicione aqui.
-  ])
-  const papeis: PapelApi[] = []
-  if (chef) papeis.push('CHEF')
-  if (nutri) papeis.push('NUTRICIONISTA')
-  return papeis
+  return (await buscarStatusPerfis(token)).map((p) => p.papel)
 }
+
+export const buscarChefMe = (token: string) => lerOuNulo<ChefPerfilDto>('/chefs/me', token)
+
+export const atualizarPerfilChef = (token: string, body: CadastroChefBody) =>
+  apiAutenticada<ChefPerfilDto>('/chefs/me', token, { method: 'PUT', body })
 
 export const criarPerfilChef = (token: string, body: CadastroChefBody) =>
   apiAutenticada('/chefs', token, { method: 'POST', body })
@@ -58,8 +88,9 @@ export const criarPerfilNutricionista = (token: string, body: CadastroNutricioni
 export const criarRestaurante = (token: string, body: CadastroRestauranteBody) =>
   apiAutenticada('/restaurantes', token, { method: 'POST', body })
 
-/** Lista de chefs para escolher o responsável pelo restaurante. */
-export async function listarChefs(): Promise<ChefOpcao[]> {
-  const pagina = await apiAutenticada<{ resultados: ChefOpcao[] }>('/chefs?pagina=0&tamanho=100', null)
-  return pagina?.resultados ?? []
-}
+/** Lista de chefs para escolher o responsável pelo restaurante (leitura pública, todas as páginas). */
+export const listarChefs = () => listarTodasAsPaginas<ChefOpcao>('/chefs')
+
+/** Perfil público de um chef (leitura pública). */
+export const buscarChefPublico = (id: string) =>
+  apiAutenticada<ChefPerfilDto>(`/chefs/${id}`, null)

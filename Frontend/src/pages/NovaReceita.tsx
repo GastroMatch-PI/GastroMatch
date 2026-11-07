@@ -1,18 +1,17 @@
 import { ArrowDown, ArrowUp, Check, Plus, Trash2 } from 'lucide-react'
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
+import { useEffect, useRef, useState } from 'react'
 import { Campo, Opcoes } from '../components/Campo'
-import { useConfirmar, useToast } from '../components/Feedback'
+import { useToast } from '../components/Feedback'
 import { EstadoVazio, UploadImagem } from '../components/Ui'
 import { useAuth } from '../context/Auth'
-import type { Recipe } from '../data/data'
-import { catalogo, ENUMS } from '../data/enums'
-import { useLocalState } from '../hooks/useLocalState'
+import { ENUMS } from '../data/enums'
 import { fmtNum } from '../lib/format'
 import { useSeo } from '../lib/seo'
 import type { Dica } from '../lib/tipos'
-import { useRecipes } from '../lib/useRecipes'
 import { numero, obrigatorio, tamanho, url, youtube, type Regra } from '../lib/validar'
+import { Link, Navigate, useNavigate } from 'react-router-dom'
+import { buscarPapeisDoUsuario } from '../api/perfis'
+import { criarDica, criarEtapa, criarReceita, listarIngredientes, type IngredienteDto } from '../api/receitas'
 
 type Item = { cat: string; qty: string; unit: string }
 type Et = { title: string; text: string; videoAt: string; image: string; seconds: string; dicas: { tipo: Dica['tipo']; titulo: string; texto: string }[] }
@@ -33,59 +32,53 @@ const regrasGeral: Record<string, Regra[]> = {
   n: [obrigatorio('Informe as porções'), numero(1, 'Pelo menos 1 porção')],
   min: [obrigatorio('Informe o tempo'), numero(1, 'Pelo menos 1 minuto')],
 }
-const difKey = (label: string) => Object.entries(ENUMS.dificuldade).find(([, v]) => v === label)?.[0] ?? 'FACIL'
 
 export default function NovaReceita() {
-  const { id: editId } = useParams()
-  const { usuario, meusPerfis } = useAuth()
+  const { usuario, accessToken } = useAuth()
   const nav = useNavigate()
   const toast = useToast()
-  const confirmar = useConfirmar()
-  const todas = useRecipes(true)
-  const [, setReceitas] = useLocalState<Recipe[]>('gm-receitas', [])
-  const [allDicas, setAllDicas] = useLocalState<Record<string, Dica[]>>('gm-dicas', {})
-  useSeo({ titulo: editId ? 'Editar receita' : 'Publicar receita' })
+  useSeo({ titulo: 'Publicar receita' })
 
   const chave = `gm-rascunho:${usuario?.id ?? ''}`
-  const existente = editId ? todas.find((r) => r.id === editId) : undefined
   const [d, setD] = useState<Rascunho>(vazio)
   const [erros, setErros] = useState<Record<string, string>>({})
   const [errosPasso, setErrosPasso] = useState<string[]>([])
   const [enviando, setEnviando] = useState(false)
+  const [progresso, setProgresso] = useState('')
   const [sujo, setSujo] = useState(false)
   const [oferecer, setOferecer] = useState<Rascunho | null>(null)
   const [busca, setBusca] = useState('')
   const [arrasto, setArrasto] = useState<number | null>(null)
+  const [temChef, setTemChef] = useState<boolean | null>(null)
+  const [ingredientesApi, setIngredientesApi] = useState<IngredienteDto[]>([])
   const topo = useRef<HTMLHeadingElement>(null)
 
-  // modo edição: carrega a receita; modo criação: oferece o rascunho do usuário
   useEffect(() => {
-    if (editId && existente?.detail) {
-      const dicas = allDicas[editId] ?? []
-      setD({
-        passo: 0,
-        geral: {
-          nome: existente.title, desc: existente.description ?? '', img: existente.image ?? '', video: existente.video ?? '', n: String(existente.servings), min: String(existente.minutes),
-          dif: difKey(existente.difficulty), tipo: existente.tipo ?? 'ALMOCO', metodo: existente.metodo ?? '', ocasiao: existente.ocasiao ?? '', perfil: existente.perfil ?? '',
-        },
-        itens: existente.detail.ing.map((i) => ({ cat: i.cat ?? '', qty: String(i.qty), unit: i.unit })),
-        etapas: existente.detail.steps.map((s, k) => ({
-          title: s.title, text: s.text, videoAt: s.videoAt !== undefined ? String(s.videoAt) : '', image: s.image ?? '', seconds: s.seconds ? String(s.seconds) : '',
-          dicas: dicas.filter((x) => x.etapa === k).map((x) => ({ tipo: x.tipo, titulo: x.titulo, texto: x.texto })),
-        })),
-      })
-    } else if (!editId) {
-      try {
-        const raw = localStorage.getItem(chave)
-        if (raw) setOferecer(JSON.parse(raw) as Rascunho)
-      } catch { /* sem rascunho */ }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [editId, existente?.id])
+    if (!accessToken) return
+    buscarPapeisDoUsuario(accessToken)
+      .then((papeis) => setTemChef(papeis.includes('CHEF')))
+      .catch(() => setTemChef(false))
+  }, [accessToken])
 
-  // rascunho local por usuário (chave inclui o id), com debounce e tratamento de cota
   useEffect(() => {
-    if (editId || !usuario || !sujo) return
+    listarIngredientes()
+      .then(setIngredientesApi)
+      .catch(() => toast.aviso('Não foi possível carregar os ingredientes.'))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // oferece o rascunho salvo neste navegador
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(chave)
+      if (raw) setOferecer(JSON.parse(raw) as Rascunho)
+    } catch { /* sem rascunho */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chave])
+
+  // salva o rascunho com debounce
+  useEffect(() => {
+    if (!usuario || !sujo) return
     const t = setTimeout(() => {
       try {
         const txt = JSON.stringify(d)
@@ -97,37 +90,16 @@ export default function NovaReceita() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [d, sujo])
 
-  // alterações não salvas ao sair (edição)
-  useEffect(() => {
-    if (!sujo || !editId) return
-    const h = (e: BeforeUnloadEvent) => { e.preventDefault() }
-    window.addEventListener('beforeunload', h)
-    return () => window.removeEventListener('beforeunload', h)
-  }, [sujo, editId])
-
-  const chef = meusPerfis.find((p) => p.papel === 'CHEF' && p.status === 'APROVADO')
   const alterar = (fn: (r: Rascunho) => Rascunho) => { setD((p) => fn(p)); setSujo(true) }
   const setG = (k: keyof Geral) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     alterar((p) => ({ ...p, geral: { ...p.geral, [k]: e.target.value } }))
     if (erros[k]) setErros((x) => ({ ...x, [k]: '' }))
   }
 
-  const nutri = useMemo(() => {
-    const t = { kcal: 0, fora: 0 }
-    for (const i of d.itens) {
-      const c = catalogo.find((x) => x.id === i.cat)
-      const q = Number(String(i.qty).replace(',', '.'))
-      if (!c || !(q > 0) || (i.unit !== 'G' && i.unit !== 'ML')) { if (i.cat) t.fora++; continue }
-      t.kcal += c.kcal * (q / 100)
-    }
-    return { porcao: t.kcal / (Number(d.geral.n) || 1), fora: t.fora }
-  }, [d.itens, d.geral.n])
-
   if (!usuario) return <Navigate to="/login" replace state={DESTINO_LOGIN} />
-  if (!chef)
-    return <EstadoVazio titulo="Só chefs aprovados publicam receitas" texto="Crie seu perfil de chef para publicar." acao={{ to: '/onboarding', rotulo: 'Criar perfil de chef' }} />
-  if (editId && !existente) return <EstadoVazio titulo="Receita não encontrada" acao={{ to: '/painel', rotulo: 'Voltar ao painel' }} />
-  if (editId && existente && existente.owner !== usuario.id) return <Navigate to="/acesso-negado" replace />
+  if (temChef === null) return <p className="card p-10 text-center text-sm text-ink-soft">Verificando seu perfil...</p>
+  if (!temChef)
+    return <EstadoVazio titulo="Só chefs publicam receitas" texto="Crie seu perfil de chef para publicar." acao={{ to: '/onboarding', rotulo: 'Criar perfil de chef' }} />
 
   const validaPasso = (passo: number): boolean => {
     const novos: Record<string, string> = {}
@@ -135,13 +107,11 @@ export default function NovaReceita() {
     if (passo === 0)
       for (const [k, rs] of Object.entries(regrasGeral)) for (const r of rs) { const e = r(d.geral[k as keyof Geral], {}); if (e) { novos[k] = e; break } }
     if (passo === 1) {
-      const validos = d.itens.filter((i) => i.cat)
-      if (validos.length === 0) lista.push('Adicione ao menos um ingrediente do catálogo.')
+      if (d.itens.filter((i) => i.cat).length === 0) lista.push('Adicione ao menos um ingrediente do catálogo.')
       d.itens.forEach((i, k) => { if (i.cat && !(Number(String(i.qty).replace(',', '.')) > 0)) lista.push(`Ingrediente ${k + 1}: a quantidade deve ser maior que zero.`) })
     }
     if (passo === 2) {
-      const validas = d.etapas.filter((e) => e.title.trim() && e.text.trim())
-      if (validas.length === 0) lista.push('Adicione ao menos uma etapa com título e instrução.')
+      if (d.etapas.filter((e) => e.title.trim() && e.text.trim()).length === 0) lista.push('Adicione ao menos uma etapa com título e instrução.')
       d.etapas.forEach((e, k) => { if ((e.title.trim() || e.text.trim()) && !(e.title.trim() && e.text.trim())) lista.push(`Etapa ${k + 1}: preencha título e instrução.`) })
     }
     setErros(novos)
@@ -154,39 +124,68 @@ export default function NovaReceita() {
   const avancar = () => { if (validaPasso(d.passo)) ir(d.passo + 1) }
 
   const publicar = async () => {
-    if (enviando) return // duplo envio impedido
-    for (let p = 0; p < 3; p++) if (!validaPasso(p)) return ir(p) // erro leva à etapa correspondente
-    setEnviando(true)
-    const g = d.geral
-    const ing = d.itens.filter((i) => i.cat).map((i) => ({ cat: i.cat, name: catalogo.find((c) => c.id === i.cat)!.nome, qty: Number(String(i.qty).replace(',', '.')), unit: i.unit }))
-    const etapasOk = d.etapas.filter((e) => e.title.trim() && e.text.trim())
-    const id = editId ?? `u${Date.now()}`
-    const rec: Recipe = {
-      id, title: g.nome.trim(), emoji: '🍽️', seed: Date.now() % 5, minutes: Number(g.min),
-      difficulty: ENUMS.dificuldade[g.dif as keyof typeof ENUMS.dificuldade] as Recipe['difficulty'], servings: Number(g.n),
-      author: `Chef ${usuario.username}`, role: 'Chef',
-      collections: [ENUMS.tipo[g.tipo as keyof typeof ENUMS.tipo], ...(g.perfil ? [ENUMS.perfil[g.perfil as keyof typeof ENUMS.perfil]] : [])],
-      ingredients: ing.map((i) => i.name), nutrition: 'Estimativa calculada pelos ingredientes',
-      image: g.img || undefined, video: g.video || undefined, description: g.desc || undefined, owner: usuario.id,
-      tipo: g.tipo, metodo: g.metodo || undefined, ocasiao: g.ocasiao || undefined, perfil: g.perfil || undefined, createdAt: existente?.createdAt ?? Date.now(),
-      detail: { ing, steps: etapasOk.map((e) => ({ title: e.title.trim(), text: e.text.trim(), videoAt: e.videoAt ? Number(e.videoAt) : undefined, image: e.image || undefined, seconds: e.seconds ? Number(e.seconds) : undefined })) },
-    }
-    setReceitas((l) => (editId ? l.map((x) => (x.id === id ? rec : x)) : [rec, ...l]))
-    const dicas: Dica[] = []
-    etapasOk.forEach((e, k) => e.dicas.filter((x) => x.titulo.trim() && x.texto.trim()).forEach((x, j) => dicas.push({ id: Date.now() + k * 100 + j, etapa: k, tipo: x.tipo, titulo: x.titulo.trim(), texto: x.texto.trim(), autor: usuario.username, autorId: usuario.id })))
-    setAllDicas((m) => ({ ...m, [id]: dicas }))
-    try { localStorage.removeItem(chave) } catch { /* ok */ }
-    setSujo(false)
-    toast.sucesso(editId ? 'Receita atualizada.' : 'Receita publicada.')
-    nav(`/receita/${id}`)
-  }
+    if (enviando) return
+    for (let p = 0; p < 3; p++) if (!validaPasso(p)) return ir(p)
+    if (!accessToken) return toast.aviso('Sessão expirada. Entre novamente.')
 
-  const excluir = async () => {
-    if (await confirmar({ titulo: 'Excluir esta receita?', texto: 'Ela some do site. Você pode restaurá-la depois no painel.', confirmar: 'Excluir', perigo: true })) {
-      setReceitas((l) => l.map((x) => (x.id === editId ? { ...x, deleted: true } : x)))
+    setEnviando(true)
+    let idReceita: number | null = null
+    try {
+      const g = d.geral
+      const ingredientes = d.itens
+        .filter((i) => i.cat)
+        .map((i) => ({ idIngrediente: Number(i.cat), quantidade: Number(String(i.qty).replace(',', '.')), unidadeMedida: i.unit }))
+      const etapas = d.etapas.filter((e) => e.title.trim() && e.text.trim())
+
+      setProgresso('Criando receita...')
+      const criada = await criarReceita(accessToken, {
+        nome: g.nome.trim(),
+        descricao: g.desc.trim() || undefined,
+        nPorcoes: Number(g.n),
+        tempoPreparo: Number(g.min),
+        dificuldade: g.dif,
+        tipo: g.tipo,
+        metodo: g.metodo || undefined,
+        ocasiao: g.ocasiao || undefined,
+        perfil: g.perfil || undefined,
+        imagem: g.img || undefined,
+        videoUrl: g.video || undefined,
+        ingredientes,
+      })
+      if (!criada) throw new Error('Resposta inválida do servidor.')
+      idReceita = criada.id
+
+      for (const [k, e] of etapas.entries()) {
+        setProgresso(`Salvando etapa ${k + 1} de ${etapas.length}...`)
+        const etapa = await criarEtapa(accessToken, idReceita, {
+          ordem: k + 1,
+          titulo: e.title.trim(),
+          instrucao: e.text.trim(),
+          timestampVideo: e.videoAt ? Number(e.videoAt) : undefined,
+          imagem: e.image || undefined,
+        })
+        if (!etapa) throw new Error(`Resposta inválida ao salvar a etapa ${k + 1}.`)
+
+        for (const x of e.dicas.filter((x) => x.titulo.trim() && x.texto.trim())) {
+          await criarDica(accessToken, idReceita, etapa.id, { tipo: x.tipo, titulo: x.titulo.trim(), texto: x.texto.trim() })
+        }
+      }
+
+      try { localStorage.removeItem(chave) } catch { /* ok */ }
       setSujo(false)
-      toast.sucesso('Receita excluída.')
-      nav('/painel')
+      toast.sucesso('Receita publicada.')
+      nav(`/receita/${idReceita}`)
+    } catch (x) {
+      if (idReceita) {
+        // a receita já existe no servidor: não publica de novo, para não duplicar
+        toast.aviso(`A receita foi criada, mas algo falhou: ${(x as Error).message}`)
+        nav(`/receita/${idReceita}`)
+      } else {
+        toast.aviso((x as Error).message)
+      }
+    } finally {
+      setEnviando(false)
+      setProgresso('')
     }
   }
 
@@ -199,13 +198,16 @@ export default function NovaReceita() {
   const g = d.geral
   const upItem = (i: number, k: keyof Item, v: string) => alterar((p) => ({ ...p, itens: p.itens.map((x, j) => (j === i ? { ...x, [k]: v } : x)) }))
   const upEt = (i: number, patch: Partial<Et>) => alterar((p) => ({ ...p, etapas: p.etapas.map((x, j) => (j === i ? { ...x, ...patch } : x)) }))
-  const filtrados = catalogo.filter((c) => c.nome.toLowerCase().includes(busca.toLowerCase()))
+  const opcoesIngrediente = (atual: string) => {
+    const lista = ingredientesApi.filter((c) => c.nome.toLowerCase().includes(busca.toLowerCase()))
+    const sel = ingredientesApi.find((c) => String(c.id) === atual)
+    return sel && !lista.includes(sel) ? [sel, ...lista] : lista
+  }
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 ref={topo} tabIndex={-1} className="text-3xl font-extrabold outline-none">{editId ? 'Editar receita' : 'Publicar receita'}</h1>
-        {editId && <button className="inline-flex cursor-pointer items-center gap-2 text-sm font-semibold text-alert" onClick={excluir}><Trash2 size={15} /> Excluir receita</button>}
+        <h1 ref={topo} tabIndex={-1} className="text-3xl font-extrabold outline-none">Publicar receita</h1>
       </div>
 
       {oferecer && (
@@ -258,12 +260,11 @@ export default function NovaReceita() {
                 <div className="grid grid-cols-[1fr_90px_100px] gap-2">
                   <select aria-label={`Ingrediente ${i + 1}`} className="input" value={it.cat} onChange={(e) => upItem(i, 'cat', e.target.value)}>
                     <option value="">Ingrediente</option>
-                    {(it.cat && !filtrados.some((c) => c.id === it.cat) ? [catalogo.find((c) => c.id === it.cat)!, ...filtrados] : filtrados).map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
+                    {opcoesIngrediente(it.cat).map((c) => <option key={c.id} value={String(c.id)}>{c.nome}</option>)}
                   </select>
                   <input aria-label={`Quantidade ${i + 1}`} className="input" inputMode="decimal" placeholder="Qtd" value={it.qty} onChange={(e) => upItem(i, 'qty', e.target.value)} />
                   <select aria-label={`Unidade ${i + 1}`} className="input" value={it.unit} onChange={(e) => upItem(i, 'unit', e.target.value)}><Opcoes mapa={ENUMS.unidade} /></select>
                 </div>
-                {it.cat && (it.unit === 'UNIDADE' || it.unit === 'XICARA') && <p className="text-[11px] text-gold">Este catálogo usa g/ml: com “{ENUMS.unidade[it.unit as keyof typeof ENUMS.unidade]}” o item não entra no cálculo nutricional.</p>}
                 <div className="flex gap-1">
                   <button type="button" aria-label={`Subir ingrediente ${i + 1}`} className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-line disabled:opacity-30" disabled={i === 0} onClick={() => alterar((p) => ({ ...p, itens: mover(p.itens, i, -1) }))}><ArrowUp size={14} /></button>
                   <button type="button" aria-label={`Descer ingrediente ${i + 1}`} className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-line disabled:opacity-30" disabled={i === d.itens.length - 1} onClick={() => alterar((p) => ({ ...p, itens: mover(p.itens, i, 1) }))}><ArrowDown size={14} /></button>
@@ -273,7 +274,6 @@ export default function NovaReceita() {
             ))}
           </ul>
           <button type="button" className="btn-ghost" onClick={() => alterar((p) => ({ ...p, itens: [...p.itens, { cat: '', qty: '', unit: 'G' }] }))}><Plus size={15} /> Ingrediente</button>
-          <p className="rounded-2xl bg-peach p-3 text-sm" aria-live="polite">Prévia nutricional: <b className="text-terra">{Math.round(nutri.porcao)} kcal</b> por porção{nutri.fora > 0 ? ` (cálculo parcial: ${nutri.fora} item fora da conta)` : ''}.</p>
         </section>
       )}
 
@@ -290,7 +290,6 @@ export default function NovaReceita() {
                   <input aria-label="Timer em segundos" className="input" inputMode="numeric" placeholder="Timer (segundos)" value={et.seconds} onChange={(e) => upEt(i, { seconds: e.target.value.replace(/\D/g, '') })} />
                   <input aria-label="Link da imagem" className="input" placeholder="Link da imagem" value={et.image} onChange={(e) => upEt(i, { image: e.target.value })} />
                 </div>
-                {(et.title || et.text) && <p className="rounded-xl bg-cream p-3 text-xs text-ink-soft"><b className="text-ink">{i + 1}. {et.title}</b><br />{et.text}</p>}
                 <div className="flex gap-1">
                   <button type="button" aria-label={`Subir etapa ${i + 1}`} className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-line disabled:opacity-30" disabled={i === 0} onClick={() => alterar((p) => ({ ...p, etapas: mover(p.etapas, i, -1) }))}><ArrowUp size={14} /></button>
                   <button type="button" aria-label={`Descer etapa ${i + 1}`} className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-line disabled:opacity-30" disabled={i === d.etapas.length - 1} onClick={() => alterar((p) => ({ ...p, etapas: mover(p.etapas, i, 1) }))}><ArrowDown size={14} /></button>
@@ -307,25 +306,22 @@ export default function NovaReceita() {
         <section className="space-y-4">
           <div className="card space-y-4 p-5">
             <h2 className="text-lg font-bold">Dicas e erros comuns por etapa</h2>
-            {d.etapas.filter((e) => e.title.trim()).map((et) => {
-              const idx = d.etapas.indexOf(et)
-              return (
-                <div key={idx} className="space-y-2 rounded-2xl border border-line p-3">
-                  <p className="text-sm font-semibold">{idx + 1}. {et.title}</p>
-                  {et.dicas.map((x, j) => (
-                    <div key={j} className="grid gap-2 sm:grid-cols-[130px_1fr_auto]">
-                      <select aria-label="Tipo" className="input" value={x.tipo} onChange={(e) => upEt(idx, { dicas: et.dicas.map((y, k) => (k === j ? { ...y, tipo: e.target.value as Dica['tipo'] } : y)) })}><option value="DICA">Dica</option><option value="ERRO_COMUM">Erro comum</option></select>
-                      <div className="space-y-1">
-                        <input aria-label="Título da dica" className="input" placeholder="Título" value={x.titulo} onChange={(e) => upEt(idx, { dicas: et.dicas.map((y, k) => (k === j ? { ...y, titulo: e.target.value } : y)) })} />
-                        <textarea aria-label="Texto da dica" className="input" rows={2} placeholder="Texto" value={x.texto} onChange={(e) => upEt(idx, { dicas: et.dicas.map((y, k) => (k === j ? { ...y, texto: e.target.value } : y)) })} />
-                      </div>
-                      <button type="button" aria-label="Remover dica" className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-line text-alert" onClick={() => upEt(idx, { dicas: et.dicas.filter((_, k) => k !== j) })}><Trash2 size={14} /></button>
+            {d.etapas.map((et, idx) => et.title.trim() && (
+              <div key={idx} className="space-y-2 rounded-2xl border border-line p-3">
+                <p className="text-sm font-semibold">{idx + 1}. {et.title}</p>
+                {et.dicas.map((x, j) => (
+                  <div key={j} className="grid gap-2 sm:grid-cols-[130px_1fr_auto]">
+                    <select aria-label="Tipo" className="input" value={x.tipo} onChange={(e) => upEt(idx, { dicas: et.dicas.map((y, k) => (k === j ? { ...y, tipo: e.target.value as Dica['tipo'] } : y)) })}><option value="DICA">Dica</option><option value="ERRO_COMUM">Erro comum</option></select>
+                    <div className="space-y-1">
+                      <input aria-label="Título da dica" className="input" placeholder="Título" value={x.titulo} onChange={(e) => upEt(idx, { dicas: et.dicas.map((y, k) => (k === j ? { ...y, titulo: e.target.value } : y)) })} />
+                      <textarea aria-label="Texto da dica" className="input" rows={2} placeholder="Texto" value={x.texto} onChange={(e) => upEt(idx, { dicas: et.dicas.map((y, k) => (k === j ? { ...y, texto: e.target.value } : y)) })} />
                     </div>
-                  ))}
-                  <button type="button" className="text-xs font-semibold text-terra" onClick={() => upEt(idx, { dicas: [...et.dicas, { tipo: 'DICA', titulo: '', texto: '' }] })}>+ Adicionar dica</button>
-                </div>
-              )
-            })}
+                    <button type="button" aria-label="Remover dica" className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-line text-alert" onClick={() => upEt(idx, { dicas: et.dicas.filter((_, k) => k !== j) })}><Trash2 size={14} /></button>
+                  </div>
+                ))}
+                <button type="button" className="text-xs font-semibold text-terra" onClick={() => upEt(idx, { dicas: [...et.dicas, { tipo: 'DICA', titulo: '', texto: '' }] })}>+ Adicionar dica</button>
+              </div>
+            ))}
           </div>
 
           <div className="card space-y-4 p-5">
@@ -334,7 +330,11 @@ export default function NovaReceita() {
               <p><b>{g.nome || '—'}</b> · {g.n} porções · {g.min} min · {ENUMS.dificuldade[g.dif as keyof typeof ENUMS.dificuldade]} · {ENUMS.tipo[g.tipo as keyof typeof ENUMS.tipo]}</p>
             </Resumo>
             <Resumo titulo="Ingredientes" onEditar={() => ir(1)}>
-              <ul className="list-disc pl-4">{d.itens.filter((i) => i.cat).map((i, k) => <li key={k}>{fmtNum(Number(i.qty) || 0)} {ENUMS.unidade[i.unit as keyof typeof ENUMS.unidade]} {catalogo.find((c) => c.id === i.cat)?.nome}</li>)}</ul>
+              <ul className="list-disc pl-4">
+                {d.itens.filter((i) => i.cat).map((i, k) => (
+                  <li key={k}>{fmtNum(Number(i.qty) || 0)} {ENUMS.unidade[i.unit as keyof typeof ENUMS.unidade]} {ingredientesApi.find((c) => String(c.id) === i.cat)?.nome}</li>
+                ))}
+              </ul>
             </Resumo>
             <Resumo titulo="Modo de preparo" onEditar={() => ir(2)}>
               <ol className="list-decimal pl-4">{d.etapas.filter((e) => e.title.trim()).map((e, k) => <li key={k}>{e.title}</li>)}</ol>
@@ -348,7 +348,9 @@ export default function NovaReceita() {
         {d.passo < 3 ? (
           <button className="btn-primary" onClick={avancar}>Avançar</button>
         ) : (
-          <button className="btn-primary" disabled={enviando} onClick={publicar}><Check size={16} /> {editId ? 'Salvar alterações' : 'Publicar receita'}</button>
+          <button className="btn-primary" disabled={enviando} onClick={publicar}>
+            <Check size={16} /> {enviando ? progresso || 'Publicando...' : 'Publicar receita'}
+          </button>
         )}
       </div>
       <p className="text-center text-xs text-ink-faint"><Link to="/painel" className="underline">Cancelar e voltar ao painel</Link></p>

@@ -7,7 +7,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
+import java.util.Optional;
 import com.gastromatch.dto.CadastroChefRequest;
 import com.gastromatch.dto.ChefPerfilResponse;
 import com.gastromatch.dto.ChefResponse;
@@ -36,16 +36,18 @@ public class ChefService {
     private final ChefRepository chefRepository;
 
     public ChefService(UsuarioRepository usuarioRepository,
-                       ProfissionalRepository profissionalRepository,
-                       ChefRepository chefRepository) {
+            ProfissionalRepository profissionalRepository,
+            ChefRepository chefRepository) {
         this.usuarioRepository = usuarioRepository;
         this.profissionalRepository = profissionalRepository;
         this.chefRepository = chefRepository;
     }
 
     /**
-     * Cria o profissional (role CHEF) e o chef, e liga a conta a eles. O role é sempre
-     * CHEF aqui, então profissional e tabela filha ficam coerentes (o banco não garante).
+     * Cria o profissional (role CHEF) e o chef, e liga a conta a eles. O role é
+     * sempre
+     * CHEF aqui, então profissional e tabela filha ficam coerentes (o banco não
+     * garante).
      * Chef publica sem aprovação: não existe status de verificação para ele.
      */
     @Transactional
@@ -66,24 +68,26 @@ public class ChefService {
 
     @Transactional(readOnly = true)
     public ChefResponse meuPerfil(Integer usuarioId) {
-        return ChefResponse.de(chefDoUsuario(usuarioId));
+        return ChefResponse.de(chefOpcional(usuarioId)
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Você ainda não tem perfil de chef")));
     }
 
     /** Chef da conta logada; 403 se a conta não tem perfil de chef. */
     @Transactional(readOnly = true)
     public Chef chefDoUsuario(Integer usuarioId) {
+        return chefOpcional(usuarioId)
+                .orElseThrow(() -> new AcessoNegadoException(SEM_PERFIL_DE_CHEF));
+    }
+
+    private Optional<Chef> chefOpcional(Integer usuarioId) {
         Usuario usuario = usuarioRepository.findById(usuarioId)
                 .orElseThrow(UsuarioNaoEncontradoException::new);
         if (usuario.getIdProfissional() == null) {
-            throw new AcessoNegadoException(SEM_PERFIL_DE_CHEF);
+            return Optional.empty();
         }
-        Chef chef = chefRepository.findByProfissionalId(usuario.getIdProfissional())
-                .orElseThrow(() -> new AcessoNegadoException(SEM_PERFIL_DE_CHEF));
         // Confere o discriminador: o banco não impede um role diferente de CHEF aqui.
-        if (chef.getProfissional().getRole() != RoleProfissional.CHEF) {
-            throw new AcessoNegadoException(SEM_PERFIL_DE_CHEF);
-        }
-        return chef;
+        return chefRepository.findByProfissionalId(usuario.getIdProfissional())
+                .filter(c -> c.getProfissional().getRole() == RoleProfissional.CHEF);
     }
 
     /** Diretório público de chefs, com filtro opcional por especialização. */
@@ -94,8 +98,7 @@ public class ChefService {
                 : chefRepository.findByEspecializacao(especializacao, pageable);
         Map<Integer, String> usernames = UsernamesPorProfissional.buscar(usuarioRepository,
                 pagina.getContent().stream().map(c -> c.getProfissional().getId()).toList());
-        return PaginaResponse.de(pagina.map(c ->
-                ChefPerfilResponse.de(c, usernames.get(c.getProfissional().getId()))));
+        return PaginaResponse.de(pagina.map(c -> ChefPerfilResponse.de(c, usernames.get(c.getProfissional().getId()))));
     }
 
     /** Perfil público de um chef. */
@@ -111,7 +114,7 @@ public class ChefService {
 
     /** Atualiza perfil de um chef */
     @Transactional
-    public ChefResponse atualizarPerfil(Integer usuarioId, CadastroChefRequest request){
+    public ChefResponse atualizarPerfil(Integer usuarioId, CadastroChefRequest request) {
         Chef chef = chefDoUsuario(usuarioId);
         chef.getProfissional().setBio(request.bio() == null || request.bio().isBlank() ? null : request.bio().trim());
         chef.setEspecializacao(request.especializacao());

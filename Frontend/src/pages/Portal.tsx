@@ -1,63 +1,119 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, Navigate } from 'react-router-dom'
+import { Aviso, Campo, Opcoes } from '../components/Campo'
 import { Avatar } from '../components/Photo'
 import Protegida from '../components/Protegida'
 import { useAuth } from '../context/Auth'
 import { pros } from '../data/data'
-import { useRecipes } from '../lib/useRecipes'
-import type { Papel } from '../lib/tipos'
+import { ENUMS } from '../data/enums'
+import {
+  atualizarPerfilChef,
+  buscarChefMe,
+  buscarStatusPerfis,
+  type ChefPerfilDto,
+  type PapelApi,
+  type StatusPerfil,
+} from '../api/perfis'
 import { useSeo } from '../lib/seo'
 
-const tabs = ['Perfil Público', 'Minhas Receitas', 'Kits Ilustrativos'] as const
-const nomes: Record<Papel, string> = { CHEF: 'Chef', NUTRICIONISTA: 'Nutricionista', RESTAURANTE: 'Restaurante' }
-const statusTxt = {
+const tabs = ['Perfil Público', 'Kits Ilustrativos'] as const
+const nomes: Record<PapelApi, string> = { CHEF: 'Chef', NUTRICIONISTA: 'Nutricionista', RESTAURANTE: 'Restaurante' }
+const statusTxt: Record<string, string> = {
   PENDENTE: 'Em análise: verificação manual pendente. Seu perfil não aparece no diretório até a aprovação.',
   APROVADO: 'Perfil aprovado e visível no diretório.',
   REJEITADO: 'Perfil reprovado na verificação.',
 }
 
 export default function Portal() {
-  useSeo({ titulo: 'Portal profissional' })
-  const { usuario, meusPerfis, setPerfis } = useAuth()
-  const receitas = useRecipes()
+  useSeo({ titulo: 'Meu painel' })
+  const { accessToken } = useAuth()
   const [tab, setTab] = useState<(typeof tabs)[number]>(tabs[0])
-  const [papel, setPapel] = useState<Papel | ''>('')
-  const perfil = meusPerfis.find((p) => p.papel === (papel || meusPerfis[0]?.papel))
-  const [draft, setDraft] = useState({ nome: '', bio: '', instagram: '', whatsapp: '' })
-  const [saved, setSaved] = useState(false)
+  const [perfis, setPerfis] = useState<StatusPerfil[] | null>(null)
+  const [papel, setPapel] = useState<PapelApi | null>(null)
+  const [chef, setChef] = useState<ChefPerfilDto | null>(null)
+  const [draft, setDraft] = useState({ bio: '', especializacao: '' })
+  const [erro, setErro] = useState('')
+  const [erroSalvar, setErroSalvar] = useState('')
+  const [salvando, setSalvando] = useState(false)
+  const [salvo, setSalvo] = useState(false)
+  const [recarga, setRecarga] = useState(0)
 
   useEffect(() => {
-    if (perfil) setDraft({ nome: perfil.nome, bio: perfil.bio, instagram: perfil.instagram ?? '', whatsapp: perfil.whatsapp ?? '' })
-  }, [perfil?.papel, perfil?.userId]) // eslint-disable-line react-hooks/exhaustive-deps
+    if (!accessToken) return
+    let ativo = true
+    setErro('')
+    buscarStatusPerfis(accessToken)
+      .then((lista) => {
+        if (!ativo) return
+        setPerfis(lista)
+        setPapel((p) => p ?? lista[0]?.papel ?? null)
+      })
+      .catch((e) => { if (ativo) setErro((e as Error).message || 'Não foi possível carregar seus perfis.') })
+    return () => { ativo = false }
+  }, [accessToken, recarga])
 
-  const set = (k: keyof typeof draft) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    setSaved(false)
-    setDraft({ ...draft, [k]: e.target.value })
+  const temChef = !!perfis?.some((p) => p.papel === 'CHEF')
+
+  useEffect(() => {
+    if (!accessToken || !temChef) return
+    let ativo = true
+    buscarChefMe(accessToken)
+      .then((c) => {
+        if (!ativo || !c) return
+        setChef(c)
+        setDraft({ bio: c.bio ?? '', especializacao: c.especializacao ?? '' })
+      })
+      .catch(() => { if (ativo) setErro('Não foi possível carregar o perfil de chef.') })
+    return () => { ativo = false }
+  }, [accessToken, temChef])
+
+  const atual = perfis?.find((p) => p.papel === papel)
+
+  const salvar = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!accessToken) return
+    setSalvando(true)
+    setErroSalvar('')
+    setSalvo(false)
+    try {
+      const c = await atualizarPerfilChef(accessToken, { especializacao: draft.especializacao, bio: draft.bio || undefined })
+      if (c) setChef(c)
+      setSalvo(true)
+    } catch (x) {
+      setErroSalvar((x as Error).message || 'Não foi possível salvar o perfil.')
+    } finally {
+      setSalvando(false)
+    }
   }
 
-  const minhas = receitas.filter((r) => r.owner === usuario?.id)
+  // Sem perfil profissional: segue o fluxo escolher profissão -> cadastro.
+  if (perfis?.length === 0) return <Navigate to="/onboarding" replace />
 
   return (
     <Protegida>
-      {!perfil ? (
-        <div className="card mx-auto max-w-md space-y-3 p-6 text-center">
-          <h1 className="text-xl font-bold">Você ainda não tem perfil profissional</h1>
-          <Link to="/onboarding" className="btn-primary">Criar perfil</Link>
+      {erro && (
+        <div className="mb-4 space-y-3">
+          <Aviso tipo="erro">{erro}</Aviso>
+          {perfis === null && <button className="btn-ghost" onClick={() => setRecarga((x) => x + 1)}>Tentar de novo</button>}
         </div>
-      ) : (
+      )}
+
+      {perfis === null && !erro && <p className="card p-10 text-center text-sm text-ink-soft">Carregando...</p>}
+
+      {atual && (
         <div className="space-y-6">
           <section className="flex flex-wrap items-center gap-4 rounded-2xl border border-line bg-peach p-4">
             <div className="min-w-0 flex-1">
-              <h1 className="font-display text-lg font-bold">
-                {nomes[perfil.papel]} · {perfil.status}
-              </h1>
-              <p className="text-xs text-ink-soft">{statusTxt[perfil.status]}</p>
+              <h1 className="font-display text-lg font-bold">{nomes[atual.papel]} · {atual.status}</h1>
+              <p className="text-xs text-ink-soft">{statusTxt[atual.status]}</p>
+              {atual.status === 'REJEITADO' && atual.motivo && <p className="mt-1 text-xs text-alert">Motivo: {atual.motivo}</p>}
             </div>
-            {meusPerfis.length > 1 && (
-              <select className="input !w-auto" value={perfil.papel} onChange={(e) => setPapel(e.target.value as Papel)}>
-                {meusPerfis.map((p) => <option key={p.papel} value={p.papel}>{nomes[p.papel]}</option>)}
+            {perfis && perfis.length > 1 && (
+              <select className="input !w-auto" value={atual.papel} onChange={(e) => setPapel(e.target.value as PapelApi)}>
+                {perfis.map((p) => <option key={p.papel} value={p.papel}>{nomes[p.papel]}</option>)}
               </select>
             )}
+            {atual.papel === 'CHEF' && atual.status === 'APROVADO' && <Link to="/publicar" className="btn-primary">+ Publicar nova receita</Link>}
           </section>
 
           <section className="card space-y-5 p-5 md:p-6">
@@ -70,61 +126,38 @@ export default function Portal() {
               ))}
             </div>
 
-            {tab === 'Perfil Público' && (
-              <div className="grid gap-5 md:grid-cols-[220px_1fr]">
+            {tab === 'Perfil Público' && atual.papel === 'CHEF' && chef && (
+              <form onSubmit={salvar} className="grid gap-5 md:grid-cols-[220px_1fr]">
                 <div className="rounded-xl border border-line bg-peach p-4 text-center">
                   <Avatar className="mx-auto h-20 w-20" />
-                  <p className="mt-2 font-display text-lg font-bold">{draft.nome}</p>
-                  <p className="text-[11px] font-semibold text-terra">{nomes[perfil.papel]}</p>
-                  {perfil.crn && <p className="mt-2 text-[11px] text-ink-soft">CRN {perfil.crn}</p>}
-                  {perfil.comprovante && <p className="mt-1 text-[11px] text-ink-faint">{perfil.comprovante}</p>}
+                  <p className="mt-2 font-display text-lg font-bold">{chef.nome}</p>
+                  <p className="text-[11px] font-semibold text-terra">Chef</p>
                 </div>
                 <div className="space-y-4">
-                  <label className="block text-[11px] font-semibold">
-                    Nome de exibição
-                    <input className="input mt-1" value={draft.nome} onChange={set('nome')} />
-                  </label>
-                  <label className="block text-[11px] font-semibold">
-                    Biografia
-                    <textarea className="input mt-1 h-24 resize-y" maxLength={500} value={draft.bio} onChange={set('bio')} />
-                  </label>
-                  <p className="text-right text-[10px] text-ink-faint">{draft.bio.length} / 500</p>
-                  <div className="grid gap-3 md:grid-cols-2">
-                    <label className="text-[11px] font-semibold">
-                      Instagram
-                      <input className="input mt-1" placeholder="usuario" value={draft.instagram} onChange={set('instagram')} />
-                    </label>
-                    <label className="text-[11px] font-semibold">
-                      WhatsApp
-                      <input className="input mt-1" placeholder="(11) 98765-4321" value={draft.whatsapp} onChange={set('whatsapp')} />
-                    </label>
-                  </div>
-                  <p className="text-[11px] text-ink-faint">Os contatos viram links externos no diretório. Não há mensagens nem agendamento na plataforma.</p>
+                  <Campo label="Especialização">
+                    <select className="input" required value={draft.especializacao}
+                      onChange={(e) => { setSalvo(false); setDraft((d) => ({ ...d, especializacao: e.target.value })) }}>
+                      <option value="">Selecione</option>
+                      <Opcoes mapa={ENUMS.especializacao} />
+                    </select>
+                  </Campo>
+                  <Campo label="Biografia" dica={`${draft.bio.length} / 500`}>
+                    <textarea className="input h-24 resize-y" maxLength={500} value={draft.bio}
+                      onChange={(e) => { setSalvo(false); setDraft((d) => ({ ...d, bio: e.target.value })) }} />
+                  </Campo>
+                  {erroSalvar && <Aviso tipo="erro">{erroSalvar}</Aviso>}
                   <div className="flex items-center justify-end gap-3">
-                    {saved && <span className="text-xs font-semibold text-leaf">Salvo</span>}
-                    <button className="btn-primary" onClick={() => {
-                      setPerfis((l) => l.map((p) => (p.userId === perfil.userId && p.papel === perfil.papel ? { ...p, ...draft } : p)))
-                      setSaved(true)
-                    }}>Salvar perfil</button>
+                    {salvo && <span className="text-xs font-semibold text-leaf">Salvo</span>}
+                    <button className="btn-primary" disabled={salvando}>{salvando ? 'Salvando...' : 'Salvar perfil'}</button>
                   </div>
                 </div>
-              </div>
+              </form>
             )}
 
-            {tab === 'Minhas Receitas' && (
-              <div className="space-y-3">
-                {perfil.papel === 'CHEF' ? (
-                  <Link to="/publicar" className="btn-primary">+ Publicar nova receita</Link>
-                ) : (
-                  <p className="text-sm text-ink-soft">Apenas chefs publicam receitas.</p>
-                )}
-                {minhas.length === 0 && <p className="text-sm text-ink-soft">Nenhuma receita publicada.</p>}
-                <ul className="divide-y divide-line">
-                  {minhas.map((r) => (
-                    <li key={r.id} className="py-2 text-sm"><Link className="font-semibold hover:text-terra" to={`/receita/${r.id}`}>{r.title}</Link></li>
-                  ))}
-                </ul>
-              </div>
+            {tab === 'Perfil Público' && atual.papel === 'CHEF' && !chef && !erro && <p className="text-sm text-ink-soft">Carregando perfil de chef...</p>}
+
+            {tab === 'Perfil Público' && atual.papel !== 'CHEF' && (
+              <p className="text-sm text-ink-soft">A edição do perfil de {nomes[atual.papel].toLowerCase()} ainda não está disponível pela API.</p>
             )}
 
             {tab === 'Kits Ilustrativos' && (
@@ -145,6 +178,8 @@ export default function Portal() {
           </section>
         </div>
       )}
+
+      <p className="mt-6 text-center text-xs text-ink-faint"><Link to="/conta" className="underline">Voltar à conta</Link></p>
     </Protegida>
   )
 }

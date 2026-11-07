@@ -1,7 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { useLocalState } from '../hooks/useLocalState'
 import { cadastroApi, loginApi, logoutApi, refreshApi, type AuthDto, type UsuarioDto } from '../api/auth'
-import type { PerfilPro } from '../lib/tipos'
+import { ApiError, definirRenovadorDeSessao } from '../api/http'
 
 const REFRESH_KEY = 'gm-refresh-token'
 
@@ -9,55 +8,91 @@ type Ctx = {
   usuario: UsuarioDto | null
   accessToken: string | null
   carregando: boolean
-  perfis: PerfilPro[]
-  meusPerfis: PerfilPro[]
-  setPerfis: (f: (p: PerfilPro[]) => PerfilPro[]) => void
   entrar: (email: string, password: string) => Promise<void>
   cadastrar: (email: string, username: string, password: string) => Promise<void>
   sair: () => void
 }
+
 const AuthCtx = createContext<Ctx | null>(null)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  // Perfis profissionais continuam locais até a etapa de onboarding ser integrada
-  const [perfis, setPerfis] = useLocalState<PerfilPro[]>('gm-perfis', [])
-
   const [usuario, setUsuario] = useState<UsuarioDto | null>(null)
   const [accessToken, setAccessToken] = useState<string | null>(null)
   const [carregando, setCarregando] = useState(true)
   const iniciado = useRef(false) // evita dupla chamada de refresh no StrictMode
+  const tokenAtual = useRef<string | null>(null) // espelho do estado, para quem não lê o estado
+  const renovando = useRef<Promise<string | null> | null>(null)
 
   const guardarSessao = useCallback((s: AuthDto) => {
+    tokenAtual.current = s.accessToken
     setAccessToken(s.accessToken)
     setUsuario(s.usuario)
     localStorage.setItem(REFRESH_KEY, s.refreshToken) // o refresh é rotacionado a cada uso
   }, [])
 
   const limparSessao = useCallback(() => {
+    tokenAtual.current = null
     localStorage.removeItem(REFRESH_KEY)
     setAccessToken(null)
     setUsuario(null)
   }, [])
 
-  // Restaura a sessão ao abrir o site e remove as contas de demonstração antigas
+  /**
+   * Renova o access token com o refresh token. Chamadas simultâneas dividem a mesma renovação.
+   * Devolve o token novo, ou null se não foi possível.
+   */
+  const renovar = useCallback(
+    (tokenQueFalhou?: string): Promise<string | null> => {
+      // outro pedido já renovou: usa o token novo, sem rotacionar o refresh de novo
+      if (tokenQueFalhou && tokenAtual.current && tokenAtual.current !== tokenQueFalhou) {
+        return Promise.resolve(tokenAtual.current)
+      }
+      if (renovando.current) return renovando.current
+
+      const rt = localStorage.getItem(REFRESH_KEY)
+      if (!rt) return Promise.resolve(null)
+
+      const p = refreshApi(rt)
+        .then((s) => {
+          if (!s) {
+            limparSessao()
+            return null
+          }
+          guardarSessao(s)
+          return s.accessToken
+        })
+        .catch((e) => {
+          // Sem conexão (status 0): mantém a sessão para tentar depois.
+          // Refresh recusado pelo servidor: a sessão acabou.
+          if (!(e instanceof ApiError && e.status === 0)) limparSessao()
+          return null
+        })
+        .finally(() => {
+          renovando.current = null
+        })
+      renovando.current = p
+      return p
+    },
+    [guardarSessao, limparSessao],
+  )
+
+  // Entrega o renovador ao cliente HTTP, que o usa quando um pedido autenticado recebe 401.
   useEffect(() => {
-    localStorage.removeItem('gm-contas')
-    localStorage.removeItem('gm-sessao')
+    definirRenovadorDeSessao(renovar)
+    return () => definirRenovadorDeSessao(null)
+  }, [renovar])
+
+  // Restaura a sessão ao abrir o site
+  useEffect(() => {
     if (iniciado.current) return
     iniciado.current = true
 
-    const rt = localStorage.getItem(REFRESH_KEY)
-    if (!rt) {
+    if (!localStorage.getItem(REFRESH_KEY)) {
       setCarregando(false)
       return
     }
-    refreshApi(rt)
-      .then((s) => {
-        if (s) guardarSessao(s)
-      })
-      .catch(limparSessao)
-      .finally(() => setCarregando(false))
-  }, [guardarSessao, limparSessao])
+    renovar().finally(() => setCarregando(false))
+  }, [renovar])
 
   const entrar = useCallback(
     async (email: string, password: string) => {
@@ -81,15 +116,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     limparSessao()
   }, [limparSessao])
 
-  // Ponte temporária: PerfilPro.userId é string, usuario.id é number vindo da API
-  const meusPerfis = useMemo(
-    () => (usuario ? perfis.filter((p) => p.userId === String(usuario.id)) : []),
-    [perfis, usuario],
-  )
-
   const value = useMemo(
-    () => ({ usuario, accessToken, carregando, perfis, meusPerfis, setPerfis, entrar, cadastrar, sair }),
-    [usuario, accessToken, carregando, perfis, meusPerfis, setPerfis, entrar, cadastrar, sair],
+    () => ({ usuario, accessToken, carregando, entrar, cadastrar, sair }),
+    [usuario, accessToken, carregando, entrar, cadastrar, sair],
   )
 
   return <AuthCtx.Provider value={value}>{children}</AuthCtx.Provider>

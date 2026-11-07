@@ -18,9 +18,7 @@ import Perfil from './pages/Perfil'
 import Portal from './pages/Portal'
 import Receitas from './pages/Receitas'
 import Recipe from './pages/Recipe'
-import Restaurante from './pages/Restaurante'
 import Restaurantes from './pages/Restaurantes'
-import Senha from './pages/Senha'
 import Verificacao from './pages/Verificacao'
 
 export default function App() {
@@ -38,7 +36,7 @@ export default function App() {
           <Route path="/painel" element={<Painel />} />
           <Route path="/profissionais" element={<Directory />} />
           <Route path="/restaurantes" element={<Restaurantes />} />
-          <Route path="/restaurante/:id" element={<Restaurante />} />
+          <Route path="/restaurante/:id" element={<Restaurantes />} />
           <Route path="/chef/:id" element={<Chef />} />
           <Route path="/portal" element={<Portal />} />
           <Route path="/login" element={<Login />} />
@@ -47,7 +45,6 @@ export default function App() {
           <Route path="/favoritos" element={<Favoritos />} />
           <Route path="/conta" element={<Conta />} />
           <Route path="/perfil" element={<Perfil />} />
-          <Route path="/senha" element={<Senha />} />
           <Route path="/verificacao" element={<Verificacao />} />
           <Route path="/admin" element={<Admin />} />
           <Route path="/acesso-negado" element={<AcessoNegado />} />

@@ -35,7 +35,6 @@ export default function Cadastro() {
   return (
     <form onSubmit={enviar} noValidate className="card mx-auto max-w-md space-y-4 p-6">
       <h1 className="text-2xl font-bold">Criar conta</h1>
-      <Aviso tipo="info">Demonstração: a conta fica salva só neste navegador.</Aviso>
       {erro && <Aviso tipo="erro">{erro}</Aviso>}
       <Campo label="E-mail" erro={f.erros.email}>
         <input name="email" className="input" type="email" maxLength={255} autoComplete="email" value={f.v.email} onChange={f.onChange('email')} onBlur={f.onBlur('email')} />

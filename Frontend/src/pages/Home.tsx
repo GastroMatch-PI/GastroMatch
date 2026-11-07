@@ -1,60 +1,48 @@
-import { ArrowRight, Plus, Refrigerator, Search, Sparkles, X } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { ArrowRight, Refrigerator, Search } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { motion, useScroll, useTransform } from 'motion/react'
-import { useRef } from 'react'
 import { Reveal, SplitWords } from '../components/Motion'
 import RecipeCard from '../components/RecipeCard'
-import { collections, fridgeItems } from '../data/data'
+import { collections } from '../data/data'
 import Carrossel from '../components/Carrossel'
 import CardRestaurante from '../components/CardRestaurante'
 import { EstadoVazio } from '../components/Ui'
-import { useAuth } from '../context/Auth'
+import { adaptarRestaurante, listarRestaurantes } from '../api/restaurantes'
+import type { PerfilPro } from '../lib/tipos'
+import { ENUMS } from '../data/enums'
 import { useSeo } from '../lib/seo'
-import { useRecipes } from '../lib/useRecipes'
-
+import { useReceitasApi } from '../api/useReceitas'
 
 export default function Home() {
   useSeo({ titulo: 'GastroMatch' })
-  const { perfis } = useAuth()
-  const restaurantes = perfis.filter((p) => p.papel === 'RESTAURANTE' && p.status === 'APROVADO')
-  const recipes = useRecipes()
+  // confirmar: restaurantes continuam locais até a integração do diretório
   const heroRef = useRef<HTMLElement>(null)
   const { scrollYProgress } = useScroll({ target: heroRef, offset: ['start start', 'end start'] })
   const imgY = useTransform(scrollYProgress, [0, 1], ['0%', '18%'])
   const imgScale = useTransform(scrollYProgress, [0, 1], [1.05, 1.25])
   const [params] = useSearchParams()
   const [maxMin, setMaxMin] = useState(0)
-  const [dif, setDif] = useState('')
-  const [selected, setSelected] = useState<string[]>([])
-  const [searched, setSearched] = useState(false)
+  const [dif, setDif] = useState('') // chave do enum: FACIL, MEDIO...
   const [tab, setTab] = useState<'geladeira' | 'prato'>(params.get('q') ? 'prato' : 'geladeira')
   const [dish, setDish] = useState(params.get('q') ?? '')
   const [collection, setCollection] = useState('Todos')
+const [restaurantes, setRestaurantes] = useState<PerfilPro[]>([])
 
-  const toggle = (item: string) => setSelected((s) => (s.includes(item) ? s.filter((i) => i !== item) : [...s, item]))
+useEffect(() => {
+  listarRestaurantes({ pagina: 0, tamanho: 8 })
+    .then((p) => setRestaurantes(p.itens.map(adaptarRestaurante)))
+    .catch(() => setRestaurantes([]))
+}, [])
+  // rótulo da chip -> chave do enum Java
+  const tipo = collection === 'Todos' ? undefined : Object.entries(ENUMS.tipo).find(([, v]) => v === collection)?.[0]
 
-  const matches = useMemo(
-    () =>
-      recipes
-        .map((r) => {
-          const hit = r.ingredients.filter((i) => selected.includes(i)).length
-          return { recipe: r, match: Math.round((hit / r.ingredients.length) * 100) }
-        })
-        .filter((m) => m.match > 0)
-        .sort((a, b) => b.match - a.match),
-    [selected, recipes],
-  )
-
-  const list = useMemo(() => {
-    const term = dish.trim().toLowerCase()
-    return recipes
-      .filter((r) => collection === 'Todos' || r.collections.includes(collection))
-      .filter((r) => !term || [r.title, r.author, ...r.ingredients, ...r.collections].some((t) => t.toLowerCase().includes(term)))
-      .filter((r) => !maxMin || r.minutes <= maxMin)
-      .filter((r) => !dif || r.difficulty === dif)
-  }, [collection, dish, recipes, maxMin, dif])
-
+  const { receitas, carregando, erro, temMais, carregarMais } = useReceitasApi({
+    texto: dish.trim() || undefined,
+    tempoMax: maxMin || undefined,
+    dificuldade: dif || undefined,
+    tipo,
+  })
 
   return (
     <div className="space-y-16">
@@ -110,36 +98,9 @@ export default function Home() {
         </div>
 
         {tab === 'geladeira' ? (
-          <div className="space-y-4">
-            <p className="text-sm text-ink-soft">Selecione ao menos 2 ingredientes.</p>
-            <div className="flex flex-wrap gap-2">
-              {fridgeItems.map((i) => (
-                <button
-                  key={i}
-                  onClick={() => toggle(i)}
-                  aria-pressed={selected.includes(i)}
-                  className={`chip ${selected.includes(i) ? 'border-terra bg-terra text-on-accent' : 'border-line bg-surface text-ink-soft hover:bg-peach'}`}
-                >
-                  {selected.includes(i) ? <X size={13} /> : <Plus size={13} />} {i}
-                </button>
-              ))}
-            </div>
-            <button className="btn-primary" disabled={selected.length < 2} onClick={() => setSearched(true)}>
-              <Sparkles size={16} /> Encontrar receitas
-              <span className="rounded-full bg-surface/25 px-2 py-0.5 text-xs">{matches.length}</span>
-            </button>
-            {searched && (
-              matches.length ? (
-                <div className="grid gap-5 pt-3 sm:grid-cols-2 lg:grid-cols-3">
-                  {matches.map(({ recipe, match }) => (
-                    <RecipeCard key={recipe.id} recipe={recipe} match={match} />
-                  ))}
-                </div>
-              ) : (
-                <p className="rounded-2xl bg-peach p-4 text-sm text-ink-soft">Nenhuma receita usa esses ingredientes.</p>
-              )
-            )}
-          </div>
+          <p className="rounded-2xl bg-peach p-4 text-sm text-ink-soft">
+            A busca pela geladeira será ligada à API na próxima etapa, usando os ingredientes reais do catálogo.
+          </p>
         ) : (
           <div className="space-y-3">
             <div className="relative">
@@ -155,9 +116,7 @@ export default function Home() {
               </select>
               <select className="input !w-auto !rounded-full" aria-label="Dificuldade" value={dif} onChange={(e) => setDif(e.target.value)}>
                 <option value="">Qualquer dificuldade</option>
-                <option>Fácil</option>
-                <option>Médio</option>
-                <option>Difícil</option>
+                {Object.entries(ENUMS.dificuldade).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
               </select>
             </div>
           </div>
@@ -168,7 +127,9 @@ export default function Home() {
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
             <h2 className="font-display text-5xl font-extrabold uppercase leading-none tracking-tight sm:text-7xl">Receitas</h2>
-            <p className="mt-3 text-sm text-ink-soft">{list.length} {list.length === 1 ? 'receita' : 'receitas'} para cozinhar agora</p>
+            <p className="mt-3 text-sm text-ink-soft">
+              {receitas.length} {receitas.length === 1 ? 'receita' : 'receitas'} {temMais ? 'carregadas' : 'para cozinhar agora'}
+            </p>
           </div>
         </div>
 
@@ -187,16 +148,27 @@ export default function Home() {
           </div>
         </div>
 
-        {list.length === 0 ? (
+        {erro && <p role="alert" className="card p-6 text-sm text-alert">{erro}</p>}
+
+        {carregando ? (
+          <p className="card p-10 text-center text-sm text-ink-soft">Carregando receitas...</p>
+        ) : receitas.length === 0 && !erro ? (
           <p className="card p-10 text-center text-sm text-ink-soft">Nenhuma receita encontrada com esses filtros.</p>
         ) : (
-          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {list.map((r, i) => (
-              <Reveal key={r.id} delay={(i % 3) * 0.08} className={i === 0 && list.length > 2 ? 'sm:col-span-2' : ''}>
-                <RecipeCard recipe={r} featured={i === 0 && list.length > 2} />
-              </Reveal>
-            ))}
-          </div>
+          <>
+            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+              {receitas.map((r, i) => (
+                <Reveal key={r.id} delay={(i % 3) * 0.08} className={i === 0 && receitas.length > 2 ? 'sm:col-span-2' : ''}>
+                  <RecipeCard recipe={r} featured={i === 0 && receitas.length > 2} />
+                </Reveal>
+              ))}
+            </div>
+            {temMais && (
+              <div className="flex justify-center">
+                <button className="btn-ghost" onClick={carregarMais}>Carregar mais</button>
+              </div>
+            )}
+          </>
         )}
       </section>
 

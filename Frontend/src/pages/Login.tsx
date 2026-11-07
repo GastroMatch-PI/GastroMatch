@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { ApiError } from '../api/http'
 import { Aviso, Campo, CampoSenha } from '../components/Campo'
 import { useAuth } from '../context/Auth'
 import { useSeo } from '../lib/seo'
@@ -20,8 +21,10 @@ export default function Login() {
     try {
       await entrar(v.email, v.password)
       nav(destino, { replace: true }) // volta para a tela original
-    } catch {
-      setErro('Credenciais inválidas') // mesma mensagem para usuário inexistente e senha errada
+    } catch (x) {
+      // 401 = usuário inexistente ou senha errada (mesma mensagem para os dois).
+      // Qualquer outro erro (sem conexão, servidor fora do ar) mostra o motivo real.
+      setErro(x instanceof ApiError && x.status !== 401 ? x.message : 'Credenciais inválidas')
     }
   })
 
