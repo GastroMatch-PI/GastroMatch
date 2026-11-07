@@ -4,8 +4,10 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.gastromatch.dto.AvaliacaoResponse;
 import com.gastromatch.dto.ComentarioRequest;
 import com.gastromatch.dto.ComentarioResponse;
+import com.gastromatch.dto.ComentariosDaReceitaResponse;
 import com.gastromatch.dto.PaginaResponse;
 import com.gastromatch.entity.Comentario;
 import com.gastromatch.exception.AcessoNegadoException;
@@ -38,12 +40,23 @@ public class ComentarioService {
     }
 
     @Transactional(readOnly = true)
-    public PaginaResponse<ComentarioResponse> listar(Integer idReceita, Pageable pageable) {
+    public ComentariosDaReceitaResponse listar(Integer idReceita, Pageable pageable) {
         if (!receitaRepository.existsById(idReceita)) {
             throw new ReceitaNaoEncontradaException();
         }
-        return PaginaResponse.de(comentarioRepository.findByReceitaId(idReceita, pageable)
-                .map(ComentarioResponse::de));
+        PaginaResponse<ComentarioResponse> pagina = PaginaResponse.de(
+                comentarioRepository.findByReceitaId(idReceita, pageable).map(ComentarioResponse::de));
+        return new ComentariosDaReceitaResponse(pagina, agregarAvaliacoes(idReceita));
+    }
+
+    /** Média (ignora comentário sem nota) e quantidade de notas da receita. */
+    @Transactional(readOnly = true)
+    public AvaliacaoResponse agregarAvaliacoes(Integer idReceita) {
+        ComentarioRepository.NotaAgregada agregado = comentarioRepository.agregarNotas(idReceita);
+        if (agregado == null || agregado.getQuantidade() == 0) {
+            return AvaliacaoResponse.SEM_AVALIACOES;
+        }
+        return new AvaliacaoResponse(agregado.getMedia().floatValue(), agregado.getQuantidade());
     }
 
     @Transactional
