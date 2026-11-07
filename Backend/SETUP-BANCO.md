@@ -70,6 +70,12 @@ docker exec gastromatch-postgres psql -U postgres -d gastromatch -c "\dt"
 
 A API fica em http://localhost:8080 e o Swagger em http://localhost:8080/swagger-ui.html (só no profile `dev`).
 
+## Outras variáveis (opcionais)
+
+| Variável | Para quê |
+|---|---|
+| `CAPA_ALLOWED_HOSTS` | Domínios https liberados para `capa` em `PUT /usuarios/me`, separados por vírgula (ex.: `cdn.seusite.com`). Vazio (padrão): só o caminho devolvido por `POST /imagens` é aceito |
+
 ## Comandos do dia a dia (Docker)
 
 | O que | Comando |

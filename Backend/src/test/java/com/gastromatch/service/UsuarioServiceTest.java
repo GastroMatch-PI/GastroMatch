@@ -21,9 +21,12 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import com.gastromatch.dto.AtualizarUsuarioRequest;
 import com.gastromatch.dto.TrocaSenhaRequest;
+import com.gastromatch.dto.UsuarioResponse;
 import com.gastromatch.entity.Usuario;
 import com.gastromatch.exception.RequisicaoInvalidaException;
+import com.gastromatch.exception.UsernameJaCadastradoException;
 import com.gastromatch.exception.UsuarioNaoEncontradoException;
 import com.gastromatch.repository.RefreshTokenRepository;
 import com.gastromatch.repository.UsuarioRepository;
@@ -44,7 +47,7 @@ class UsuarioServiceTest {
 
     @BeforeEach
     void montar() {
-        service = new UsuarioService(usuarioRepository, refreshTokenRepository, passwordEncoder);
+        service = new UsuarioService(usuarioRepository, refreshTokenRepository, passwordEncoder, "cdn.gastromatch.app");
         usuario = new Usuario();
         ReflectionTestUtils.setField(usuario, "id", USUARIO);
         usuario.setEmail("maria@gastro.local");
@@ -126,5 +129,100 @@ class UsuarioServiceTest {
         service.trocarSenha(USUARIO, new TrocaSenhaRequest("SenhaAntiga#2024", "SenhaNova#2025"));
 
         assertTrue(usuario.getSenhaAlteradaEm().isAfter(antes));
+    }
+
+    // ------------------------------------------------------------- atualizar (PUT /usuarios/me)
+
+    @Test
+    void atualizaUsernameQuandoDisponivel() {
+        when(usuarioRepository.findById(USUARIO)).thenReturn(Optional.of(usuario));
+        when(usuarioRepository.existsByUsernameIgnoreCase("novachef")).thenReturn(false);
+
+        UsuarioResponse resposta = service.atualizar(USUARIO, new AtualizarUsuarioRequest("novachef", null));
+
+        assertEquals("novachef", usuario.getUsername());
+        assertEquals("novachef", resposta.username());
+    }
+
+    @Test
+    void usernameJaExistenteRetornaConflito() {
+        when(usuarioRepository.findById(USUARIO)).thenReturn(Optional.of(usuario));
+        when(usuarioRepository.existsByUsernameIgnoreCase("ocupado")).thenReturn(true);
+
+        assertThrows(UsernameJaCadastradoException.class, () ->
+                service.atualizar(USUARIO, new AtualizarUsuarioRequest("ocupado", null)));
+    }
+
+    @Test
+    void reenviarOProprioUsernameNaoConsultaDuplicidade() {
+        when(usuarioRepository.findById(USUARIO)).thenReturn(Optional.of(usuario));
+
+        service.atualizar(USUARIO, new AtualizarUsuarioRequest("MariaChef", null));
+
+        assertEquals("MariaChef", usuario.getUsername());
+        verify(usuarioRepository, never()).existsByUsernameIgnoreCase(any());
+    }
+
+    @Test
+    void camposOmitidosOuEmBrancoNaoAlteramNada() {
+        when(usuarioRepository.findById(USUARIO)).thenReturn(Optional.of(usuario));
+
+        service.atualizar(USUARIO, new AtualizarUsuarioRequest(null, " "));
+
+        assertEquals("mariachef", usuario.getUsername());
+        assertNotNull(usuario); // nada mudou, nenhuma exceção
+    }
+
+    @Test
+    void emailESenhaNaoSaoAlteradosPorEsteEndpoint() {
+        when(usuarioRepository.findById(USUARIO)).thenReturn(Optional.of(usuario));
+        String hashAntes = usuario.getPassword();
+
+        service.atualizar(USUARIO, new AtualizarUsuarioRequest("novachef", null));
+
+        assertEquals("maria@gastro.local", usuario.getEmail());
+        assertEquals(hashAntes, usuario.getPassword());
+    }
+
+    @Test
+    void capaComCaminhoDeUploadDaApiEhAceita() {
+        when(usuarioRepository.findById(USUARIO)).thenReturn(Optional.of(usuario));
+
+        service.atualizar(USUARIO, new AtualizarUsuarioRequest(null, "/imagens/0123456789abcdef0123456789abcdef.jpg"));
+
+        assertEquals("/imagens/0123456789abcdef0123456789abcdef.jpg", usuario.getCapa());
+    }
+
+    @Test
+    void capaComDominioPermitidoEhAceita() {
+        when(usuarioRepository.findById(USUARIO)).thenReturn(Optional.of(usuario));
+
+        service.atualizar(USUARIO, new AtualizarUsuarioRequest(null, "https://cdn.gastromatch.app/fotos/1.jpg"));
+
+        assertEquals("https://cdn.gastromatch.app/fotos/1.jpg", usuario.getCapa());
+    }
+
+    @Test
+    void capaComDominioNaoPermitidoEhRejeitada() {
+        when(usuarioRepository.findById(USUARIO)).thenReturn(Optional.of(usuario));
+
+        assertThrows(RequisicaoInvalidaException.class, () -> service.atualizar(
+                USUARIO, new AtualizarUsuarioRequest(null, "https://site-qualquer.example/foto.jpg")));
+    }
+
+    @Test
+    void capaSemHttpsEhRejeitada() {
+        when(usuarioRepository.findById(USUARIO)).thenReturn(Optional.of(usuario));
+
+        assertThrows(RequisicaoInvalidaException.class, () -> service.atualizar(
+                USUARIO, new AtualizarUsuarioRequest(null, "http://cdn.gastromatch.app/foto.jpg")));
+    }
+
+    @Test
+    void usernameMuitoCurtoEhRejeitado() {
+        when(usuarioRepository.findById(USUARIO)).thenReturn(Optional.of(usuario));
+
+        assertThrows(RequisicaoInvalidaException.class, () ->
+                service.atualizar(USUARIO, new AtualizarUsuarioRequest("ab", null)));
     }
 }
