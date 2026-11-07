@@ -114,6 +114,15 @@
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
                     <argLine>-Dnet.bytebuddy.experimental=true</argLine>
+                    <!-- Ativa o profile "test" (application-test.properties) na suíte inteira.
+                         Não dá para fazer isso com um src/test/resources/application.properties:
+                         esse arquivo tem o MESMO nome do de src/main/resources, e o classpath de
+                         teste (target/test-classes antes de target/classes) faz um simplesmente
+                         esconder o outro em vez de completá-lo — a aplicação perderia toda a
+                         configuração de banco/JWT do application.properties principal. -->
+                    <systemPropertyVariables>
+                        <spring.profiles.active>test</spring.profiles.active>
+                    </systemPropertyVariables>
                 </configuration>
             </plugin>
         </plugins>
