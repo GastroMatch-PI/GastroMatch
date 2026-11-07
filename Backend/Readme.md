@@ -77,13 +77,14 @@ Erros seguem sempre o formato `{ "status": 400, "mensagem": "...", "erros": { "c
 | Rota | O que faz |
 |---|---|
 | `GET /receitas` | Lista com filtros opcionais: `texto`, `tempoMax` (min), `dificuldade`, `tipo`, `ocasiao`, `perfil`, `metodo`, `ingredientes=1,2,3` (ids que a pessoa TEM: só voltam receitas feitas inteiramente com eles), `pagina`, `tamanho` |
-| `GET /receitas/{id}` | Receita completa: ingredientes, etapas (em ordem), dicas de cada etapa e tabela nutricional (`nutricao`: `total` da receita e `porPorcao`). Com `?porcoes=N` (1 a 100) as quantidades e o total são recalculados para N porções; `porcoes` na resposta diz para quantas. A nutrição só soma ingredientes em `G` e `ML`; os em `UNIDADE`/`XICARA` vêm em `naoCalculados` e `completa` fica `false` (valor aproximado) |
-| `GET /receitas/{id}/comentarios` | Comentários da receita, do mais recente ao mais antigo |
+| `GET /receitas/{id}` | Receita completa: ingredientes, etapas (em ordem), dicas de cada etapa, tabela nutricional (`nutricao`: `total` da receita e `porPorcao`) e `avaliacao` (`media` e `quantidade` dos comentários com nota, para o cabeçalho da página). Com `?porcoes=N` (1 a 100) as quantidades e o total são recalculados para N porções; `porcoes` na resposta diz para quantas. A nutrição só soma ingredientes em `G` e `ML`; os em `UNIDADE`/`XICARA` vêm em `naoCalculados` e `completa` fica `false` (valor aproximado) |
+| `GET /receitas/{id}/comentarios` | `{ comentarios: <página>, avaliacao: { media, quantidade } }`. Comentários do mais recente ao mais antigo (`?ordenarPor=nota` inverte para maior nota primeiro, sem nota no fim); `avaliacao.media` ignora comentário sem nota e vem `null` se nenhum tiver |
 | `GET /ingredientes` | Catálogo em ordem alfabética (`?nome=` filtra por trecho) |
 | `GET /restaurantes` | Diretório e mapa: `texto` (nome/bio), `cidade`, `bairro`, `estado` (trechos, sem diferenciar maiúscula nem acento), `pagina`, `tamanho`. Cada item traz endereço, `latitude` e `longitude` |
 | `GET /restaurantes/{id}` | Página do restaurante, com os chefs que trabalham nele |
 | `GET /nutricionistas`, `GET /nutricionistas/{id}` | Todas as nutricionistas cadastradas (sem aprovação). Só some do diretório, com `404`, quem a equipe esconder no banco (`status_verificacao = 'REJEITADO'`) |
 | `GET /chefs`, `GET /chefs/{id}` | Diretório de chefs (`?especializacao=` filtra) e perfil público, com o restaurante onde trabalha |
+| `GET /chefs/{id}/receitas` | Receitas do chef, paginado (`pagina`, `tamanho`). Não existe rascunho no esquema: são todas as receitas da conta. `404` se o chef não existe |
 
 **Conta** (`/auth/**` é público):
 
@@ -96,11 +97,14 @@ Erros seguem sempre o formato `{ "status": 400, "mensagem": "...", "erros": { "c
 
 | Rota | O que faz |
 |---|---|
+| `POST /usuarios/me/senha` | Troca a senha da conta logada (`senhaAtual`, `novaSenha`). Confere a senha atual, aplica a política de senha forte (B26) e rejeita senha igual à anterior; `400` genérico se a atual não confere. Revoga os refresh tokens das outras sessões (`204` sem corpo) |
+| `PUT /usuarios/me` | Edita `username` e/ou `capa` da conta logada; os dois são opcionais e, omitidos (ou em branco), não são alterados. E-mail e senha não entram aqui. `username` repetido dá `409`; `capa` aceita o caminho devolvido por `POST /imagens` ou um link `https` de domínio liberado em `app.capa.allowed-hosts` (`CAPA_ALLOWED_HOSTS`) |
 | `POST /chefs`, `GET /chefs/me`, `PUT /chefs/me` | Cria / consulta / edita o perfil de chef da conta (`bio`, `especializacao` e `idRestaurante`, este opcional: o restaurante onde o chef trabalha, `400` se não existir; o `PUT` troca os três, bio em branco vira vazia e sem `idRestaurante` o chef sai do restaurante). Uma conta tem no máximo um perfil profissional, de chef, nutricionista **ou** restaurante |
 | `POST /nutricionistas`, `GET /nutricionistas/me`, `PUT /nutricionistas/me` | Cria / consulta / edita o perfil de nutricionista (`crn` obrigatório). Não há aprovação: nasce `APROVADO` e já aparece no diretório. O `GET /me` mostra o `statusVerificacao`. O `PUT` troca `bio` e `crn` (bio em branco vira vazia; `409` se o CRN for de outra pessoa) e nunca mexe no status |
 | `POST /restaurantes`, `GET /restaurantes/me`, `PUT /restaurantes/me` | Cria / consulta / edita o restaurante (`nome` e `cnpj` obrigatórios; o CNPJ é conferido e guardado como `00.000.000/0000-00`). `latitude` e `longitude` são opcionais, mas vêm **juntas**. O `PUT` troca todos os campos (o que não for enviado fica vazio) e dá `409` se o CNPJ for de outro restaurante |
 | `POST /receitas`, `PUT /receitas/{id}`, `DELETE /receitas/{id}` | Só chef, e só o chef **dono** edita ou apaga. O `PUT` troca os dados e a lista de ingredientes |
 | `POST /receitas/{id}/etapas`, `PUT`/`DELETE /receitas/{id}/etapas/{idEtapa}` | Etapas (sem `ordem`, entra no fim) |
+| `PUT /receitas/{id}/etapas/ordem` | Reordena: `{ idsEtapas: [...] }` com a nova sequência (a posição na lista vira a ordem). Precisa ter cada etapa da receita exatamente uma vez |
 | `POST /receitas/{id}/etapas/{idEtapa}/dicas`, `PUT`/`DELETE .../dicas/{idDica}` | Dicas e erros comuns da etapa |
 | `POST /receitas/{id}/comentarios`, `PUT`/`DELETE /comentarios/{id}` | Comentar (texto, nota de 0 a 5 e `foto`, os dois últimos opcionais); só o autor edita ou apaga |
 | `POST /imagens`, `GET /imagens/{nome}` | Envia uma imagem (multipart, campo `arquivo`; só JPG, PNG ou WEBP, até 5 MB, conferido pelo conteúdo) e devolve `{ "url": "/imagens/<nome>" }`. Essa `url` vai nos campos `imagem` (receita, etapa) e `foto` (comentário), que também aceitam link http(s). Ver a imagem é público. Com `SUPABASE_URL`, `SUPABASE_SERVICE_KEY` e `SUPABASE_BUCKET` definidas, as imagens vão para o Supabase Storage (bucket público) e a `url` devolvida é o link completo; sem elas, ficam na pasta `uploads/` (`UPLOADS_DIR`), que no Render some a cada deploy |
@@ -113,6 +117,16 @@ Toda conta tem uma `role` (`USER` ou `ADMIN`, em `UsuarioResponse`): o `JwtAuthF
 Vídeo da receita (`videoUrl`): só link do YouTube (`youtube.com/watch?v=ID`, `/embed/ID`, `/shorts/ID` ou `youtu.be/ID`). O front monta o iframe com `/embed/ID?start=<timestampVideo da etapa>`.
 
 Com o profile `dev`, o Swagger lista tudo em http://localhost:8080/swagger-ui.html.
+
+Um job diário (`LimpezaTokensExpiradosJob`, `@Scheduled`) apaga os refresh tokens expirados há mais de 7 dias, em lotes; dá para desligar ou ajustar por variável de ambiente (`APP_CLEANUP_ENABLED`, `APP_CLEANUP_RETENCAO_DIAS`, `APP_CLEANUP_CRON` — veja `SETUP-BANCO.md`).
+
+---
+
+## Testes e cobertura
+
+`./mvnw test` roda a suíte inteira (unitários, `@WebMvcTest` da camada web/segurança e o `ApplicationTests`, que sobe o contexto completo contra um Postgres real) e, ao final, o `jacoco-maven-plugin` (pom.xml) gera o relatório HTML em `target/site/jacoco/index.html` e **falha o build** se `AuthService`, `UsuarioService` ou as classes de `security`/`validation` caírem abaixo de 80% de linhas cobertas. Sem banco configurado, use `./mvnw "-Dtest=!ApplicationTests" test` (veja `SETUP-BANCO.md`) — a cobertura ainda é calculada, só o `ApplicationTests` fica de fora.
+
+Os testes de segurança (`SecurityConfigTest`, `RotasPublicasTest`, `DiretorioRotasTest`, `ImagensRotasTest`, `CorsRotasTest`) conferem, sem banco, que toda rota responde com o código esperado: `401` sem token, `403` sem permissão, e que o CORS (`CorsConfig`) só libera a(s) origem(ns) de `app.cors.allowed-origins` (origem de fora recebe `403`). O workflow `.github/workflows/ci.yml` roda `mvn test` a cada PR para `develop`/`main`, com um Postgres descartável só para a rodada, e publica o relatório de cobertura como artefato (`cobertura-backend`).
 
 ---
 

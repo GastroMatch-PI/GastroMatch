@@ -16,6 +16,9 @@ import org.springframework.web.multipart.support.MissingServletRequestPartExcept
 
 import com.gastromatch.dto.ErroResponse;
 
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.ConstraintViolationException;
+
 /** Converte exceções em respostas HTTP padronizadas, em um único lugar. */
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -84,6 +87,23 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErroResponse> handleParametroInvalido(MethodArgumentTypeMismatchException ex) {
         return ResponseEntity.badRequest()
                 .body(new ErroResponse(400, "Valor inválido para o parâmetro '" + ex.getName() + "'"));
+    }
+
+    // 400: @Validated em parâmetro de query/path (ex.: @Min, @Positive) falhou
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<ErroResponse> handleViolacaoDeRestricao(ConstraintViolationException ex) {
+        Map<String, String> erros = new LinkedHashMap<>();
+        for (ConstraintViolation<?> violacao : ex.getConstraintViolations()) {
+            erros.putIfAbsent(nomeDoCampo(violacao), violacao.getMessage());
+        }
+        return ResponseEntity.badRequest().body(new ErroResponse(400, "Dados inválidos", erros));
+    }
+
+    // O caminho vem como "metodo.parametro"; só o último trecho interessa para o mapa de erros.
+    private static String nomeDoCampo(ConstraintViolation<?> violacao) {
+        String caminho = violacao.getPropertyPath().toString();
+        int ultimoPonto = caminho.lastIndexOf('.');
+        return ultimoPonto < 0 ? caminho : caminho.substring(ultimoPonto + 1);
     }
 
     // 413: arquivo maior que o limite do upload (spring.servlet.multipart)

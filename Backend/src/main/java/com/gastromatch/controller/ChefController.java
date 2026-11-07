@@ -17,6 +17,7 @@ import com.gastromatch.dto.CadastroChefRequest;
 import com.gastromatch.dto.ChefPerfilResponse;
 import com.gastromatch.dto.ChefResponse;
 import com.gastromatch.dto.PaginaResponse;
+import com.gastromatch.dto.ReceitaResumoResponse;
 import com.gastromatch.entity.enums.Especializacao;
 import com.gastromatch.service.ChefService;
 
@@ -56,6 +57,15 @@ public class ChefController {
     @GetMapping("/{id}")
     public ResponseEntity<ChefPerfilResponse> perfilPublico(@PathVariable Integer id) {
         return ResponseEntity.ok(chefService.perfilPublico(id));
+    }
+
+    @GetMapping("/{id}/receitas")
+    public ResponseEntity<PaginaResponse<ReceitaResumoResponse>> receitasDoChef(
+            @PathVariable Integer id,
+            @RequestParam(defaultValue = "0") int pagina,
+            @RequestParam(defaultValue = "20") int tamanho) {
+        var pageable = Paginacao.de(pagina, tamanho, Sort.by(Sort.Direction.DESC, "criadoEm", "id"));
+        return ResponseEntity.ok(chefService.listarReceitas(id, pageable));
     }
 
     @PutMapping("/me")
