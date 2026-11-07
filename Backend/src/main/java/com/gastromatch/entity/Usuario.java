@@ -2,8 +2,12 @@ package com.gastromatch.entity;
 
 import java.time.Instant;
 
+import com.gastromatch.entity.enums.RoleUsuario;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -38,6 +42,12 @@ public class Usuario {
     // "capa" é uma URL/caminho de imagem (texto), opcional.
     @Column(length = 500)
     private String capa;
+
+    // Autoridade no Spring Security (B17/B35). Toda conta nasce USER; ADMIN só por
+    // promoção manual no banco ou pelo administrador inicial (AdminInicialRunner).
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 10)
+    private RoleUsuario role = RoleUsuario.USER;
 
     // Liga a conta ao perfil profissional (chef, nutricionista, restaurante).
     // NULL = conta comum. Por enquanto é só o número: a entidade Profissional
@@ -97,6 +107,14 @@ public class Usuario {
 
     public void setCapa(String capa) {
         this.capa = capa;
+    }
+
+    public RoleUsuario getRole() {
+        return role;
+    }
+
+    public void setRole(RoleUsuario role) {
+        this.role = role;
     }
 
     public Integer getIdProfissional() {

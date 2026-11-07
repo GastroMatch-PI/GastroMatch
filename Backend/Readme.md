@@ -106,7 +106,9 @@ Erros seguem sempre o formato `{ "status": 400, "mensagem": "...", "erros": { "c
 | `POST /imagens`, `GET /imagens/{nome}` | Envia uma imagem (multipart, campo `arquivo`; só JPG, PNG ou WEBP, até 5 MB, conferido pelo conteúdo) e devolve `{ "url": "/imagens/<nome>" }`. Essa `url` vai nos campos `imagem` (receita, etapa) e `foto` (comentário), que também aceitam link http(s). Ver a imagem é público. Com `SUPABASE_URL`, `SUPABASE_SERVICE_KEY` e `SUPABASE_BUCKET` definidas, as imagens vão para o Supabase Storage (bucket público) e a `url` devolvida é o link completo; sem elas, ficam na pasta `uploads/` (`UPLOADS_DIR`), que no Render some a cada deploy |
 | `PUT`/`DELETE /receitas/{id}/favorito`, `GET /usuarios/me/favoritos` | Favoritar, desfavoritar (ambos idempotentes) e listar os favoritos |
 
-Códigos: `400` dados inválidos, `401` sem login, `403` logado mas sem permissão (não é chef / receita de outro chef), `404` não existe, `409` conflito (email ou username repetido, conta que já tem perfil).
+Códigos: `400` dados inválidos, `401` sem login, `403` logado mas sem permissão (não é chef / receita de outro chef / não é ADMIN), `404` não existe, `409` conflito (email ou username repetido, conta que já tem perfil).
+
+Toda conta tem uma `role` (`USER` ou `ADMIN`, em `UsuarioResponse`): o `JwtAuthFilter` lê a role atual no banco a cada requisição (não confia só no token) e `/admin/**` exige `ADMIN`. Não existe promoção por rota: o primeiro admin nasce do `AdminInicialRunner` (variáveis de ambiente, veja `SETUP-BANCO.md`); depois disso, é no banco mesmo.
 
 Vídeo da receita (`videoUrl`): só link do YouTube (`youtube.com/watch?v=ID`, `/embed/ID`, `/shorts/ID` ou `youtu.be/ID`). O front monta o iframe com `/embed/ID?start=<timestampVideo da etapa>`.
 
