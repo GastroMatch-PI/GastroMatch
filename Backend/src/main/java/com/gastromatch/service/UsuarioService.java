@@ -13,6 +13,7 @@ import com.gastromatch.exception.EmailJaCadastradoException;
 import com.gastromatch.exception.UsernameJaCadastradoException;
 import com.gastromatch.exception.UsuarioNaoEncontradoException;
 import com.gastromatch.repository.UsuarioRepository;
+import com.gastromatch.validation.PoliticaSenha;
 
 @Service
 public class UsuarioService {
@@ -40,6 +41,7 @@ public class UsuarioService {
         if (usuarioRepository.existsByUsernameIgnoreCase(username)) {
             throw new UsernameJaCadastradoException();
         }
+        PoliticaSenha.garantirSemCredenciais(request.password(), email, username);
 
         Usuario usuario = new Usuario();
         usuario.setEmail(email);
