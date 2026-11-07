@@ -95,6 +95,9 @@ Todas ficam no `.env` (veja `.env.example`); nenhuma tem valor real no repositó
 | `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `SUPABASE_BUCKET` | Não | — (usa o disco) | Guardar imagens no Supabase Storage em produção |
 | `PORT` | Não | `8080` | Porta da API (o host define a dele) |
 | `CAPA_ALLOWED_HOSTS` | Não | — (só o upload da API) | Domínios https liberados para `capa` em `PUT /usuarios/me`, separados por vírgula (ex.: `cdn.seusite.com`) |
+| `APP_CLEANUP_ENABLED` | Não | `true` | Liga/desliga o job diário que apaga refresh tokens expirados há mais de `APP_CLEANUP_RETENCAO_DIAS` |
+| `APP_CLEANUP_RETENCAO_DIAS` | Não | `7` | Quantos dias depois de expirado um refresh token é apagado |
+| `APP_CLEANUP_CRON` | Não | `0 0 3 * * *` | Expressão cron do job de limpeza (padrão todo dia às 3h) |
 
 ## Comandos do dia a dia (Docker)
 
@@ -104,7 +107,7 @@ Todas ficam no `.env` (veja `.env.example`); nenhuma tem valor real no repositó
 | Desligar (mantém os dados) | `docker compose stop` |
 | Ver logs | `docker compose logs -f postgres` |
 | **Apagar tudo e recriar do zero** | `docker compose down -v` e depois `docker compose up -d` |
-| Rodar os testes que não precisam de banco | `./mvnw -Dtest='!ApplicationTests' test` |
+| Rodar os testes que não precisam de banco | `./mvnw "-Dtest=!ApplicationTests,!RefreshTokenRepositoryTest" test` |
 
 Use o `down -v` sempre que o `GastroDB_v2.0.0_postgres.sql` mudar: o script só roda quando o banco é criado. No Supabase, mudanças no esquema são aplicadas à mão no SQL Editor (e o time avisa no grupo).
 
