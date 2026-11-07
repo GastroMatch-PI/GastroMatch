@@ -137,6 +137,34 @@ public class ReceitaChefService {
         etapaRepository.delete(etapaDaReceita(idReceita, idEtapa));
     }
 
+    /**
+     * Grava a nova sequência: a posição de cada id na lista vira a ordem (1, 2, 3...). A lista
+     * precisa ter exatamente as etapas da receita, sem repetir nenhuma. Não há índice único em
+     * (id_receita, ordem) no banco, então não existe conflito de unicidade transitório ao
+     * sobrescrever os valores.
+     */
+    @Transactional
+    public void reordenarEtapas(Integer usuarioId, Integer idReceita, List<Integer> idsEtapas) {
+        receitaDoChef(usuarioId, idReceita);
+        List<EtapaReceita> etapas = etapaRepository.findByReceitaIdOrderByOrdemAscIdAsc(idReceita);
+
+        if (idsEtapas.size() != etapas.size() || new HashSet<>(idsEtapas).size() != idsEtapas.size()) {
+            throw new RequisicaoInvalidaException(
+                    "A nova sequência precisa ter cada etapa da receita exatamente uma vez");
+        }
+        Map<Integer, EtapaReceita> etapasPorId = etapas.stream()
+                .collect(Collectors.toMap(EtapaReceita::getId, Function.identity()));
+
+        for (int posicao = 0; posicao < idsEtapas.size(); posicao++) {
+            EtapaReceita etapa = etapasPorId.get(idsEtapas.get(posicao));
+            if (etapa == null) {
+                throw new RequisicaoInvalidaException(
+                        "Etapa " + idsEtapas.get(posicao) + " não pertence a esta receita");
+            }
+            etapa.setOrdem(posicao + 1);
+        }
+    }
+
     // ------------------------------------------------------------------ dica
 
     @Transactional
