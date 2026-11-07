@@ -84,6 +84,7 @@ Erros seguem sempre o formato `{ "status": 400, "mensagem": "...", "erros": { "c
 | `GET /restaurantes/{id}` | Página do restaurante, com os chefs que trabalham nele |
 | `GET /nutricionistas`, `GET /nutricionistas/{id}` | Todas as nutricionistas cadastradas (sem aprovação). Só some do diretório, com `404`, quem a equipe esconder no banco (`status_verificacao = 'REJEITADO'`) |
 | `GET /chefs`, `GET /chefs/{id}` | Diretório de chefs (`?especializacao=` filtra) e perfil público, com o restaurante onde trabalha |
+| `GET /chefs/{id}/receitas` | Receitas do chef, paginado (`pagina`, `tamanho`). Não existe rascunho no esquema: são todas as receitas da conta. `404` se o chef não existe |
 
 **Conta** (`/auth/**` é público):
 

@@ -8,6 +8,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.util.List;
 import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -20,19 +21,28 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import com.gastromatch.dto.CadastroChefRequest;
 import com.gastromatch.dto.ChefResponse;
+import com.gastromatch.dto.PaginaResponse;
+import com.gastromatch.dto.ReceitaResumoResponse;
 import com.gastromatch.entity.Chef;
 import com.gastromatch.entity.Profissional;
+import com.gastromatch.entity.Receita;
 import com.gastromatch.entity.Restaurante;
 import com.gastromatch.entity.Usuario;
 import com.gastromatch.entity.enums.Especializacao;
 import com.gastromatch.entity.enums.RoleProfissional;
 import com.gastromatch.exception.AcessoNegadoException;
 import com.gastromatch.exception.ConflitoException;
+import com.gastromatch.exception.RecursoNaoEncontradoException;
 import com.gastromatch.exception.RequisicaoInvalidaException;
 import com.gastromatch.repository.ChefRepository;
 import com.gastromatch.repository.ProfissionalRepository;
+import com.gastromatch.repository.ReceitaRepository;
 import com.gastromatch.repository.RestauranteRepository;
 import com.gastromatch.repository.UsuarioRepository;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 
 @ExtendWith(MockitoExtension.class)
 class ChefServiceTest {
@@ -43,15 +53,44 @@ class ChefServiceTest {
     @Mock ProfissionalRepository profissionalRepository;
     @Mock ChefRepository chefRepository;
     @Mock RestauranteRepository restauranteRepository;
+    @Mock ReceitaRepository receitaRepository;
+    @Mock ReceitaService receitaService;
 
     private ChefService service;
     private Usuario usuario;
 
     @BeforeEach
     void montar() {
-        service = new ChefService(usuarioRepository, profissionalRepository, chefRepository, restauranteRepository);
+        service = new ChefService(usuarioRepository, profissionalRepository, chefRepository,
+                restauranteRepository, receitaRepository, receitaService);
         usuario = new Usuario();
         ReflectionTestUtils.setField(usuario, "id", USUARIO);
+    }
+
+    // ---- receitas do chef (GET /chefs/{id}/receitas) ----
+
+    @Test
+    void listaReceitasDoChef() {
+        when(chefRepository.existsById(5)).thenReturn(true);
+        var pageable = PageRequest.of(0, 20);
+        Page<Receita> paginaDeReceitas = new PageImpl<>(List.of(new Receita()), pageable, 1);
+        when(receitaRepository.findByChefId(5, pageable)).thenReturn(paginaDeReceitas);
+        Page<ReceitaResumoResponse> paginaDeResumos =
+                new PageImpl<>(List.of(), pageable, 1);
+        when(receitaService.resumir(paginaDeReceitas)).thenReturn(paginaDeResumos);
+
+        PaginaResponse<ReceitaResumoResponse> resposta = service.listarReceitas(5, pageable);
+
+        assertEquals(1, resposta.totalElementos());
+    }
+
+    @Test
+    void receitasDeChefInexistenteDa404() {
+        when(chefRepository.existsById(99)).thenReturn(false);
+
+        assertThrows(RecursoNaoEncontradoException.class,
+                () -> service.listarReceitas(99, PageRequest.of(0, 20)));
+        verify(receitaRepository, never()).findByChefId(any(), any());
     }
 
     @Test
