@@ -13,6 +13,8 @@ import { useSeo } from '../lib/seo'
 import { useForm } from '../lib/useForm'
 import { obrigatorio, tamanho } from '../lib/validar'
 import { useState } from 'react'
+import type { Pagina, RestauranteResumo } from '../lib/apiTipos'
+import { useApi } from '../lib/useApi'
 
 const nomes = { CHEF: 'Chef', NUTRICIONISTA: 'Nutricionista', RESTAURANTE: 'Restaurante' }
 
@@ -21,10 +23,12 @@ function Formulario({ perfil }: { perfil: PerfilProfissional }) {
   const toast = useToast()
   const [erro, setErro] = useState('')
   const d = perfil.dados
+  const restaurantes = useApi<Pagina<RestauranteResumo>>(perfil.papel === 'CHEF' ? '/restaurantes?tamanho=50' : null)
   const f = useForm(
     {
       bio: ('bio' in d && d.bio) || '',
       especializacao: perfil.papel === 'CHEF' ? (perfil.dados.especializacao ?? '') : '',
+      restaurante: perfil.papel === 'CHEF' ? String(perfil.dados.idRestaurante ?? '') : '',
       crn: perfil.papel === 'NUTRICIONISTA' ? perfil.dados.crn : '',
       nome: perfil.papel === 'RESTAURANTE' ? perfil.dados.nome : '',
       numero: perfil.papel === 'RESTAURANTE' ? String(perfil.dados.numero ?? '') : '',
@@ -41,7 +45,8 @@ function Formulario({ perfil }: { perfil: PerfilProfissional }) {
     setErro('')
     // O PUT troca todos os campos: o que não for enviado fica vazio.
     const corpo =
-      perfil.papel === 'CHEF' ? { bio: v.bio, especializacao: v.especializacao || undefined }
+      perfil.papel === 'CHEF' ? { bio: v.bio, especializacao: v.especializacao || undefined, idRestaurante: v.restaurante ? Number(v.restaurante) : undefined } // sem idRestaurante o chef sai do restaurante
+      
       : perfil.papel === 'NUTRICIONISTA' ? { bio: v.bio, crn: v.crn }
       : { nome: v.nome.trim(), bio: v.bio, cnpj: perfil.dados.cnpj, numero: v.numero ? Number(v.numero) : undefined, rua: v.rua, cep: v.cep || undefined, bairro: v.bairro, cidade: v.cidade, estado: v.estado, latitude: perfil.dados.latitude ?? undefined, longitude: perfil.dados.longitude ?? undefined }
     try {
@@ -75,9 +80,17 @@ function Formulario({ perfil }: { perfil: PerfilProfissional }) {
         <Campo label="CRN" erro={f.erros.crn}><input name="crn" className="input" maxLength={20} value={f.v.crn} onChange={(e) => f.set('crn')(mascaraCRN(e.target.value))} /></Campo>
       )}
       {perfil.papel === 'CHEF' && (
-        <Campo label="Especialização" erro={f.erros.especializacao}>
-          <select name="especializacao" className="input" value={f.v.especializacao} onChange={f.onChange('especializacao')}><option value="">Selecione</option><Opcoes mapa={ENUMS.especializacao} /></select>
-        </Campo>
+        <>
+          <Campo label="Especialização" erro={f.erros.especializacao}>
+            <select name="especializacao" className="input" value={f.v.especializacao} onChange={f.onChange('especializacao')}><option value="">Selecione</option><Opcoes mapa={ENUMS.especializacao} /></select>
+          </Campo>
+          <Campo label="Restaurante onde trabalha" erro={f.erros.idRestaurante}>
+            <select name="restaurante" className="input" value={f.v.restaurante} onChange={f.onChange('restaurante')}>
+              <option value="">Nenhum</option>
+              {(restaurantes.dados?.conteudo ?? []).map((r) => <option key={r.id} value={r.id}>{r.nome}</option>)}
+            </select>
+          </Campo>
+        </>
       )}
       <Campo label="Bio (até 500)" erro={f.erros.bio} dica={`${f.v.bio.length} / 500`}><textarea name="bio" className="input" rows={4} maxLength={500} value={f.v.bio} onChange={f.onChange('bio')} /></Campo>
       <button className="btn-primary">Salvar perfil</button>

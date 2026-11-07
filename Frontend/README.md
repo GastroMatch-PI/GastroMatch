@@ -35,5 +35,5 @@ O Render grátis dorme: a primeira chamada pode levar uns 40 segundos, e as tela
 ## Observações
 
 - O CORS da API só libera `http://localhost:5173`. Para o site publicado funcionar, o endereço dele precisa entrar em `app.cors.allowed-origins` (ver `Backend/PENDENCIAS.md`).
-- A API ainda não tem: trocar senha, sessões, aprovação de profissional, denúncia de comentário, vínculo chef-restaurante, receitas de um chef, nota média e imagem de restaurante. As telas que dependiam disso foram removidas.
+- A API ainda não tem: trocar senha, sessões, aprovação de profissional, denúncia de comentário, receitas de um chef, nota média e imagem de restaurante. As telas que dependiam disso foram removidas.
 - `vercel.json` redireciona todas as rotas para `index.html`, necessário para o roteamento no deploy.

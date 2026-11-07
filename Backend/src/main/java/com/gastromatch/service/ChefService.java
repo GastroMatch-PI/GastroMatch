@@ -14,15 +14,18 @@ import com.gastromatch.dto.ChefResponse;
 import com.gastromatch.dto.PaginaResponse;
 import com.gastromatch.entity.Chef;
 import com.gastromatch.entity.Profissional;
+import com.gastromatch.entity.Restaurante;
 import com.gastromatch.entity.Usuario;
 import com.gastromatch.entity.enums.Especializacao;
 import com.gastromatch.entity.enums.RoleProfissional;
 import com.gastromatch.exception.AcessoNegadoException;
 import com.gastromatch.exception.ConflitoException;
 import com.gastromatch.exception.RecursoNaoEncontradoException;
+import com.gastromatch.exception.RequisicaoInvalidaException;
 import com.gastromatch.exception.UsuarioNaoEncontradoException;
 import com.gastromatch.repository.ChefRepository;
 import com.gastromatch.repository.ProfissionalRepository;
+import com.gastromatch.repository.RestauranteRepository;
 import com.gastromatch.repository.UsuarioRepository;
 
 /** Perfil de chef: criação e consulta do chef da conta logada. */
@@ -34,13 +37,16 @@ public class ChefService {
     private final UsuarioRepository usuarioRepository;
     private final ProfissionalRepository profissionalRepository;
     private final ChefRepository chefRepository;
+    private final RestauranteRepository restauranteRepository;
 
     public ChefService(UsuarioRepository usuarioRepository,
                        ProfissionalRepository profissionalRepository,
-                       ChefRepository chefRepository) {
+                       ChefRepository chefRepository,
+                       RestauranteRepository restauranteRepository) {
         this.usuarioRepository = usuarioRepository;
         this.profissionalRepository = profissionalRepository;
         this.chefRepository = chefRepository;
+        this.restauranteRepository = restauranteRepository;
     }
 
     /**
@@ -56,9 +62,13 @@ public class ChefService {
             throw new ConflitoException("Esta conta já possui um perfil profissional");
         }
 
+        // Confere o restaurante antes de gravar qualquer coisa.
+        Restaurante restaurante = restauranteOuNulo(request.idRestaurante());
         String bio = (request.bio() == null || request.bio().isBlank()) ? null : request.bio().trim();
         Profissional profissional = profissionalRepository.save(new Profissional(RoleProfissional.CHEF, bio));
-        Chef chef = chefRepository.save(new Chef(profissional, request.especializacao()));
+        Chef novo = new Chef(profissional, request.especializacao());
+        novo.setRestaurante(restaurante);
+        Chef chef = chefRepository.save(novo);
         usuario.setIdProfissional(profissional.getId());
 
         return ChefResponse.de(chef);
@@ -115,6 +125,16 @@ public class ChefService {
         Chef chef = chefDoUsuario(usuarioId);
         chef.getProfissional().setBio(request.bio() == null || request.bio().isBlank() ? null : request.bio().trim());
         chef.setEspecializacao(request.especializacao());
+        chef.setRestaurante(restauranteOuNulo(request.idRestaurante()));
         return ChefResponse.de(chef);
+    }
+
+    // Sem id, o chef não trabalha em restaurante nenhum. Com id que não existe, 400.
+    private Restaurante restauranteOuNulo(Integer idRestaurante) {
+        if (idRestaurante == null) {
+            return null;
+        }
+        return restauranteRepository.findById(idRestaurante)
+                .orElseThrow(() -> new RequisicaoInvalidaException("Restaurante não encontrado"));
     }
 }
