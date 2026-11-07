@@ -28,9 +28,9 @@ public record ReceitaRequest(
         @Size(max = 1000, message = "A descrição deve ter no máximo 1000 caracteres")
         String descricao,
 
-        // Até existir upload de fotos, a imagem é um link http(s).
+        // Link http(s) ou o caminho devolvido por POST /imagens.
         @Size(max = 500, message = "O link da imagem deve ter no máximo 500 caracteres")
-        @Pattern(regexp = "^https?://\\S+$", message = "A imagem deve ser um link http ou https")
+        @Pattern(regexp = ImagemLink.REGEX, message = ImagemLink.MENSAGEM)
         String imagem,
 
         // Só YouTube: youtube.com/watch?v=ID, /embed/ID, /shorts/ID ou youtu.be/ID (ID de 11 caracteres).

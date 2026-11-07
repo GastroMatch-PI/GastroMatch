@@ -23,7 +23,7 @@ public record EtapaRequest(
         Integer timestampVideo,
 
         @Size(max = 500, message = "O link da imagem deve ter no máximo 500 caracteres")
-        @Pattern(regexp = "^https?://\\S+$", message = "A imagem deve ser um link http ou https")
+        @Pattern(regexp = ImagemLink.REGEX, message = ImagemLink.MENSAGEM)
         String imagem
 ) {
 }
