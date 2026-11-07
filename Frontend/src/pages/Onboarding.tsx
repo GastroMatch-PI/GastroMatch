@@ -5,6 +5,8 @@ import { Aviso, Campo, Opcoes } from '../components/Campo'
 import { useToast } from '../components/Feedback'
 import Protegida from '../components/Protegida'
 import { Carregando } from '../components/Ui'
+import type { Pagina, RestauranteResumo } from '../lib/apiTipos'
+import { useApi } from '../lib/useApi'
 import { useAuth } from '../context/Auth'
 import { ENUMS } from '../data/enums'
 import { errosDeCampo, mensagem, post } from '../lib/api'
@@ -40,15 +42,16 @@ export default function Onboarding() {
   const nav = useNavigate()
   const [papel, setPapel] = useState<Papel>('CHEF')
   const [erro, setErro] = useState('')
+  const restaurantes = useApi<Pagina<RestauranteResumo>>('/restaurantes?tamanho=50')
   const f = useForm(
-    { bio: '', especializacao: '', crn: '', nome: '', cnpj: '', cep: '', rua: '', numero: '', bairro: '', cidade: '', estado: '' },
+    { bio: '', especializacao: '', restaurante: '', crn: '', nome: '', cnpj: '', cep: '', rua: '', numero: '', bairro: '', cidade: '', estado: '' },
     esquemas[papel],
   )
 
   const enviar = f.enviar(async (v) => {
     setErro('')
     const corpo =
-      papel === 'CHEF' ? { bio: v.bio, especializacao: v.especializacao || undefined }
+      papel === 'CHEF' ? { bio: v.bio, especializacao: v.especializacao || undefined, idRestaurante: v.restaurante ? Number(v.restaurante) : undefined }
       : papel === 'NUTRICIONISTA' ? { bio: v.bio, crn: v.crn }
       : { nome: v.nome.trim(), bio: v.bio, cnpj: v.cnpj, numero: v.numero ? Number(v.numero) : undefined, rua: v.rua, cep: v.cep || undefined, bairro: v.bairro, cidade: v.cidade, estado: v.estado }
     try {
@@ -106,9 +109,17 @@ export default function Onboarding() {
             </Campo>
           )}
           {papel === 'CHEF' && (
-            <Campo label="Especialização" erro={f.erros.especializacao}>
-              <select name="especializacao" className="input" value={f.v.especializacao} onChange={f.onChange('especializacao')}><option value="">Selecione</option><Opcoes mapa={ENUMS.especializacao} /></select>
-            </Campo>
+            <>
+              <Campo label="Especialização" erro={f.erros.especializacao}>
+                <select name="especializacao" className="input" value={f.v.especializacao} onChange={f.onChange('especializacao')}><option value="">Selecione</option><Opcoes mapa={ENUMS.especializacao} /></select>
+              </Campo>
+              <Campo label="Restaurante onde trabalha (opcional)" erro={f.erros.idRestaurante}>
+                <select name="restaurante" className="input" value={f.v.restaurante} onChange={f.onChange('restaurante')}>
+                  <option value="">Nenhum</option>
+                  {(restaurantes.dados?.conteudo ?? []).map((r) => <option key={r.id} value={r.id}>{r.nome}</option>)}
+                </select>
+              </Campo>
+            </>
           )}
           <Campo label="Bio (até 500)" erro={f.erros.bio} dica={`${f.v.bio.length} / 500`}>
             <textarea name="bio" className="input" rows={4} maxLength={500} value={f.v.bio} onChange={f.onChange('bio')} />
