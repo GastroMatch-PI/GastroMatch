@@ -11,6 +11,8 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.multipart.support.MissingServletRequestPartException;
 
 import com.gastromatch.dto.ErroResponse;
 
@@ -42,11 +44,12 @@ public class GlobalExceptionHandler {
                 .body(new ErroResponse(409, ex.getMessage()));
     }
 
-    // 409: duplicidade detectada pela constraint UNIQUE (cadastros simultâneos)
+    // 409: o banco recusou por conflito (UNIQUE, cadastros simultâneos). Não dá para saber qual campo,
+    // então a mensagem é neutra; as duplicidades conhecidas (e-mail, CNPJ, CRN...) têm erro próprio.
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ErroResponse> handleIntegridade(DataIntegrityViolationException ex) {
         return ResponseEntity.status(HttpStatus.CONFLICT)
-                .body(new ErroResponse(409, "Email ou username já cadastrado"));
+                .body(new ErroResponse(409, "Já existe um registro com esses dados"));
     }
 
     // 401: login errado ou refresh token inválido
@@ -81,6 +84,20 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErroResponse> handleParametroInvalido(MethodArgumentTypeMismatchException ex) {
         return ResponseEntity.badRequest()
                 .body(new ErroResponse(400, "Valor inválido para o parâmetro '" + ex.getName() + "'"));
+    }
+
+    // 413: arquivo maior que o limite do upload (spring.servlet.multipart)
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<ErroResponse> handleArquivoGrande(MaxUploadSizeExceededException ex) {
+        return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE)
+                .body(new ErroResponse(413, "A imagem deve ter no máximo 5 MB"));
+    }
+
+    // 400: upload sem o campo "arquivo"
+    @ExceptionHandler(MissingServletRequestPartException.class)
+    public ResponseEntity<ErroResponse> handleArquivoAusente(MissingServletRequestPartException ex) {
+        return ResponseEntity.badRequest()
+                .body(new ErroResponse(400, "Envie o arquivo no campo '" + ex.getRequestPartName() + "'"));
     }
 
     // 404
