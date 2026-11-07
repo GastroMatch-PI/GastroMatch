@@ -109,6 +109,7 @@ Erros seguem sempre o formato `{ "status": 400, "mensagem": "...", "erros": { "c
 | `POST /receitas/{id}/comentarios`, `PUT`/`DELETE /comentarios/{id}` | Comentar (texto, nota de 0 a 5 e `foto`, os dois últimos opcionais); só o autor edita ou apaga |
 | `POST /imagens`, `GET /imagens/{nome}` | Envia uma imagem (multipart, campo `arquivo`; só JPG, PNG ou WEBP, até 5 MB, conferido pelo conteúdo) e devolve `{ "url": "/imagens/<nome>" }`. Essa `url` vai nos campos `imagem` (receita, etapa) e `foto` (comentário), que também aceitam link http(s). Ver a imagem é público. Com `SUPABASE_URL`, `SUPABASE_SERVICE_KEY` e `SUPABASE_BUCKET` definidas, as imagens vão para o Supabase Storage (bucket público) e a `url` devolvida é o link completo; sem elas, ficam na pasta `uploads/` (`UPLOADS_DIR`), que no Render some a cada deploy |
 | `PUT`/`DELETE /receitas/{id}/favorito`, `GET /usuarios/me/favoritos` | Favoritar, desfavoritar (ambos idempotentes) e listar os favoritos |
+| `POST /ingredientes`, `PUT`/`DELETE /ingredientes/{id}` | Catálogo (B39); só `ROLE_ADMIN` (o `GET` continua público). Nome único (ignora maiúscula/acento, `409`); `porcaoBase` > 0 e os valores nutricionais ≥ 0; ingrediente usado em alguma receita não pode ser excluído (`409`) |
 
 Códigos: `400` dados inválidos, `401` sem login, `403` logado mas sem permissão (não é chef / receita de outro chef / não é ADMIN), `404` não existe, `409` conflito (email ou username repetido, conta que já tem perfil).
 
