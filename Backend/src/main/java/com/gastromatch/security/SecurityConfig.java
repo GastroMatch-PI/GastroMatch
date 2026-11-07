@@ -44,8 +44,8 @@ public class SecurityConfig {
                 // Leitura pública: só GET e só estas rotas. Escrever exige login.
                 .requestMatchers(HttpMethod.GET, "/receitas", "/receitas/*", "/receitas/*/comentarios", "/ingredientes").permitAll()
                 // Diretório de profissionais e restaurantes (e o mapa).
-                .requestMatchers(HttpMethod.GET, "/chefs", "/chefs/*", "/nutricionistas", "/nutricionistas/*",
-                        "/restaurantes", "/restaurantes/*").permitAll()
+                .requestMatchers(HttpMethod.GET, "/chefs", "/chefs/*", "/chefs/*/receitas",
+                        "/nutricionistas", "/nutricionistas/*", "/restaurantes", "/restaurantes/*").permitAll()
                 // Ver uma imagem é público (o envio, POST /imagens, exige login).
                 .requestMatchers(HttpMethod.GET, "/imagens/*").permitAll()
                 // Health check do host (só o /health está exposto, ver application.properties).

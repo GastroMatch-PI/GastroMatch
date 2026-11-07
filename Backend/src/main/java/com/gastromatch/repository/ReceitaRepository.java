@@ -22,4 +22,9 @@ public interface ReceitaRepository extends JpaRepository<Receita, Integer>, JpaS
 
     @Query("select r from Receita r join fetch r.chef c join fetch c.profissional where r.id = :id")
     Optional<Receita> buscarComChef(@Param("id") Integer id);
+
+    // Perfil público do chef (GET /chefs/{id}/receitas). Não há rascunho/publicada no esquema:
+    // toda receita gravada já é pública, então aqui é simplesmente "as receitas do chef".
+    @EntityGraph(attributePaths = {"chef", "chef.profissional"})
+    Page<Receita> findByChefId(Integer idChef, Pageable pageable);
 }
