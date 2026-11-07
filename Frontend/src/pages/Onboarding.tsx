@@ -1,181 +1,121 @@
-import { ChefHat, Salad, Store, UploadCloud } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { ChefHat, Salad, Store } from 'lucide-react'
+import { useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import { Aviso, Campo, Opcoes } from '../components/Campo'
+import { useToast } from '../components/Feedback'
 import Protegida from '../components/Protegida'
+import { Carregando } from '../components/Ui'
 import { useAuth } from '../context/Auth'
 import { ENUMS } from '../data/enums'
-import {
-  buscarPapeisDoUsuario,
-  criarPerfilChef,
-  criarPerfilNutricionista,
-  criarRestaurante,
-  listarChefs,
-  type ChefOpcao,
-  type PapelApi,
-} from '../api/perfis'
-import type { Papel } from '../lib/tipos'
+import { errosDeCampo, mensagem, post } from '../lib/api'
+import { mascaraCEP, mascaraCNPJ, mascaraCRN } from '../lib/mascaras'
+import { useSeo } from '../lib/seo'
+import { useForm } from '../lib/useForm'
+import { obrigatorio, padrao, tamanho, type Esquema } from '../lib/validar'
 
+type Papel = 'CHEF' | 'NUTRICIONISTA' | 'RESTAURANTE'
 const roles: { id: Papel; label: string; icon: typeof ChefHat }[] = [
   { id: 'CHEF', label: 'Chef', icon: ChefHat },
   { id: 'NUTRICIONISTA', label: 'Nutricionista', icon: Salad },
   { id: 'RESTAURANTE', label: 'Restaurante', icon: Store },
 ]
+const rota: Record<Papel, string> = { CHEF: '/chefs', NUTRICIONISTA: '/nutricionistas', RESTAURANTE: '/restaurantes' }
+
+const esquemas: Record<Papel, Esquema> = {
+  CHEF: { bio: [tamanho(0, 500)] },
+  NUTRICIONISTA: { crn: [obrigatorio('Informe o CRN'), tamanho(1, 20)], bio: [tamanho(0, 500)] },
+  RESTAURANTE: {
+    nome: [obrigatorio('Informe o nome do restaurante'), tamanho(1, 150)],
+    cnpj: [obrigatorio('Informe o CNPJ'), padrao(/^\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}$/, 'CNPJ incompleto')],
+    cep: [padrao(/^\d{5}-\d{3}$/, 'CEP inválido (00000-000)')],
+    numero: [padrao(/^[1-9]\d*$/, 'O número deve ser maior que zero')],
+    bio: [tamanho(0, 500)],
+  },
+}
 
 export default function Onboarding() {
-  const { accessToken } = useAuth()
+  useSeo({ titulo: 'Criar perfil profissional' })
+  const { perfil, carregandoPerfil, recarregarPerfil } = useAuth()
+  const toast = useToast()
+  const nav = useNavigate()
   const [papel, setPapel] = useState<Papel>('CHEF')
-  const [f, setF] = useState<Record<string, string>>({})
   const [erro, setErro] = useState('')
-  const [ok, setOk] = useState('')
-  const [enviando, setEnviando] = useState(false)
-  const [existentes, setExistentes] = useState<PapelApi[]>([])
-  const [chefs, setChefs] = useState<ChefOpcao[]>([])
-  const fileRef = useRef<HTMLInputElement>(null)
+  const f = useForm(
+    { bio: '', especializacao: '', crn: '', nome: '', cnpj: '', cep: '', rua: '', numero: '', bairro: '', cidade: '', estado: '' },
+    esquemas[papel],
+  )
 
-  const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
-    setF((atual) => ({ ...atual, [k]: e.target.value }))
-
-  useEffect(() => {
-    if (!accessToken) return
-    buscarPapeisDoUsuario(accessToken)
-      .then(setExistentes)
-      .catch(() => setErro('Não foi possível carregar seus perfis.'))
-    listarChefs().then(setChefs).catch(() => {})
-  }, [accessToken])
-
-  const enviar = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const enviar = f.enviar(async (v) => {
     setErro('')
-    setOk('')
-    if (!accessToken) return setErro('Sessão expirada. Entre novamente.')
-    if (existentes.includes(papel)) return setErro('Você já tem esse perfil.')
-    if (papel === 'CHEF' && !f.especializacao) return setErro('Selecione a especialização.')
-    if (papel === 'RESTAURANTE' && !f.idChef) return setErro('Restaurante exige um chef responsável.')
-
-    setEnviando(true)
+    const corpo =
+      papel === 'CHEF' ? { bio: v.bio, especializacao: v.especializacao || undefined }
+      : papel === 'NUTRICIONISTA' ? { bio: v.bio, crn: v.crn }
+      : { nome: v.nome.trim(), bio: v.bio, cnpj: v.cnpj, numero: v.numero ? Number(v.numero) : undefined, rua: v.rua, cep: v.cep || undefined, bairro: v.bairro, cidade: v.cidade, estado: v.estado }
     try {
-      if (papel === 'CHEF') {
-        await criarPerfilChef(accessToken, {
-          especializacao: f.especializacao, // confirmar: nome do enum Java, ex.: "FRANCESA"
-          bio: f.bio || undefined,
-        })
-        setOk('Perfil de chef criado.')
-      } else if (papel === 'NUTRICIONISTA') {
-        // O comprovante ainda não é enviado ao servidor (não existe upload no backend).
-        await criarPerfilNutricionista(accessToken, {
-          crn: f.crn,
-          bio: f.bio || undefined,
-        })
-        setOk('Perfil enviado. Status: pendente de verificação manual do CRN.')
-      } else {
-        await criarRestaurante(accessToken, {
-          nome: f.nome,
-          cnpj: f.cnpj,
-          idChef: Number(f.idChef),
-          cep: f.cep || undefined,
-          rua: f.rua || undefined,
-          numero: f.numero ? Number(f.numero) : undefined,
-          bairro: f.bairro || undefined,
-          cidade: f.cidade || undefined,
-          estado: f.estado || undefined,
-        })
-        setOk('Restaurante criado.')
-      }
-      setExistentes((l) => [...l, papel as PapelApi])
-    } catch (x) {
-      setErro((x as Error).message)
-    } finally {
-      setEnviando(false)
+      await post(rota[papel], corpo)
+      await recarregarPerfil()
+      toast.sucesso('Perfil criado.')
+      nav('/portal')
+    } catch (e) {
+      f.setErros(errosDeCampo(e))
+      setErro(mensagem(e))
     }
-  }
+  })
 
   return (
     <Protegida>
-      <form onSubmit={enviar} className="card mx-auto max-w-xl space-y-4 p-6">
-        <h1 className="text-2xl font-bold">Criar perfil profissional</h1>
-
-        <div role="tablist" className="flex gap-1 rounded-full border border-line bg-cream p-1 text-xs font-semibold">
-          {roles.map((r) => (
-            <button
-              type="button"
-              key={r.id}
-              onClick={() => { setPapel(r.id); setErro(''); setOk('') }}
-              className={`flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-full px-3 py-2 transition duration-200 ${papel === r.id ? 'bg-terra text-on-accent shadow-soft' : 'text-ink-soft hover:text-terra'}`}
-            >
-              <r.icon size={16} /> {r.label}
-            </button>
-          ))}
+      {carregandoPerfil ? (
+        <Carregando texto="Verificando seu perfil" />
+      ) : perfil ? (
+        <div className="card mx-auto max-w-md space-y-3 p-6 text-center">
+          <h1 className="text-xl font-bold">Sua conta já tem um perfil profissional</h1>
+          <p className="text-sm text-ink-soft">Cada conta pode ter só um perfil: chef, nutricionista ou restaurante.</p>
+          <Link to="/portal" className="btn-primary">Ver meu perfil</Link>
         </div>
-
-        {erro && <Aviso tipo="erro">{erro}</Aviso>}
-        {ok && <Aviso tipo="ok">{ok} <Link to="/conta" className="underline">Minha conta</Link></Aviso>}
-
-        {papel === 'RESTAURANTE' && (
-          <>
-            <Campo label="Nome do restaurante">
-              <input className="input" required maxLength={150} onChange={set('nome')} />
-            </Campo>
-            <Campo label="Chef responsável (obrigatório)">
-              <select className="input" required value={f.idChef ?? ''} onChange={set('idChef')}>
-                <option value="">Selecione um chef</option>
-                {chefs.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
-              </select>
-            </Campo>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <Campo label="CNPJ"><input className="input" required maxLength={18} onChange={set('cnpj')} /></Campo>
-              <Campo label="CEP"><input className="input" pattern="\d{5}-?\d{3}" placeholder="00000-000" onChange={set('cep')} /></Campo>
-              <Campo label="Rua"><input className="input" maxLength={150} onChange={set('rua')} /></Campo>
-              <Campo label="Número"><input className="input" type="number" min={1} onChange={set('numero')} /></Campo>
-              <Campo label="Bairro"><input className="input" maxLength={100} onChange={set('bairro')} /></Campo>
-              <Campo label="Cidade"><input className="input" maxLength={100} onChange={set('cidade')} /></Campo>
-              <Campo label="Estado"><input className="input" maxLength={50} onChange={set('estado')} /></Campo>
-            </div>
-          </>
-        )}
-
-        {papel === 'NUTRICIONISTA' && (
-          <>
-            <Campo label="CRN"><input className="input" required maxLength={20} onChange={set('crn')} /></Campo>
-            <div className="space-y-1 text-xs font-semibold text-ink-soft">
-              Comprovante (PDF ou imagem)
-              <input
-                ref={fileRef}
-                type="file"
-                accept=".pdf,image/*"
-                hidden
-                onChange={(e) => {
-                  const a = e.target.files?.[0]
-                  if (a) setF((atual) => ({ ...atual, comprovante: `${a.name} • ${(a.size / 1048576).toFixed(1)} MB` }))
-                }}
-              />
-              <button type="button" className="btn-ghost w-full" onClick={() => fileRef.current?.click()}>
-                <UploadCloud size={16} /> {f.comprovante ?? 'Selecionar arquivo'}
+      ) : (
+        <form onSubmit={enviar} noValidate className="card mx-auto max-w-xl space-y-4 p-6">
+          <h1 className="text-2xl font-bold">Criar perfil profissional</h1>
+          <Aviso tipo="info">Cada conta tem no máximo um perfil. O perfil já nasce ativo, sem aprovação.</Aviso>
+          <div role="tablist" aria-label="Tipo de perfil" className="flex gap-1 rounded-full border border-line bg-cream p-1 text-xs font-semibold">
+            {roles.map((r) => (
+              <button type="button" role="tab" aria-selected={papel === r.id} key={r.id} onClick={() => { setPapel(r.id); setErro(''); f.setErros({}) }}
+                className={`flex min-w-0 flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-full px-2 py-2.5 text-[11px] transition duration-200 sm:gap-2 sm:px-3 sm:text-xs ${papel === r.id ? 'bg-terra text-on-accent shadow-soft' : 'text-ink-soft hover:text-terra'}`}>
+                <r.icon size={16} className="hidden min-[400px]:block" /> {r.label}
               </button>
-              <span className="block font-normal text-ink-faint">
-                O arquivo ainda não é enviado ao servidor. Esta etapa depende do upload no backend.
-              </span>
-            </div>
-          </>
-        )}
+            ))}
+          </div>
+          {erro && <Aviso tipo="erro">{erro}</Aviso>}
 
-        {papel === 'CHEF' && (
-          <Campo label="Especialização">
-            <select className="input" required defaultValue="" onChange={set('especializacao')}>
-              <option value="">Selecione</option>
-              <Opcoes mapa={ENUMS.especializacao} />
-            </select>
+          {papel === 'RESTAURANTE' && (
+            <>
+              <Campo label="Nome do restaurante" erro={f.erros.nome}><input name="nome" className="input" maxLength={150} value={f.v.nome} onChange={f.onChange('nome')} onBlur={f.onBlur('nome')} /></Campo>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Campo label="CNPJ" erro={f.erros.cnpj}><input name="cnpj" className="input" inputMode="numeric" autoComplete="off" value={f.v.cnpj} onChange={(e) => f.set('cnpj')(mascaraCNPJ(e.target.value))} onBlur={f.onBlur('cnpj')} placeholder="00.000.000/0000-00" /></Campo>
+                <Campo label="CEP" erro={f.erros.cep}><input name="cep" className="input" inputMode="numeric" autoComplete="postal-code" value={f.v.cep} onChange={(e) => f.set('cep')(mascaraCEP(e.target.value))} onBlur={f.onBlur('cep')} placeholder="00000-000" /></Campo>
+                <Campo label="Rua" erro={f.erros.rua}><input name="rua" className="input" maxLength={150} value={f.v.rua} onChange={f.onChange('rua')} /></Campo>
+                <Campo label="Número" erro={f.erros.numero}><input name="numero" className="input" inputMode="numeric" value={f.v.numero} onChange={(e) => f.set('numero')(e.target.value.replace(/\D/g, ''))} onBlur={f.onBlur('numero')} /></Campo>
+                <Campo label="Bairro" erro={f.erros.bairro}><input name="bairro" className="input" maxLength={100} value={f.v.bairro} onChange={f.onChange('bairro')} /></Campo>
+                <Campo label="Cidade" erro={f.erros.cidade}><input name="cidade" className="input" maxLength={100} value={f.v.cidade} onChange={f.onChange('cidade')} /></Campo>
+                <Campo label="Estado" erro={f.erros.estado}><input name="estado" className="input" maxLength={50} value={f.v.estado} onChange={f.onChange('estado')} /></Campo>
+              </div>
+            </>
+          )}
+          {papel === 'NUTRICIONISTA' && (
+            <Campo label="CRN" erro={f.erros.crn} dica="Formato CRN-3/12345">
+              <input name="crn" className="input" inputMode="numeric" autoComplete="off" maxLength={20} value={f.v.crn} onChange={(e) => f.set('crn')(mascaraCRN(e.target.value))} onBlur={f.onBlur('crn')} placeholder="CRN-3/12345" />
+            </Campo>
+          )}
+          {papel === 'CHEF' && (
+            <Campo label="Especialização" erro={f.erros.especializacao}>
+              <select name="especializacao" className="input" value={f.v.especializacao} onChange={f.onChange('especializacao')}><option value="">Selecione</option><Opcoes mapa={ENUMS.especializacao} /></select>
+            </Campo>
+          )}
+          <Campo label="Bio (até 500)" erro={f.erros.bio} dica={`${f.v.bio.length} / 500`}>
+            <textarea name="bio" className="input" rows={4} maxLength={500} value={f.v.bio} onChange={f.onChange('bio')} />
           </Campo>
-        )}
-
-        <Campo label="Bio (até 500)">
-          <textarea className="input" rows={4} maxLength={500} onChange={set('bio')} />
-        </Campo>
-
-        <button className="btn-primary w-full" disabled={enviando}>
-          {enviando ? 'Enviando...' : 'Criar perfil'}
-        </button>
-      </form>
+          <button className="btn-primary w-full">Criar perfil</button>
+        </form>
+      )}
     </Protegida>
   )
 }
