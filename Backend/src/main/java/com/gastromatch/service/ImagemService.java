@@ -11,7 +11,6 @@ import com.gastromatch.exception.RequisicaoInvalidaException;
 public class ImagemService {
 
     public static final int TAMANHO_MAXIMO = 5 * 1024 * 1024; // 5 MB
-    public static final String PREFIXO_URL = "/imagens/";
 
     private final ArmazenamentoService armazenamento;
 
@@ -19,7 +18,7 @@ public class ImagemService {
         this.armazenamento = armazenamento;
     }
 
-    /** Grava a imagem e devolve o caminho público dela (ex.: "/imagens/a1b2...c3.png"). */
+    /** Grava a imagem e devolve o endereço dela (caminho "/imagens/..." ou link da nuvem). */
     public String enviar(byte[] conteudo) {
         if (conteudo == null || conteudo.length == 0) {
             throw new RequisicaoInvalidaException("Envie um arquivo de imagem");
@@ -28,7 +27,7 @@ public class ImagemService {
             throw new RequisicaoInvalidaException("A imagem deve ter no máximo 5 MB");
         }
         String extensao = extensaoPeloConteudo(conteudo);
-        return PREFIXO_URL + armazenamento.salvar(conteudo, extensao);
+        return armazenamento.salvar(conteudo, extensao);
     }
 
     public Resource abrir(String nome) {
