@@ -11,11 +11,11 @@ import java.util.UUID;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
-import org.springframework.stereotype.Service;
 
 /** Guarda as imagens numa pasta do servidor (app.uploads.dir). No Render, o disco some a cada deploy. */
-@Service
 public class ArmazenamentoLocal implements ArmazenamentoService {
+
+    public static final String PREFIXO_URL = "/imagens/";
 
     private final Path pasta;
 
@@ -32,7 +32,7 @@ public class ArmazenamentoLocal implements ArmazenamentoService {
         } catch (IOException e) {
             throw new UncheckedIOException("Não foi possível gravar a imagem", e);
         }
-        return nome;
+        return PREFIXO_URL + nome;
     }
 
     @Override
