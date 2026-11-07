@@ -93,6 +93,8 @@ Erros seguem sempre o formato `{ "status": 400, "mensagem": "...", "erros": { "c
 | `POST /auth/cadastro`, `/auth/login`, `/auth/refresh`, `/auth/logout` | Cadastro e sessão (access token de 15 min + refresh token de 7 dias, com rotação) |
 | `GET /usuarios/me` | Dados da conta logada |
 
+Senha forte (B26, `@SenhaForte`): 10 a 72 caracteres (limite do BCrypt) e pelo menos 3 destes 4 tipos — minúscula, maiúscula, número, símbolo — fora de uma lista de senhas comuns (`senhas-proibidas.txt`). Vale no cadastro (`POST /auth/cadastro`) e na troca de senha (`POST /usuarios/me/senha`, abaixo), que também rejeita senha igual ao e-mail, ao username ou à senha anterior. A mesma regra de tamanho/mistura está espelhada no front (`Frontend/src/lib/validar.ts`); a lista de proibidas e a checagem contra e-mail/username ficam só no back.
+
 **Exigem login (`Authorization: Bearer <accessToken>`):**
 
 | Rota | O que faz |
