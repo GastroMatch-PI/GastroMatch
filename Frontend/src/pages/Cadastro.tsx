@@ -5,7 +5,7 @@ import { errosDeCampo, mensagem } from '../lib/api'
 import { useAuth } from '../context/Auth'
 import { useSeo } from '../lib/seo'
 import { useForm } from '../lib/useForm'
-import { email, igualA, obrigatorio, padrao, tamanho } from '../lib/validar'
+import { email, igualA, obrigatorio, padrao, senhaForte, tamanho } from '../lib/validar'
 
 export default function Cadastro() {
   useSeo({ titulo: 'Criar conta' })
@@ -18,7 +18,7 @@ export default function Cadastro() {
     {
       email: [obrigatorio('Informe o e-mail'), email(), tamanho(1, 255)],
       username: [obrigatorio('Informe o username'), tamanho(3, 50, 'Use de 3 a 50 caracteres'), padrao(/^[\w.-]+$/, 'Use só letras, números, ponto, hífen e _')],
-      password: [obrigatorio('Informe a senha'), tamanho(8, 72, 'A senha deve ter de 8 a 72 caracteres')],
+      password: [obrigatorio('Informe a senha'), senhaForte()],
       conf: [obrigatorio('Confirme a senha'), igualA('password', 'As senhas não conferem')],
     },
   )
@@ -44,7 +44,7 @@ export default function Cadastro() {
       <Campo label="Username (3 a 50)" erro={f.erros.username}>
         <input name="username" className="input" maxLength={50} autoComplete="username" value={f.v.username} onChange={f.onChange('username')} onBlur={f.onBlur('username')} />
       </Campo>
-      <CampoSenha nome="password" label="Senha (8 a 72)" value={f.v.password} onChange={f.set('password')} erro={f.erros.password} mostrarForca onBlur={f.onBlur('password')} />
+      <CampoSenha nome="password" label="Senha (10 a 72)" value={f.v.password} onChange={f.set('password')} erro={f.erros.password} mostrarForca onBlur={f.onBlur('password')} />
       <CampoSenha nome="conf" label="Confirmar senha" value={f.v.conf} onChange={f.set('conf')} erro={f.erros.conf} onBlur={f.onBlur('conf')} />
       <button className="btn-primary w-full">Criar conta</button>
       <p className="text-xs text-ink-soft">

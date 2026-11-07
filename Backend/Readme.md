@@ -96,6 +96,8 @@ Erros seguem sempre o formato `{ "status": 400, "mensagem": "...", "erros": { "c
 
 | Rota | O que faz |
 |---|---|
+| `POST /usuarios/me/senha` | Troca a senha da conta logada (`senhaAtual`, `novaSenha`). Confere a senha atual, aplica a política de senha forte (B26) e rejeita senha igual à anterior; `400` genérico se a atual não confere. Revoga os refresh tokens das outras sessões (`204` sem corpo) |
+| `PUT /usuarios/me` | Edita `username` e/ou `capa` da conta logada; os dois são opcionais e, omitidos (ou em branco), não são alterados. E-mail e senha não entram aqui. `username` repetido dá `409`; `capa` aceita o caminho devolvido por `POST /imagens` ou um link `https` de domínio liberado em `app.capa.allowed-hosts` (`CAPA_ALLOWED_HOSTS`) |
 | `POST /chefs`, `GET /chefs/me`, `PUT /chefs/me` | Cria / consulta / edita o perfil de chef da conta (`bio`, `especializacao` e `idRestaurante`, este opcional: o restaurante onde o chef trabalha, `400` se não existir; o `PUT` troca os três, bio em branco vira vazia e sem `idRestaurante` o chef sai do restaurante). Uma conta tem no máximo um perfil profissional, de chef, nutricionista **ou** restaurante |
 | `POST /nutricionistas`, `GET /nutricionistas/me`, `PUT /nutricionistas/me` | Cria / consulta / edita o perfil de nutricionista (`crn` obrigatório). Não há aprovação: nasce `APROVADO` e já aparece no diretório. O `GET /me` mostra o `statusVerificacao`. O `PUT` troca `bio` e `crn` (bio em branco vira vazia; `409` se o CRN for de outra pessoa) e nunca mexe no status |
 | `POST /restaurantes`, `GET /restaurantes/me`, `PUT /restaurantes/me` | Cria / consulta / edita o restaurante (`nome` e `cnpj` obrigatórios; o CNPJ é conferido e guardado como `00.000.000/0000-00`). `latitude` e `longitude` são opcionais, mas vêm **juntas**. O `PUT` troca todos os campos (o que não for enviado fica vazio) e dá `409` se o CNPJ for de outro restaurante |
@@ -113,6 +115,14 @@ Vídeo da receita (`videoUrl`): só link do YouTube (`youtube.com/watch?v=ID`, `
 Com o profile `dev`, o Swagger lista tudo em http://localhost:8080/swagger-ui.html.
 
 Um job diário (`LimpezaTokensExpiradosJob`, `@Scheduled`) apaga os refresh tokens expirados há mais de 7 dias, em lotes; dá para desligar ou ajustar por variável de ambiente (`APP_CLEANUP_ENABLED`, `APP_CLEANUP_RETENCAO_DIAS`, `APP_CLEANUP_CRON` — veja `SETUP-BANCO.md`).
+
+---
+
+## Testes e cobertura
+
+`./mvnw test` roda a suíte inteira (unitários, `@WebMvcTest` da camada web/segurança e o `ApplicationTests`, que sobe o contexto completo contra um Postgres real) e, ao final, o `jacoco-maven-plugin` (pom.xml) gera o relatório HTML em `target/site/jacoco/index.html` e **falha o build** se `AuthService`, `UsuarioService` ou as classes de `security`/`validation` caírem abaixo de 80% de linhas cobertas. Sem banco configurado, use `./mvnw "-Dtest=!ApplicationTests" test` (veja `SETUP-BANCO.md`) — a cobertura ainda é calculada, só o `ApplicationTests` fica de fora.
+
+Os testes de segurança (`SecurityConfigTest`, `RotasPublicasTest`, `DiretorioRotasTest`, `ImagensRotasTest`, `CorsRotasTest`) conferem, sem banco, que toda rota responde com o código esperado: `401` sem token, `403` sem permissão, e que o CORS (`CorsConfig`) só libera a(s) origem(ns) de `app.cors.allowed-origins` (origem de fora recebe `403`). O workflow `.github/workflows/ci.yml` roda `mvn test` a cada PR para `develop`/`main`, com um Postgres descartável só para a rodada, e publica o relatório de cobertura como artefato (`cobertura-backend`).
 
 ---
 
