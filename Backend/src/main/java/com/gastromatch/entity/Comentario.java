@@ -32,7 +32,7 @@ public class Comentario extends EntidadeComDatas {
 
     private Float nota;
 
-    // Reservado para o upload de fotos, que ainda não existe: fica sempre nulo.
+    // Link http(s) ou caminho de uma imagem enviada (POST /imagens). Opcional.
     @Column(length = 500)
     private String foto;
 
@@ -72,6 +72,10 @@ public class Comentario extends EntidadeComDatas {
 
     public void setNota(Float nota) {
         this.nota = nota;
+    }
+
+    public void setFoto(String foto) {
+        this.foto = foto;
     }
 
     public String getFoto() {
