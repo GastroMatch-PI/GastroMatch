@@ -96,6 +96,7 @@ Erros seguem sempre o formato `{ "status": 400, "mensagem": "...", "erros": { "c
 
 | Rota | O que faz |
 |---|---|
+| `POST /usuarios/me/senha` | Troca a senha da conta logada (`senhaAtual`, `novaSenha`). Confere a senha atual, aplica a política de senha forte (B26) e rejeita senha igual à anterior; `400` genérico se a atual não confere. Revoga os refresh tokens das outras sessões (`204` sem corpo) |
 | `POST /chefs`, `GET /chefs/me`, `PUT /chefs/me` | Cria / consulta / edita o perfil de chef da conta (`bio`, `especializacao` e `idRestaurante`, este opcional: o restaurante onde o chef trabalha, `400` se não existir; o `PUT` troca os três, bio em branco vira vazia e sem `idRestaurante` o chef sai do restaurante). Uma conta tem no máximo um perfil profissional, de chef, nutricionista **ou** restaurante |
 | `POST /nutricionistas`, `GET /nutricionistas/me`, `PUT /nutricionistas/me` | Cria / consulta / edita o perfil de nutricionista (`crn` obrigatório). Não há aprovação: nasce `APROVADO` e já aparece no diretório. O `GET /me` mostra o `statusVerificacao`. O `PUT` troca `bio` e `crn` (bio em branco vira vazia; `409` se o CRN for de outra pessoa) e nunca mexe no status |
 | `POST /restaurantes`, `GET /restaurantes/me`, `PUT /restaurantes/me` | Cria / consulta / edita o restaurante (`nome` e `cnpj` obrigatórios; o CNPJ é conferido e guardado como `00.000.000/0000-00`). `latitude` e `longitude` são opcionais, mas vêm **juntas**. O `PUT` troca todos os campos (o que não for enviado fica vazio) e dá `409` se o CNPJ for de outro restaurante |
