@@ -116,6 +116,14 @@ Com o profile `dev`, o Swagger lista tudo em http://localhost:8080/swagger-ui.ht
 
 ---
 
+## Testes e cobertura
+
+`./mvnw test` roda a suíte e, ao final, o `jacoco-maven-plugin` (pom.xml) gera o relatório HTML em `target/site/jacoco/index.html` e **falha o build** se `AuthService`, `UsuarioService` ou as classes de `security`/`validation` caírem abaixo de 80% de linhas cobertas. O CI (`.github/workflows/ci.yml`) publica esse relatório como artefato (`cobertura-backend`) a cada PR.
+
+Sem banco configurado, use `./mvnw "-Dtest=!ApplicationTests" test` (veja `SETUP-BANCO.md`) — a cobertura ainda é calculada, só o `ApplicationTests` (que sobe o contexto inteiro) fica de fora.
+
+---
+
 ## 4. Package by Layer vs. Package by Feature
 
 Atualmente existem duas grandes correntes de organização:

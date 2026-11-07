@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -22,9 +23,11 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import com.gastromatch.dto.AtualizarUsuarioRequest;
+import com.gastromatch.dto.CadastroUsuarioRequest;
 import com.gastromatch.dto.TrocaSenhaRequest;
 import com.gastromatch.dto.UsuarioResponse;
 import com.gastromatch.entity.Usuario;
+import com.gastromatch.exception.EmailJaCadastradoException;
 import com.gastromatch.exception.RequisicaoInvalidaException;
 import com.gastromatch.exception.UsernameJaCadastradoException;
 import com.gastromatch.exception.UsuarioNaoEncontradoException;
@@ -54,6 +57,64 @@ class UsuarioServiceTest {
         usuario.setUsername("mariachef");
         usuario.setPassword(passwordEncoder.encode("SenhaAntiga#2024"));
     }
+
+    // ------------------------------------------------------------- cadastrar (POST /auth/cadastro)
+
+    @Test
+    void cadastraComDadosValidos() {
+        when(usuarioRepository.existsByEmail("nova@gastro.local")).thenReturn(false);
+        when(usuarioRepository.existsByUsernameIgnoreCase("novachef")).thenReturn(false);
+        when(usuarioRepository.save(any(Usuario.class))).thenAnswer(i -> i.getArgument(0));
+
+        UsuarioResponse resposta = service.cadastrar(
+                new CadastroUsuarioRequest("Nova@Gastro.Local", "novachef", "Abacaxi#2025"));
+
+        assertEquals("nova@gastro.local", resposta.email());
+        assertEquals("novachef", resposta.username());
+    }
+
+    @Test
+    void cadastroCriptografaASenhaComBCrypt() {
+        when(usuarioRepository.existsByEmail(any())).thenReturn(false);
+        when(usuarioRepository.existsByUsernameIgnoreCase(any())).thenReturn(false);
+        when(usuarioRepository.save(any(Usuario.class))).thenAnswer(i -> i.getArgument(0));
+
+        service.cadastrar(new CadastroUsuarioRequest("nova@gastro.local", "novachef", "Abacaxi#2025"));
+
+        verify(usuarioRepository).save(argThat(u ->
+                !u.getPassword().equals("Abacaxi#2025") && passwordEncoder.matches("Abacaxi#2025", u.getPassword())));
+    }
+
+    @Test
+    void cadastroComEmailJaExistenteLancaConflito() {
+        when(usuarioRepository.existsByEmail("nova@gastro.local")).thenReturn(true);
+
+        assertThrows(EmailJaCadastradoException.class, () -> service.cadastrar(
+                new CadastroUsuarioRequest("nova@gastro.local", "novachef", "Abacaxi#2025")));
+        verify(usuarioRepository, never()).save(any());
+    }
+
+    @Test
+    void cadastroComUsernameJaExistenteLancaConflito() {
+        when(usuarioRepository.existsByEmail(any())).thenReturn(false);
+        when(usuarioRepository.existsByUsernameIgnoreCase("novachef")).thenReturn(true);
+
+        assertThrows(UsernameJaCadastradoException.class, () -> service.cadastrar(
+                new CadastroUsuarioRequest("nova@gastro.local", "novachef", "Abacaxi#2025")));
+        verify(usuarioRepository, never()).save(any());
+    }
+
+    @Test
+    void cadastroComSenhaQueContemOUsernameEhRejeitado() {
+        when(usuarioRepository.existsByEmail(any())).thenReturn(false);
+        when(usuarioRepository.existsByUsernameIgnoreCase(any())).thenReturn(false);
+
+        assertThrows(RequisicaoInvalidaException.class, () -> service.cadastrar(
+                new CadastroUsuarioRequest("nova@gastro.local", "novachef", "Novachef#2025")));
+        verify(usuarioRepository, never()).save(any());
+    }
+
+    // --------------------------------------------------------- trocarSenha (POST /usuarios/me/senha)
 
     @Test
     void trocaASenhaQuandoAAtualConfere() {
