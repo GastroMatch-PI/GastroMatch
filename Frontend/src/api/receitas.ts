@@ -19,7 +19,18 @@ export type ReceitaResumoDto = {
     especializacao?: string | null
   }
 }
+export type FiltrosDisponiveisDto = {
+  tipos: string[]
+  metodos: string[]
+  ocasioes: string[]
+  perfis: string[]
+  dificuldades: string[]
+  tempoMinimo: number | null
+  tempoMaximo: number | null
+}
 
+export const buscarFiltrosDisponiveis = () =>
+  apiAutenticada<FiltrosDisponiveisDto>('/receitas/filtros', null)
 // confirmar: campos reais de PaginaResponse
 export type PaginaDto<T> = { resultados: T[]; pagina: number; totalPaginas: number }
 /** Extrai a lista de qualquer formato comum de página (resultados, content ou array puro). */
