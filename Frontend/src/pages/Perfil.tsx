@@ -5,7 +5,6 @@ import { Avatar } from '../components/Photo'
 import Protegida from '../components/Protegida'
 import { EstadoVazio } from '../components/Ui'
 import { useAuth } from '../context/Auth'
-import { pros } from '../data/data'
 import { ENUMS } from '../data/enums'
 import {
   atualizarPerfilChef,
@@ -17,8 +16,12 @@ import {
 } from '../api/perfis'
 import { useSeo } from '../lib/seo'
 
-const tabs = ['Perfil Público', 'Kits Ilustrativos'] as const
-const nomes: Record<PapelApi, string> = { CHEF: 'Chef', NUTRICIONISTA: 'Nutricionista', RESTAURANTE: 'Restaurante' }
+const nomes: Record<PapelApi, string> = {
+  CHEF: 'Chef',
+  NUTRICIONISTA: 'Nutricionista',
+  RESTAURANTE: 'Restaurante',
+}
+
 const statusTxt: Record<string, string> = {
   PENDENTE: 'Em análise: verificação manual pendente. Seu perfil não aparece no diretório até a aprovação.',
   APROVADO: 'Perfil aprovado e visível no diretório.',
@@ -27,8 +30,8 @@ const statusTxt: Record<string, string> = {
 
 export default function Portal() {
   useSeo({ titulo: 'Meu painel' })
+
   const { accessToken } = useAuth()
-  const [tab, setTab] = useState<(typeof tabs)[number]>(tabs[0])
   const [perfis, setPerfis] = useState<StatusPerfil[] | null>(null)
   const [papel, setPapel] = useState<PapelApi | null>(null)
   const [chef, setChef] = useState<ChefPerfilDto | null>(null)
@@ -39,6 +42,7 @@ export default function Portal() {
 
   useEffect(() => {
     if (!accessToken) return
+
     buscarStatusPerfis(accessToken)
       .then((lista) => {
         setPerfis(lista)
@@ -49,11 +53,15 @@ export default function Portal() {
 
   useEffect(() => {
     if (!accessToken || !perfis?.some((p) => p.papel === 'CHEF')) return
+
     buscarChefMe(accessToken)
       .then((c) => {
         if (!c) return
         setChef(c)
-        setDraft({ bio: c.bio ?? '', especializacao: c.especializacao ?? '' })
+        setDraft({
+          bio: c.bio ?? '',
+          especializacao: c.especializacao ?? '',
+        })
       })
       .catch(() => setErro('Não foi possível carregar o perfil de chef.'))
   }, [accessToken, perfis])
@@ -63,14 +71,17 @@ export default function Portal() {
   const salvar = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!accessToken) return
+
     setSalvando(true)
     setErro('')
     setSalvo(false)
+
     try {
       const c = await atualizarPerfilChef(accessToken, {
         especializacao: draft.especializacao,
         bio: draft.bio || undefined,
       })
+
       if (c) setChef(c)
       setSalvo(true)
     } catch (x) {
@@ -84,7 +95,11 @@ export default function Portal() {
     <Protegida>
       {erro && <Aviso tipo="erro">{erro}</Aviso>}
 
-      {perfis === null && !erro && <p className="card p-10 text-center text-sm text-ink-soft">Carregando...</p>}
+      {perfis === null && !erro && (
+        <p className="card p-10 text-center text-sm text-ink-soft">
+          Carregando...
+        </p>
+      )}
 
       {perfis?.length === 0 && (
         <EstadoVazio
@@ -97,50 +112,51 @@ export default function Portal() {
         <div className="space-y-6">
           <section className="flex flex-wrap items-center gap-4 rounded-2xl border border-line bg-peach p-4">
             <div className="min-w-0 flex-1">
-              <h1 className="font-display text-lg font-bold">{nomes[atual.papel]} · {atual.status}</h1>
+              <h1 className="font-display text-lg font-bold">
+                {nomes[atual.papel]} · {atual.status}
+              </h1>
               <p className="text-xs text-ink-soft">{statusTxt[atual.status]}</p>
             </div>
+
             {perfis && perfis.length > 1 && (
-              <select className="input !w-auto" value={atual.papel} onChange={(e) => setPapel(e.target.value as PapelApi)}>
-                {perfis.map((p) => <option key={p.papel} value={p.papel}>{nomes[p.papel]}</option>)}
+              <select
+                className="input !w-auto"
+                value={atual.papel}
+                onChange={(e) => setPapel(e.target.value as PapelApi)}
+              >
+                {perfis.map((p) => (
+                  <option key={p.papel} value={p.papel}>
+                    {nomes[p.papel]}
+                  </option>
+                ))}
               </select>
             )}
           </section>
 
           <section className="card space-y-5 p-5 md:p-6">
-            <div role="tablist" className="flex flex-wrap gap-1 rounded-full border border-line bg-cream p-1 text-xs font-semibold">
-              {tabs.map((t) => (
-                <button
-                  key={t}
-                  role="tab"
-                  aria-selected={tab === t}
-                  onClick={() => setTab(t)}
-                  className={`cursor-pointer rounded-full px-4 py-2 transition duration-200 ${tab === t ? 'bg-terra text-on-accent shadow-soft' : 'text-ink-soft hover:text-terra'}`}
-                >
-                  {t}
-                </button>
-              ))}
-            </div>
-
-            {tab === 'Perfil Público' && atual.papel === 'CHEF' && chef && (
+            {atual.papel === 'CHEF' && chef && (
               <form onSubmit={salvar} className="grid gap-5 md:grid-cols-[220px_1fr]">
                 <div className="rounded-xl border border-line bg-peach p-4 text-center">
                   <Avatar className="mx-auto h-20 w-20" />
                   <p className="mt-2 font-display text-lg font-bold">{chef.nome}</p>
                   <p className="text-[11px] font-semibold text-terra">Chef</p>
                 </div>
+
                 <div className="space-y-4">
                   <Campo label="Especialização">
                     <select
                       className="input"
                       required
                       value={draft.especializacao}
-                      onChange={(e) => setDraft((d) => ({ ...d, especializacao: e.target.value }))}
+                      onChange={(e) =>
+                        setDraft((d) => ({ ...d, especializacao: e.target.value }))
+                      }
                     >
                       <option value="">Selecione</option>
                       <Opcoes mapa={ENUMS.especializacao} />
                     </select>
                   </Campo>
+
                   <Campo label="Biografia" dica={`${draft.bio.length} / 500`}>
                     <textarea
                       className="input h-24 resize-y"
@@ -152,34 +168,27 @@ export default function Portal() {
                       }}
                     />
                   </Campo>
+
                   <div className="flex items-center justify-end gap-3">
-                    {salvo && <span className="text-xs font-semibold text-leaf">Salvo</span>}
-                    <button className="btn-primary" disabled={salvando}>{salvando ? 'Salvando...' : 'Salvar perfil'}</button>
+                    {salvo && (
+                      <span className="text-xs font-semibold text-leaf">Salvo</span>
+                    )}
+                    <button className="btn-primary" disabled={salvando}>
+                      {salvando ? 'Salvando...' : 'Salvar perfil'}
+                    </button>
                   </div>
                 </div>
               </form>
             )}
 
-            {tab === 'Perfil Público' && atual.papel !== 'CHEF' && (
+            {atual.papel !== 'CHEF' && (
               <p className="text-sm text-ink-soft">
                 A edição do perfil de {nomes[atual.papel].toLowerCase()} ainda não está disponível pela API.
               </p>
             )}
 
-            {tab === 'Kits Ilustrativos' && (
-              <div className="space-y-3">
-                <p className="text-xs text-ink-soft">Kits são só ilustrativos: não há compra, reserva nem pagamento.</p>
-                <div className="grid gap-3 md:grid-cols-3">
-                  {pros.map((p) => (
-                    <div key={p.id} className="rounded-xl border border-line bg-peach/60 p-4 text-xs">
-                      <p className="font-bold uppercase text-gold">{p.kit.label}</p>
-                      <p className="mt-1 text-sm font-semibold">{p.kit.title}</p>
-                      <p className="text-terra">{p.kit.price}</p>
-                      <p className="text-ink-faint">{p.kit.detail}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
+            {atual.papel === 'CHEF' && !chef && (
+              <p className="text-sm text-ink-soft">Carregando perfil de chef...</p>
             )}
           </section>
         </div>

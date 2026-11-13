@@ -6,12 +6,18 @@ import { apiAutenticada } from './http'
 export type ReceitaResumoDto = {
   id: number
   nome: string
+  descricao?: string | null
   imagem: string | null
   tempoPreparo: number
   nPorcoes: number
-  dificuldade: string // nome do enum Java, ex.: "FACIL"
-  tipo: string // ex.: "ALMOCO"
-  chef: string // confirmar: se vier como objeto, use chef.nome
+  dificuldade: string
+  tipo: string
+  chef: {
+    id: number
+    nome: string
+    username?: string | null
+    especializacao?: string | null
+  }
 }
 
 // confirmar: campos reais de PaginaResponse
@@ -19,12 +25,19 @@ export type PaginaDto<T> = { resultados: T[]; pagina: number; totalPaginas: numb
 /** Extrai a lista de qualquer formato comum de página (resultados, content ou array puro). */
 export function extrairLista<T>(r: unknown): T[] {
   if (Array.isArray(r)) return r as T[]
-  const o = r as { resultados?: unknown; content?: unknown } | null
+
+  const o = r as {
+    resultados?: unknown
+    conteudo?: unknown
+    content?: unknown
+  } | null
+
   if (Array.isArray(o?.resultados)) return o.resultados as T[]
+  if (Array.isArray(o?.conteudo)) return o.conteudo as T[]
   if (Array.isArray(o?.content)) return o.content as T[]
+
   return []
 }
-
 /** Extrai a lista e os metadados de paginação de qualquer formato comum. */
 export function extrairPagina<T>(r: unknown) {
   const o = r as Record<string, unknown> | null
@@ -86,7 +99,7 @@ export function adaptarResumo(r: ReceitaResumoDto): Recipe {
     minutes: r.tempoPreparo,
     servings: r.nPorcoes,
     difficulty: ENUMS.dificuldade[r.dificuldade as keyof typeof ENUMS.dificuldade] as Recipe['difficulty'],
-    author: r.chef,
+    author: r.chef?.nome ?? r.chef?.username ?? 'Chef',
     role: 'Chef',
     collections: [ENUMS.tipo[r.tipo as keyof typeof ENUMS.tipo]],
     ingredients: [], // o resumo não traz ingredientes; a busca pela geladeira fica para a próxima etapa
