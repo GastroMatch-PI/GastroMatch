@@ -62,11 +62,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return s.accessToken
         })
         .catch((e) => {
-          // Sem conexão (status 0): mantém a sessão para tentar depois.
-          // Refresh recusado pelo servidor: a sessão acabou.
-          if (!(e instanceof ApiError && e.status === 0)) limparSessao()
-          return null
-        })
+  // Só encerra a sessão quando o backend informa que o refresh token é inválido.
+  // Erros 500 e falhas de conexão são temporários e não devem apagar o login.
+  if (e instanceof ApiError && e.status === 401) {
+    limparSessao()
+  }
+  return null
+})
         .finally(() => {
           renovando.current = null
         })
