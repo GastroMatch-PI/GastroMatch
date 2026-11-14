@@ -51,8 +51,8 @@ public class SecurityConfig {
                 // Health check do host (só o /health está exposto, ver application.properties).
                 .requestMatchers(HttpMethod.GET, "/actuator/health").permitAll()
                 // Swagger: só existe quando habilitado (profile dev); em produção dá 404.
-                .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
-                .anyRequest().authenticated())
+                .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll().requestMatchers("/error").permitAll()
+                .anyRequest().authenticated()) // sem isto, exceção não tratada aparece como 401
             // Sem isso o padrão seria 403 para quem não enviou token. O correto é 401.
             .exceptionHandling(e -> e.authenticationEntryPoint((req, res, ex) -> {
                 res.setStatus(401);
