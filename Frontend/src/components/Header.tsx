@@ -1,13 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
 import {
-  BadgeCheck, BookOpen, ChefHat, Heart, Home, LayoutDashboard, LogIn, LogOut, Menu, Moon, PlusCircle, Refrigerator, Search, Store, Sun, UserPlus, UserRound, Users, X,
+  BadgeCheck, ChefHat, Heart, Home, LogIn, LogOut, Menu, PlusCircle, Refrigerator, Search, UserPlus, UserRound, Users, X,
 } from 'lucide-react'
+import { Moon, Sun, Store, BookOpen } from 'lucide-react'
 import { useAuth } from '../context/Auth'
-import { buscarPapeisDoUsuario, type PapelApi } from '../api/perfis'
-
-// confirmar: rota real da conta (Conta.tsx ou Perfil.tsx) no App.tsx
-const ROTA_CONTA = '/conta'
 
 const main = [
   { to: '/', label: 'Explorar receitas', icon: Home, end: true },
@@ -21,36 +18,19 @@ const main = [
 export default function Header() {
   const { pathname } = useLocation()
   const nav = useNavigate()
-  const { usuario, accessToken, sair } = useAuth()
+  const { usuario, perfil, sair } = useAuth()
   const [tema, setTema] = useState(() => document.documentElement.dataset.theme ?? (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'))
-  // Papéis profissionais do usuário, vindos da API (confirmar: retorno de buscarPapeisDoUsuario é PapelApi[])
-  const [papeis, setPapeis] = useState<PapelApi[]>([])
-  const [open, setOpen] = useState(false)
-  const [q, setQ] = useState('')
-  const closeRef = useRef<HTMLButtonElement>(null)
-  const btnRef = useRef<HTMLButtonElement>(null)
-
-  const isChef = papeis.includes('CHEF')
-
   const alternarTema = () => {
     const novo = tema === 'light' ? 'dark' : 'light'
     setTema(novo)
     document.documentElement.dataset.theme = novo
     try { localStorage.setItem('gm-tema', novo) } catch { /* sem storage */ }
   }
-
-  // Busca os papéis quando há sessão; limpa ao sair. Ignora respostas antigas.
-  useEffect(() => {
-    if (!usuario || !accessToken) {
-      setPapeis([])
-      return
-    }
-    let ativo = true
-    buscarPapeisDoUsuario(accessToken)
-      .then((p) => { if (ativo) setPapeis(p) })
-      .catch(() => { if (ativo) setPapeis([]) })
-    return () => { ativo = false }
-  }, [usuario, accessToken])
+  const isChef = perfil?.papel === 'CHEF'
+  const [open, setOpen] = useState(false)
+  const [q, setQ] = useState('')
+  const closeRef = useRef<HTMLButtonElement>(null)
+  const btnRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => setOpen(false), [pathname])
 
@@ -95,7 +75,7 @@ export default function Header() {
 
           <div className="ml-auto flex items-center gap-2 md:ml-0">
             {usuario ? (
-              <Link to={ROTA_CONTA} className="btn-ghost !px-4 !py-2">
+              <Link to="/conta" className="btn-ghost !px-4 !py-2">
                 <UserRound size={16} />
                 <span className="hidden max-w-[7rem] truncate sm:inline">{usuario.username}</span>
               </Link>
@@ -106,15 +86,15 @@ export default function Header() {
               <ChefHat size={16} /> Sou profissional
             </Link>
             <button
-              ref={btnRef}
-              onClick={() => setOpen(true)}
-              aria-label="Abrir menu"
-              aria-expanded={open}
-              aria-controls="menu-lateral"
-              className="flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-full bg-terra text-on-accent shadow-soft transition duration-300 hover:scale-105 hover:shadow-lift"
-            >
-              <Menu size={20} />
-            </button>
+            ref={btnRef}
+            onClick={() => setOpen(true)}
+            aria-label="Abrir menu"
+            aria-expanded={open}
+            aria-controls="menu-lateral"
+            className="flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-full bg-terra text-on-accent shadow-soft transition duration-300 hover:scale-105 hover:shadow-lift"
+          >
+            <Menu size={20} />
+          </button>
           </div>
         </div>
       </header>
@@ -161,12 +141,9 @@ export default function Header() {
 
         <div className="space-y-1 border-t border-line pt-4">
           <p className="px-4 pb-1 text-xs font-semibold uppercase tracking-wide text-ink-faint">Profissionais</p>
-          {papeis.length > 0 && <NavLink to="/portal" className={item}><ChefHat size={18} /> Portal profissional</NavLink>}
+          
           {isChef && <NavLink to="/publicar" className={item}><PlusCircle size={18} /> Publicar receita</NavLink>}
-          {usuario && <NavLink to="/onboarding" className={item}><BadgeCheck size={18} /> Criar perfil profissional</NavLink>}
-          {/* confirmar: a rota /painel existe no App.tsx? */}
-          {isChef && <NavLink to="/painel" className={item}><LayoutDashboard size={18} /> Painel do chef</NavLink>}
-          {/* Curadoria removida da navegação: ainda não existe API de curadoria. */}
+          {usuario && <NavLink to={perfil ? '/portal' : '/onboarding'} className={item}><BadgeCheck size={18} /> {perfil ? 'Meu perfil profissional' : 'Criar perfil profissional'}</NavLink>}
         </div>
 
         <div className="mt-auto space-y-2 border-t border-line pt-4">
@@ -175,8 +152,7 @@ export default function Header() {
           </button>
           {usuario ? (
             <>
-              <Link to={ROTA_CONTA} className={item}><UserRound size={18} /> {usuario.username}</Link>
-              <Link to="/verificacao" className={item}><BadgeCheck size={18} /> Status da verificação</Link>
+              <Link to="/conta" className={item}><UserRound size={18} /> {usuario.username}</Link>
               <button className={`${item} w-full cursor-pointer`} onClick={() => { sair(); setOpen(false); nav('/') }}>
                 <LogOut size={18} /> Sair
               </button>

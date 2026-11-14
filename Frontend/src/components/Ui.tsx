@@ -1,6 +1,7 @@
 import { ChevronLeft, ChevronRight, ImagePlus, Loader2, UploadCloud, X } from 'lucide-react'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
+import { enviarImagem, mensagem, urlImagem } from '../lib/api'
 import { paginasVisiveis } from '../lib/format'
 
 /* ---------- Skeleton / Spinner ---------- */
@@ -61,53 +62,37 @@ export function Paginacao({ pagina, total, onMudar }: { pagina: number; total: n
   )
 }
 
-/* ---------- Upload de imagem (arrastar e soltar, prévia, progresso, cancelar, redimensionar) ---------- */
+/* ---------- Upload de imagem para a API (POST /imagens) ---------- */
 const TIPOS = ['image/jpeg', 'image/png', 'image/webp']
 const MAX_MB = 5
 
-function redimensionar(dataUrl: string, max: number): Promise<string> {
-  return new Promise((resolve) => {
-    const img = new Image()
-    img.onload = () => {
-      const k = Math.min(1, max / Math.max(img.width, img.height))
-      const c = document.createElement('canvas')
-      c.width = Math.round(img.width * k)
-      c.height = Math.round(img.height * k)
-      c.getContext('2d')?.drawImage(img, 0, 0, c.width, c.height)
-      resolve(c.toDataURL('image/jpeg', 0.82))
-    }
-    img.onerror = () => resolve(dataUrl)
-    img.src = dataUrl
-  })
-}
-
+// Valida tipo e tamanho no cliente (o servidor confere de novo), envia com progresso e permite cancelar.
 export function UploadImagem({
-  valor, onChange, rotulo = 'Imagem', max = 800, redondo = false,
-}: { valor?: string; onChange: (dataUrl: string | undefined) => void; rotulo?: string; max?: number; redondo?: boolean }) {
+  valor, onChange, rotulo = 'Imagem', redondo = false,
+}: { valor?: string | null; onChange: (url: string | undefined) => void; rotulo?: string; redondo?: boolean }) {
   const input = useRef<HTMLInputElement>(null)
-  const leitor = useRef<FileReader | null>(null)
+  const ctl = useRef<AbortController | null>(null)
   const [erro, setErro] = useState('')
   const [prog, setProg] = useState<number | null>(null)
   const [arrastando, setArrastando] = useState(false)
 
-  useEffect(() => () => leitor.current?.abort(), [])
+  useEffect(() => () => ctl.current?.abort(), [])
 
-  const ler = (f: File | undefined) => {
+  const enviar = async (f: File | undefined) => {
     setErro('')
     if (!f) return
     if (!TIPOS.includes(f.type)) return setErro('Arquivo inválido: envie uma imagem JPG, PNG ou WebP.')
     if (f.size > MAX_MB * 1048576) return setErro(`A imagem tem mais de ${MAX_MB} MB.`)
-    const r = new FileReader()
-    leitor.current = r
+    const c = new AbortController()
+    ctl.current = c
     setProg(0)
-    r.onprogress = (e) => e.lengthComputable && setProg(Math.round((e.loaded / e.total) * 100))
-    r.onload = async () => {
-      onChange(await redimensionar(String(r.result), max))
+    try {
+      onChange(await enviarImagem(f, setProg, c.signal))
+    } catch (e) {
+      if ((e as Error).name !== 'AbortError') setErro(mensagem(e))
+    } finally {
       setProg(null)
     }
-    r.onabort = () => setProg(null)
-    r.onerror = () => { setErro('Não foi possível ler o arquivo.'); setProg(null) }
-    r.readAsDataURL(f)
   }
 
   return (
@@ -116,12 +101,12 @@ export function UploadImagem({
       <div
         onDragOver={(e) => { e.preventDefault(); setArrastando(true) }}
         onDragLeave={() => setArrastando(false)}
-        onDrop={(e) => { e.preventDefault(); setArrastando(false); ler(e.dataTransfer.files[0]) }}
+        onDrop={(e) => { e.preventDefault(); setArrastando(false); void enviar(e.dataTransfer.files[0]) }}
         className={`flex flex-col items-center gap-3 rounded-2xl border-2 border-dashed p-4 text-center transition ${arrastando ? 'border-terra bg-peach' : 'border-line'}`}
       >
         {valor ? (
           <div className="relative">
-            <img src={valor} alt="Pré-visualização" className={`h-32 w-32 object-cover ${redondo ? 'rounded-full' : 'rounded-xl'}`} />
+            <img src={urlImagem(valor)} alt="Pré-visualização" className={`h-32 w-32 object-cover ${redondo ? 'rounded-full' : 'rounded-xl'}`} />
             <button type="button" aria-label="Remover imagem" onClick={() => onChange(undefined)} className="absolute -right-2 -top-2 flex h-8 w-8 cursor-pointer items-center justify-center rounded-full bg-surface shadow-soft"><X size={14} /></button>
           </div>
         ) : (
@@ -130,7 +115,7 @@ export function UploadImagem({
         {prog !== null ? (
           <div className="w-full max-w-xs space-y-1">
             <div className="h-2 overflow-hidden rounded-full bg-line" role="progressbar" aria-valuenow={prog} aria-valuemin={0} aria-valuemax={100}><div className="h-full bg-terra transition-all" style={{ width: `${prog}%` }} /></div>
-            <button type="button" className="text-xs font-semibold text-terra" onClick={() => leitor.current?.abort()}>Cancelar envio</button>
+            <button type="button" className="text-xs font-semibold text-terra" onClick={() => ctl.current?.abort()}>Cancelar envio</button>
           </div>
         ) : (
           <button type="button" className="btn-ghost !py-2 text-xs" onClick={() => input.current?.click()}>
@@ -138,7 +123,7 @@ export function UploadImagem({
           </button>
         )}
         <p className="text-[11px] text-ink-faint">JPG, PNG ou WebP, até {MAX_MB} MB.</p>
-        <input ref={input} type="file" accept="image/jpeg,image/png,image/webp" capture={undefined} hidden onChange={(e) => { ler(e.target.files?.[0]); e.target.value = '' }} />
+        <input ref={input} type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={(e) => { void enviar(e.target.files?.[0]); e.target.value = '' }} />
       </div>
       {erro && <p role="alert" className="text-xs text-alert">{erro}</p>}
     </div>
@@ -147,4 +132,25 @@ export function UploadImagem({
 
 export function Secao({ children, className = '' }: { children: ReactNode; className?: string }) {
   return <section className={`card p-5 md:p-6 ${className}`}>{children}</section>
+}
+
+/* ---------- Estados de carregamento e erro da API ---------- */
+export function Carregando({ lento, texto = 'Carregando' }: { lento?: boolean; texto?: string }) {
+  return (
+    <div className="card flex flex-col items-center gap-3 px-6 py-12 text-center" role="status" aria-live="polite">
+      <Loader2 className="animate-spin text-terra motion-reduce:animate-none" size={28} aria-hidden />
+      <p className="text-sm font-semibold">{texto}...</p>
+      {lento && <p className="max-w-sm text-xs text-ink-soft">O servidor estava dormindo e está acordando. Pode levar até 40 segundos na primeira vez.</p>}
+    </div>
+  )
+}
+
+export function ErroApi({ erro, onTentar }: { erro: { message: string; status?: number }; onTentar?: () => void }) {
+  return (
+    <div className="card flex flex-col items-center gap-3 px-6 py-10 text-center" role="alert">
+      <h3 className="text-lg font-bold">{erro.status === 404 ? 'Não encontrado' : 'Não foi possível carregar'}</h3>
+      <p className="max-w-sm text-sm text-ink-soft">{erro.message}</p>
+      {onTentar && erro.status !== 404 && <button className="btn-primary" onClick={onTentar}>Tentar de novo</button>}
+    </div>
+  )
 }

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { Aviso, Campo, CampoSenha } from '../components/Campo'
+import { errosDeCampo, mensagem } from '../lib/api'
 import { useAuth } from '../context/Auth'
 import { useSeo } from '../lib/seo'
 import { useForm } from '../lib/useForm'
@@ -28,7 +29,8 @@ export default function Cadastro() {
       await cadastrar(v.email, v.username, v.password)
       nav((loc.state as { from?: string } | null)?.from ?? '/', { replace: true })
     } catch (x) {
-      setErro((x as Error).message)
+      f.setErros(errosDeCampo(x)) // erros de campo da API (400)
+      setErro(mensagem(x)) // 409: e-mail ou username repetido
     }
   })
 

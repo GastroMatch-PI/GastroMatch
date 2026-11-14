@@ -22,13 +22,16 @@ import com.gastromatch.dto.CadastroChefRequest;
 import com.gastromatch.dto.ChefResponse;
 import com.gastromatch.entity.Chef;
 import com.gastromatch.entity.Profissional;
+import com.gastromatch.entity.Restaurante;
 import com.gastromatch.entity.Usuario;
 import com.gastromatch.entity.enums.Especializacao;
 import com.gastromatch.entity.enums.RoleProfissional;
 import com.gastromatch.exception.AcessoNegadoException;
 import com.gastromatch.exception.ConflitoException;
+import com.gastromatch.exception.RequisicaoInvalidaException;
 import com.gastromatch.repository.ChefRepository;
 import com.gastromatch.repository.ProfissionalRepository;
+import com.gastromatch.repository.RestauranteRepository;
 import com.gastromatch.repository.UsuarioRepository;
 
 @ExtendWith(MockitoExtension.class)
@@ -39,13 +42,14 @@ class ChefServiceTest {
     @Mock UsuarioRepository usuarioRepository;
     @Mock ProfissionalRepository profissionalRepository;
     @Mock ChefRepository chefRepository;
+    @Mock RestauranteRepository restauranteRepository;
 
     private ChefService service;
     private Usuario usuario;
 
     @BeforeEach
     void montar() {
-        service = new ChefService(usuarioRepository, profissionalRepository, chefRepository);
+        service = new ChefService(usuarioRepository, profissionalRepository, chefRepository, restauranteRepository);
         usuario = new Usuario();
         ReflectionTestUtils.setField(usuario, "id", USUARIO);
     }
@@ -61,7 +65,7 @@ class ChefServiceTest {
         when(chefRepository.save(any(Chef.class))).thenAnswer(i -> i.getArgument(0));
 
         ChefResponse resposta = service.criarPerfil(USUARIO,
-                new CadastroChefRequest("  Cozinheiro  ", Especializacao.MASSAS));
+                new CadastroChefRequest("  Cozinheiro  ", Especializacao.MASSAS, null));
 
         ArgumentCaptor<Profissional> salvo = ArgumentCaptor.forClass(Profissional.class);
         verify(profissionalRepository).save(salvo.capture());
@@ -78,7 +82,7 @@ class ChefServiceTest {
         when(usuarioRepository.buscarComBloqueio(USUARIO)).thenReturn(Optional.of(usuario));
 
         assertThrows(ConflitoException.class,
-                () -> service.criarPerfil(USUARIO, new CadastroChefRequest(null, null)));
+                () -> service.criarPerfil(USUARIO, new CadastroChefRequest(null, null, null)));
         verify(profissionalRepository, never()).save(any());
     }
 
@@ -117,7 +121,7 @@ class ChefServiceTest {
         when(chefRepository.findByProfissionalId(3)).thenReturn(Optional.of(chef));
 
         ChefResponse resposta = service.atualizarPerfil(USUARIO,
-                new CadastroChefRequest("  Bio nova  ", Especializacao.MASSAS));
+                new CadastroChefRequest("  Bio nova  ", Especializacao.MASSAS, null));
 
         // A bio sai sem espaços nas pontas, como no cadastro.
         assertEquals("Bio nova", resposta.bio());
@@ -133,7 +137,7 @@ class ChefServiceTest {
         Chef chef = new Chef(new Profissional(RoleProfissional.CHEF, "Bio antiga"), Especializacao.CARNES);
         when(chefRepository.findByProfissionalId(3)).thenReturn(Optional.of(chef));
 
-        ChefResponse resposta = service.atualizarPerfil(USUARIO, new CadastroChefRequest("   ", null));
+        ChefResponse resposta = service.atualizarPerfil(USUARIO, new CadastroChefRequest("   ", null, null));
 
         assertNull(resposta.bio());
         assertNull(resposta.especializacao());
@@ -144,6 +148,93 @@ class ChefServiceTest {
         when(usuarioRepository.findById(USUARIO)).thenReturn(Optional.of(usuario));
 
         assertThrows(AcessoNegadoException.class,
-                () -> service.atualizarPerfil(USUARIO, new CadastroChefRequest("bio", Especializacao.MASSAS)));
+                () -> service.atualizarPerfil(USUARIO, new CadastroChefRequest("bio", Especializacao.MASSAS, null)));
+    }
+
+    // ---- vínculo com o restaurante ----
+
+    private Restaurante restaurante(int id) {
+        Restaurante r = new Restaurante();
+        ReflectionTestUtils.setField(r, "id", id);
+        return r;
+    }
+
+    @Test
+    void criaChefJaVinculadoAoRestaurante() {
+        when(usuarioRepository.buscarComBloqueio(USUARIO)).thenReturn(Optional.of(usuario));
+        when(restauranteRepository.findById(5)).thenReturn(Optional.of(restaurante(5)));
+        when(profissionalRepository.save(any(Profissional.class))).thenAnswer(i -> i.getArgument(0));
+        when(chefRepository.save(any(Chef.class))).thenAnswer(i -> i.getArgument(0));
+
+        ChefResponse resposta = service.criarPerfil(USUARIO,
+                new CadastroChefRequest("bio", Especializacao.MASSAS, 5));
+
+        assertEquals(5, resposta.idRestaurante());
+    }
+
+    @Test
+    void restauranteQueNaoExisteNaoCriaNada() {
+        when(usuarioRepository.buscarComBloqueio(USUARIO)).thenReturn(Optional.of(usuario));
+        when(restauranteRepository.findById(99)).thenReturn(Optional.empty());
+
+        assertThrows(RequisicaoInvalidaException.class,
+                () -> service.criarPerfil(USUARIO, new CadastroChefRequest("bio", null, 99)));
+        verify(profissionalRepository, never()).save(any());
+        verify(chefRepository, never()).save(any());
+    }
+
+    @Test
+    void semRestauranteOChefNaoTemVinculo() {
+        when(usuarioRepository.buscarComBloqueio(USUARIO)).thenReturn(Optional.of(usuario));
+        when(profissionalRepository.save(any(Profissional.class))).thenAnswer(i -> i.getArgument(0));
+        when(chefRepository.save(any(Chef.class))).thenAnswer(i -> i.getArgument(0));
+
+        ChefResponse resposta = service.criarPerfil(USUARIO, new CadastroChefRequest("bio", null, null));
+
+        assertNull(resposta.idRestaurante());
+        verify(restauranteRepository, never()).findById(any());
+    }
+
+    @Test
+    void atualizaORestauranteDoChef() {
+        usuario.setIdProfissional(3);
+        when(usuarioRepository.findById(USUARIO)).thenReturn(Optional.of(usuario));
+        Chef chef = new Chef(new Profissional(RoleProfissional.CHEF, "bio"), Especializacao.CARNES);
+        when(chefRepository.findByProfissionalId(3)).thenReturn(Optional.of(chef));
+        when(restauranteRepository.findById(8)).thenReturn(Optional.of(restaurante(8)));
+
+        ChefResponse resposta = service.atualizarPerfil(USUARIO,
+                new CadastroChefRequest("bio", Especializacao.CARNES, 8));
+
+        assertEquals(8, resposta.idRestaurante());
+        assertEquals(8, chef.getRestaurante().getId());
+    }
+
+    @Test
+    void putSemRestauranteTiraOChefDoRestaurante() {
+        usuario.setIdProfissional(3);
+        when(usuarioRepository.findById(USUARIO)).thenReturn(Optional.of(usuario));
+        Chef chef = new Chef(new Profissional(RoleProfissional.CHEF, "bio"), Especializacao.CARNES);
+        chef.setRestaurante(restaurante(8));
+        when(chefRepository.findByProfissionalId(3)).thenReturn(Optional.of(chef));
+
+        ChefResponse resposta = service.atualizarPerfil(USUARIO,
+                new CadastroChefRequest("bio", Especializacao.CARNES, null));
+
+        assertNull(resposta.idRestaurante());
+        assertNull(chef.getRestaurante());
+    }
+
+    @Test
+    void restauranteInexistenteNaAtualizacaoNaoMudaONada() {
+        usuario.setIdProfissional(3);
+        when(usuarioRepository.findById(USUARIO)).thenReturn(Optional.of(usuario));
+        Chef chef = new Chef(new Profissional(RoleProfissional.CHEF, "bio"), Especializacao.CARNES);
+        chef.setRestaurante(restaurante(8));
+        when(chefRepository.findByProfissionalId(3)).thenReturn(Optional.of(chef));
+        when(restauranteRepository.findById(99)).thenReturn(Optional.empty());
+
+        assertThrows(RequisicaoInvalidaException.class,
+                () -> service.atualizarPerfil(USUARIO, new CadastroChefRequest("bio", Especializacao.CARNES, 99)));
     }
 }

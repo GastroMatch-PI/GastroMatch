@@ -1,160 +1,95 @@
-import { useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
-import { listarDiretorio, type PerfilDiretorio, type TipoPerfil } from '../api/Diretorio'
-import { Aviso } from '../components/Campo'
-import Photo from '../components/Photo'
-import { EstadoVazio, Skeleton } from '../components/Ui'
+import { ChefHat, Salad } from 'lucide-react'
+import { useState } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
+import { Avatar } from '../components/Photo'
+import { Carregando, ErroApi, EstadoVazio, Paginacao } from '../components/Ui'
 import { ENUMS } from '../data/enums'
+import { qs } from '../lib/api'
+import type { ChefPerfil, NutricionistaResumo, Pagina } from '../lib/apiTipos'
 import { useSeo } from '../lib/seo'
+import { useApi } from '../lib/useApi'
 
-const types = ['Todos', 'Chef Particular', 'Nutricionista', 'Restaurante'] as const
-const papelKind: Record<TipoPerfil, (typeof types)[number]> = {
-  CHEF: 'Chef Particular',
-  NUTRICIONISTA: 'Nutricionista',
-  RESTAURANTE: 'Restaurante',
+const TAMANHO = 12
+
+function Chefs({ esp }: { esp: string }) {
+  const [pagina, setPagina] = useState(1)
+  const { dados, carregando, erro, lento, recarregar } = useApi<Pagina<ChefPerfil>>(`/chefs${qs({ especializacao: esp, pagina: pagina - 1, tamanho: TAMANHO })}`)
+  if (erro) return <ErroApi erro={erro} onTentar={recarregar} />
+  if (!dados) return <Carregando lento={lento} texto="Carregando chefs" />
+  if (dados.conteudo.length === 0) return <EstadoVazio titulo="Nenhum chef encontrado" texto="Tente outra especialização." />
+  return (
+    <>
+      <div className={`grid gap-4 lg:grid-cols-2 transition-opacity ${carregando ? 'opacity-60' : ''}`}>
+        {dados.conteudo.map((c) => (
+          <article key={c.id} className="card card-hover flex gap-4 p-5">
+            <Avatar className="h-14 w-14" />
+            <div className="min-w-0 flex-1 space-y-1">
+              <h2 className="text-lg font-bold"><Link to={`/chef/${c.id}`} className="hover:text-terra">Chef {c.username}</Link></h2>
+              {c.especializacao && <p className="text-xs font-semibold text-terra">{ENUMS.especializacao[c.especializacao]}</p>}
+              {c.bio && <p className="line-clamp-3 text-sm text-ink-soft">{c.bio}</p>}
+              {c.idRestaurante && <Link to={`/restaurante/${c.idRestaurante}`} className="inline-block text-xs text-ink-faint underline">{c.nomeRestaurante}</Link>}
+            </div>
+          </article>
+        ))}
+      </div>
+      <Paginacao pagina={pagina} total={dados.totalPaginas} onMudar={setPagina} />
+    </>
+  )
 }
-const emoji: Record<TipoPerfil, string> = { CHEF: '👨‍🍳', NUTRICIONISTA: '🥗', RESTAURANTE: '🍽' }
-const nomePlural: Record<TipoPerfil, string> = { CHEF: 'chefs', NUTRICIONISTA: 'nutricionistas', RESTAURANTE: 'restaurantes' }
 
-// confirmar: rota da página pública do chef no App.tsx
-const rotaChef = (id: number) => `/chef/${id}`
-
-const rot = (m: Record<string, string>, k?: string) => (k ? m[k] ?? k : undefined)
-
-function areaDe(p: PerfilDiretorio): string {
-  if (p.tipo === 'CHEF') return rot(ENUMS.especializacao, p.especializacao) ?? 'Chef'
-  if (p.tipo === 'NUTRICIONISTA') return p.crn ? `CRN ${p.crn}` : 'Nutricionista'
-  return 'Restaurante'
+function Nutricionistas() {
+  const [pagina, setPagina] = useState(1)
+  const { dados, carregando, erro, lento, recarregar } = useApi<Pagina<NutricionistaResumo>>(`/nutricionistas${qs({ pagina: pagina - 1, tamanho: TAMANHO })}`)
+  if (erro) return <ErroApi erro={erro} onTentar={recarregar} />
+  if (!dados) return <Carregando lento={lento} texto="Carregando nutricionistas" />
+  if (dados.conteudo.length === 0) return <EstadoVazio titulo="Nenhuma nutricionista cadastrada" acao={{ to: '/onboarding', rotulo: 'Criar perfil' }} />
+  return (
+    <>
+      <div className={`grid gap-4 lg:grid-cols-2 transition-opacity ${carregando ? 'opacity-60' : ''}`}>
+        {dados.conteudo.map((n) => (
+          <article key={n.id} className="card card-hover flex gap-4 p-5">
+            <Avatar className="h-14 w-14" />
+            <div className="min-w-0 flex-1 space-y-1">
+              <h2 className="text-lg font-bold">{n.username}</h2>
+              <p className="text-xs font-semibold text-terra">Nutricionista · {n.crn}</p>
+              {n.bio && <p className="line-clamp-3 text-sm text-ink-soft">{n.bio}</p>}
+            </div>
+          </article>
+        ))}
+      </div>
+      <Paginacao pagina={pagina} total={dados.totalPaginas} onMudar={setPagina} />
+    </>
+  )
 }
 
 export default function Directory() {
-  useSeo({ titulo: 'Chefs, nutricionistas e restaurantes' })
-  const [perfis, setPerfis] = useState<PerfilDiretorio[]>([])
-  const [falhas, setFalhas] = useState<TipoPerfil[]>([])
-  const [carregando, setCarregando] = useState(true)
-  const [erro, setErro] = useState('')
-  const [recarga, setRecarga] = useState(0)
-  const [type, setType] = useState<(typeof types)[number]>('Todos')
-  const [texto, setTexto] = useState('')
-  const [place, setPlace] = useState('')
-
-  useEffect(() => {
-    let ativo = true
-    setCarregando(true)
-    setErro('')
-    listarDiretorio()
-      .then((r) => {
-        if (!ativo) return
-        if (r.falhas.length === 3) {
-          setErro('Não foi possível carregar o diretório.')
-          return
-        }
-        setPerfis(r.perfis)
-        setFalhas(r.falhas)
-      })
-      .catch(() => {
-        if (ativo) setErro('Não foi possível carregar o diretório.')
-      })
-      .finally(() => {
-        if (ativo) setCarregando(false)
-      })
-    return () => { ativo = false }
-  }, [recarga])
-
-  const list = useMemo(() => {
-    const t = texto.trim().toLowerCase()
-    const l = place.trim().toLowerCase()
-    return perfis
-      .filter((p) => type === 'Todos' || papelKind[p.tipo] === type)
-      .filter((p) => !t || `${p.nome} ${areaDe(p)} ${p.bio ?? ''}`.toLowerCase().includes(t))
-      .filter((p) => !l || (p.local ?? '').toLowerCase().includes(l))
-  }, [perfis, type, texto, place])
+  useSeo({ titulo: 'Chefs e nutricionistas', descricao: 'Chefs e nutricionistas cadastrados no GastroMatch.' })
+  const [params, setParams] = useSearchParams()
+  const aba = params.get('aba') === 'nutricionistas' ? 'nutricionistas' : 'chefs'
+  const esp = params.get('especializacao') ?? ''
 
   return (
     <div className="space-y-6">
       <header className="space-y-2">
-        <h1 className="text-4xl font-extrabold">Chefs, Nutricionistas & Restaurantes</h1>
-        <p className="max-w-2xl text-ink-soft">
-          Perfis de profissionais cadastrados. Nutricionistas só aparecem após a verificação manual do CRN.
-        </p>
+        <h1 className="font-display text-5xl font-extrabold uppercase leading-none tracking-tight sm:text-7xl">Profissionais</h1>
+        <p className="max-w-2xl text-sm text-ink-soft">Chefs e nutricionistas cadastrados. Restaurantes ficam na <Link to="/restaurantes" className="font-semibold text-terra">lista de restaurantes</Link>.</p>
       </header>
 
-      <section className="card grid gap-3 p-5 md:grid-cols-3">
-        <label className="text-xs font-semibold">
-          Buscar por nome ou especialidade
-          <input className="input mt-1" value={texto} onChange={(e) => setTexto(e.target.value)} />
-        </label>
-        <label className="text-xs font-semibold">
-          Cidade ou bairro
-          <input className="input mt-1" value={place} onChange={(e) => setPlace(e.target.value)} />
-        </label>
-        <label className="text-xs font-semibold">
-          Tipo
-          <select className="input mt-1" value={type} onChange={(e) => setType(e.target.value as typeof type)}>
-            {types.map((t) => <option key={t}>{t}</option>)}
+      <div className="flex flex-wrap items-center gap-3">
+        <div role="tablist" aria-label="Tipo de profissional" className="inline-flex rounded-full border border-line bg-cream p-1 text-sm font-semibold">
+          {([['chefs', 'Chefs', ChefHat], ['nutricionistas', 'Nutricionistas', Salad]] as const).map(([k, rotulo, Icon]) => (
+            <button key={k} role="tab" aria-selected={aba === k} onClick={() => setParams(k === 'chefs' ? {} : { aba: k })} className={`inline-flex cursor-pointer items-center gap-2 rounded-full px-4 py-2 transition ${aba === k ? 'bg-terra text-on-accent shadow-soft' : 'text-ink-soft hover:text-terra'}`}><Icon size={15} /> {rotulo}</button>
+          ))}
+        </div>
+        {aba === 'chefs' && (
+          <select aria-label="Especialização" className="input !w-auto !rounded-full" value={esp} onChange={(e) => setParams(e.target.value ? { especializacao: e.target.value } : {})}>
+            <option value="">Todas as especializações</option>
+            {Object.entries(ENUMS.especializacao).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
           </select>
-        </label>
-      </section>
+        )}
+      </div>
 
-      {erro && (
-        <div className="space-y-3">
-          <Aviso tipo="erro">{erro}</Aviso>
-          <button className="btn-ghost" onClick={() => setRecarga((x) => x + 1)}>Tentar de novo</button>
-        </div>
-      )}
-
-      {falhas.length > 0 && !erro && (
-        <Aviso tipo="info">
-          Não foi possível carregar {falhas.map((f) => nomePlural[f]).join(' e ')} agora. Os demais perfis estão sendo exibidos.
-        </Aviso>
-      )}
-
-      {carregando ? (
-        <div className="grid gap-4 lg:grid-cols-2" aria-busy="true" role="status" aria-label="Carregando perfis">
-          {[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-72" />)}
-        </div>
-      ) : (
-        !erro && (
-          <>
-            <p className="text-sm">Mostrando <b>{list.length}</b> {list.length === 1 ? 'perfil' : 'perfis'}</p>
-
-            {list.length === 0 ? (
-              <EstadoVazio
-                titulo="Nenhum perfil encontrado"
-                texto={perfis.length === 0 ? 'Ainda não há perfis profissionais cadastrados.' : 'Nenhum perfil com esses filtros.'}
-              />
-            ) : (
-              <section className="grid gap-4 lg:grid-cols-2">
-                {list.map((p, i) => (
-                  <article key={p.chave} className="card overflow-hidden">
-                    <Photo emoji={emoji[p.tipo]} seed={i % 5} className="h-44 w-full" />
-                    <div className="space-y-3 p-5">
-                      <div>
-                        <h2 className="text-xl font-bold">
-                          {p.nome} {p.local && <span className="text-sm font-normal text-ink-faint">• {p.local}</span>}
-                        </h2>
-                        <p className="text-xs font-semibold text-terra">{papelKind[p.tipo]} · {areaDe(p)}</p>
-                      </div>
-                      {p.bio && <p className="text-sm text-ink-soft">{p.bio}</p>}
-                      <div className="flex flex-wrap gap-2 text-xs">
-                        {p.tipo === 'CHEF' && (
-                          <Link className="btn-ghost !px-3 !py-1.5 text-xs" to={rotaChef(p.idApi)}>Ver perfil</Link>
-                        )}
-                        {p.instagram && (
-                          <a className="btn-ghost !px-3 !py-1.5 text-xs" target="_blank" rel="noopener noreferrer" href={`https://instagram.com/${p.instagram.replace(/^@/, '')}`}>Instagram</a>
-                        )}
-                        {p.whatsapp && (
-                          <a className="btn-ghost !px-3 !py-1.5 text-xs" target="_blank" rel="noopener noreferrer" href={`https://wa.me/${p.whatsapp.replace(/\D/g, '')}`}>WhatsApp</a>
-                        )}
-                      </div>
-                    </div>
-                  </article>
-                ))}
-              </section>
-            )}
-          </>
-        )
-      )}
+      {aba === 'chefs' ? <Chefs key={esp} esp={esp} /> : <Nutricionistas />}
     </div>
   )
 }

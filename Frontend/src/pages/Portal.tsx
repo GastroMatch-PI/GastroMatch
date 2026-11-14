@@ -1,185 +1,129 @@
-import { useEffect, useState } from 'react'
-import { Link, Navigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { Aviso, Campo, Opcoes } from '../components/Campo'
+import { useToast } from '../components/Feedback'
 import { Avatar } from '../components/Photo'
 import Protegida from '../components/Protegida'
+import { Carregando, EstadoVazio } from '../components/Ui'
 import { useAuth } from '../context/Auth'
-import { pros } from '../data/data'
 import { ENUMS } from '../data/enums'
-import {
-  atualizarPerfilChef,
-  buscarChefMe,
-  buscarStatusPerfis,
-  type ChefPerfilDto,
-  type PapelApi,
-  type StatusPerfil,
-} from '../api/perfis'
+import { errosDeCampo, mensagem, put } from '../lib/api'
+import type { PerfilProfissional } from '../lib/apiTipos'
+import { mascaraCNPJ, mascaraCRN } from '../lib/mascaras'
 import { useSeo } from '../lib/seo'
+import { useForm } from '../lib/useForm'
+import { obrigatorio, tamanho } from '../lib/validar'
+import { useState } from 'react'
+import type { Pagina, RestauranteResumo } from '../lib/apiTipos'
+import { useApi } from '../lib/useApi'
 
-const tabs = ['Perfil Público', 'Kits Ilustrativos'] as const
-const nomes: Record<PapelApi, string> = { CHEF: 'Chef', NUTRICIONISTA: 'Nutricionista', RESTAURANTE: 'Restaurante' }
-const statusTxt: Record<string, string> = {
-  PENDENTE: 'Em análise: verificação manual pendente. Seu perfil não aparece no diretório até a aprovação.',
-  APROVADO: 'Perfil aprovado e visível no diretório.',
-  REJEITADO: 'Perfil reprovado na verificação.',
+const nomes = { CHEF: 'Chef', NUTRICIONISTA: 'Nutricionista', RESTAURANTE: 'Restaurante' }
+
+function Formulario({ perfil }: { perfil: PerfilProfissional }) {
+  const { recarregarPerfil } = useAuth()
+  const toast = useToast()
+  const [erro, setErro] = useState('')
+  const d = perfil.dados
+  const restaurantes = useApi<Pagina<RestauranteResumo>>(perfil.papel === 'CHEF' ? '/restaurantes?tamanho=50' : null)
+  const f = useForm(
+    {
+      bio: ('bio' in d && d.bio) || '',
+      especializacao: perfil.papel === 'CHEF' ? (perfil.dados.especializacao ?? '') : '',
+      restaurante: perfil.papel === 'CHEF' ? String(perfil.dados.idRestaurante ?? '') : '',
+      crn: perfil.papel === 'NUTRICIONISTA' ? perfil.dados.crn : '',
+      nome: perfil.papel === 'RESTAURANTE' ? perfil.dados.nome : '',
+      numero: perfil.papel === 'RESTAURANTE' ? String(perfil.dados.numero ?? '') : '',
+      rua: perfil.papel === 'RESTAURANTE' ? (perfil.dados.rua ?? '') : '',
+      cep: perfil.papel === 'RESTAURANTE' ? (perfil.dados.cep ?? '') : '',
+      bairro: perfil.papel === 'RESTAURANTE' ? (perfil.dados.bairro ?? '') : '',
+      cidade: perfil.papel === 'RESTAURANTE' ? (perfil.dados.cidade ?? '') : '',
+      estado: perfil.papel === 'RESTAURANTE' ? (perfil.dados.estado ?? '') : '',
+    },
+    { bio: [tamanho(0, 500)], ...(perfil.papel === 'NUTRICIONISTA' ? { crn: [obrigatorio('Informe o CRN'), tamanho(1, 20)] } : {}), ...(perfil.papel === 'RESTAURANTE' ? { nome: [obrigatorio('Informe o nome')] } : {}) },
+  )
+
+  const salvar = f.enviar(async (v) => {
+    setErro('')
+    // O PUT troca todos os campos: o que não for enviado fica vazio.
+    const corpo =
+      perfil.papel === 'CHEF' ? { bio: v.bio, especializacao: v.especializacao || undefined, idRestaurante: v.restaurante ? Number(v.restaurante) : undefined } // sem idRestaurante o chef sai do restaurante
+      
+      : perfil.papel === 'NUTRICIONISTA' ? { bio: v.bio, crn: v.crn }
+      : { nome: v.nome.trim(), bio: v.bio, cnpj: perfil.dados.cnpj, numero: v.numero ? Number(v.numero) : undefined, rua: v.rua, cep: v.cep || undefined, bairro: v.bairro, cidade: v.cidade, estado: v.estado, latitude: perfil.dados.latitude ?? undefined, longitude: perfil.dados.longitude ?? undefined }
+    try {
+      await put(perfil.papel === 'CHEF' ? '/chefs/me' : perfil.papel === 'NUTRICIONISTA' ? '/nutricionistas/me' : '/restaurantes/me', corpo)
+      await recarregarPerfil()
+      toast.sucesso('Perfil atualizado.')
+    } catch (e) {
+      f.setErros(errosDeCampo(e))
+      setErro(mensagem(e))
+    }
+  })
+
+  return (
+    <form onSubmit={salvar} noValidate className="space-y-4">
+      {erro && <Aviso tipo="erro">{erro}</Aviso>}
+      {perfil.papel === 'RESTAURANTE' && (
+        <>
+          <Campo label="Nome" erro={f.erros.nome}><input name="nome" className="input" maxLength={150} value={f.v.nome} onChange={f.onChange('nome')} /></Campo>
+          <Campo label="CNPJ" dica="O CNPJ não pode ser alterado aqui."><input className="input" value={mascaraCNPJ(perfil.dados.cnpj)} readOnly /></Campo>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Campo label="Rua"><input name="rua" className="input" value={f.v.rua} onChange={f.onChange('rua')} /></Campo>
+            <Campo label="Número" erro={f.erros.numero}><input name="numero" className="input" inputMode="numeric" value={f.v.numero} onChange={(e) => f.set('numero')(e.target.value.replace(/\D/g, ''))} /></Campo>
+            <Campo label="CEP" erro={f.erros.cep}><input name="cep" className="input" value={f.v.cep} onChange={f.onChange('cep')} /></Campo>
+            <Campo label="Bairro"><input name="bairro" className="input" value={f.v.bairro} onChange={f.onChange('bairro')} /></Campo>
+            <Campo label="Cidade"><input name="cidade" className="input" value={f.v.cidade} onChange={f.onChange('cidade')} /></Campo>
+            <Campo label="Estado"><input name="estado" className="input" value={f.v.estado} onChange={f.onChange('estado')} /></Campo>
+          </div>
+        </>
+      )}
+      {perfil.papel === 'NUTRICIONISTA' && (
+        <Campo label="CRN" erro={f.erros.crn}><input name="crn" className="input" maxLength={20} value={f.v.crn} onChange={(e) => f.set('crn')(mascaraCRN(e.target.value))} /></Campo>
+      )}
+      {perfil.papel === 'CHEF' && (
+        <>
+          <Campo label="Especialização" erro={f.erros.especializacao}>
+            <select name="especializacao" className="input" value={f.v.especializacao} onChange={f.onChange('especializacao')}><option value="">Selecione</option><Opcoes mapa={ENUMS.especializacao} /></select>
+          </Campo>
+          <Campo label="Restaurante onde trabalha" erro={f.erros.idRestaurante}>
+            <select name="restaurante" className="input" value={f.v.restaurante} onChange={f.onChange('restaurante')}>
+              <option value="">Nenhum</option>
+              {(restaurantes.dados?.conteudo ?? []).map((r) => <option key={r.id} value={r.id}>{r.nome}</option>)}
+            </select>
+          </Campo>
+        </>
+      )}
+      <Campo label="Bio (até 500)" erro={f.erros.bio} dica={`${f.v.bio.length} / 500`}><textarea name="bio" className="input" rows={4} maxLength={500} value={f.v.bio} onChange={f.onChange('bio')} /></Campo>
+      <button className="btn-primary">Salvar perfil</button>
+    </form>
+  )
 }
 
 export default function Portal() {
-  useSeo({ titulo: 'Meu painel' })
-  const { accessToken } = useAuth()
-  const [tab, setTab] = useState<(typeof tabs)[number]>(tabs[0])
-  const [perfis, setPerfis] = useState<StatusPerfil[] | null>(null)
-  const [papel, setPapel] = useState<PapelApi | null>(null)
-  const [chef, setChef] = useState<ChefPerfilDto | null>(null)
-  const [draft, setDraft] = useState({ bio: '', especializacao: '' })
-  const [erro, setErro] = useState('')
-  const [erroSalvar, setErroSalvar] = useState('')
-  const [salvando, setSalvando] = useState(false)
-  const [salvo, setSalvo] = useState(false)
-  const [recarga, setRecarga] = useState(0)
-
-  useEffect(() => {
-    if (!accessToken) return
-    let ativo = true
-    setErro('')
-    buscarStatusPerfis(accessToken)
-      .then((lista) => {
-        if (!ativo) return
-        setPerfis(lista)
-        setPapel((p) => p ?? lista[0]?.papel ?? null)
-      })
-      .catch((e) => { if (ativo) setErro((e as Error).message || 'Não foi possível carregar seus perfis.') })
-    return () => { ativo = false }
-  }, [accessToken, recarga])
-
-  const temChef = !!perfis?.some((p) => p.papel === 'CHEF')
-
-  useEffect(() => {
-    if (!accessToken || !temChef) return
-    let ativo = true
-    buscarChefMe(accessToken)
-      .then((c) => {
-        if (!ativo || !c) return
-        setChef(c)
-        setDraft({ bio: c.bio ?? '', especializacao: c.especializacao ?? '' })
-      })
-      .catch(() => { if (ativo) setErro('Não foi possível carregar o perfil de chef.') })
-    return () => { ativo = false }
-  }, [accessToken, temChef])
-
-  const atual = perfis?.find((p) => p.papel === papel)
-
-  const salvar = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!accessToken) return
-    setSalvando(true)
-    setErroSalvar('')
-    setSalvo(false)
-    try {
-      const c = await atualizarPerfilChef(accessToken, { especializacao: draft.especializacao, bio: draft.bio || undefined })
-      if (c) setChef(c)
-      setSalvo(true)
-    } catch (x) {
-      setErroSalvar((x as Error).message || 'Não foi possível salvar o perfil.')
-    } finally {
-      setSalvando(false)
-    }
-  }
-
-  // Sem perfil profissional: segue o fluxo escolher profissão -> cadastro.
-  if (perfis?.length === 0) return <Navigate to="/onboarding" replace />
-
+  useSeo({ titulo: 'Meu perfil profissional' })
+  const { usuario, perfil, carregandoPerfil } = useAuth()
   return (
     <Protegida>
-      {erro && (
-        <div className="mb-4 space-y-3">
-          <Aviso tipo="erro">{erro}</Aviso>
-          {perfis === null && <button className="btn-ghost" onClick={() => setRecarga((x) => x + 1)}>Tentar de novo</button>}
-        </div>
-      )}
-
-      {perfis === null && !erro && <p className="card p-10 text-center text-sm text-ink-soft">Carregando...</p>}
-
-      {atual && (
-        <div className="space-y-6">
-          <section className="flex flex-wrap items-center gap-4 rounded-2xl border border-line bg-peach p-4">
+      {carregandoPerfil ? (
+        <Carregando texto="Carregando seu perfil" />
+      ) : !perfil ? (
+        <EstadoVazio titulo="Você ainda não tem perfil profissional" texto="Crie um perfil de chef, nutricionista ou restaurante." acao={{ to: '/onboarding', rotulo: 'Criar perfil' }} />
+      ) : (
+        <div className="mx-auto max-w-2xl space-y-5">
+          <div className="card flex items-center gap-4 p-5">
+            <Avatar className="h-16 w-16" />
             <div className="min-w-0 flex-1">
-              <h1 className="font-display text-lg font-bold">{nomes[atual.papel]} · {atual.status}</h1>
-              <p className="text-xs text-ink-soft">{statusTxt[atual.status]}</p>
-              {atual.status === 'REJEITADO' && atual.motivo && <p className="mt-1 text-xs text-alert">Motivo: {atual.motivo}</p>}
+              <p className="text-xs font-semibold text-terra">{nomes[perfil.papel]}</p>
+              <h1 className="truncate font-display text-2xl font-extrabold">{perfil.papel === 'RESTAURANTE' ? perfil.dados.nome : usuario?.username}</h1>
+              <p className="text-xs text-ink-faint">Perfil ativo e visível nas listas públicas.</p>
             </div>
-            {perfis && perfis.length > 1 && (
-              <select className="input !w-auto" value={atual.papel} onChange={(e) => setPapel(e.target.value as PapelApi)}>
-                {perfis.map((p) => <option key={p.papel} value={p.papel}>{nomes[p.papel]}</option>)}
-              </select>
-            )}
-            {atual.papel === 'CHEF' && atual.status === 'APROVADO' && <Link to="/publicar" className="btn-primary">+ Publicar nova receita</Link>}
-          </section>
-
-          <section className="card space-y-5 p-5 md:p-6">
-            <div role="tablist" className="flex flex-wrap gap-1 rounded-full border border-line bg-cream p-1 text-xs font-semibold">
-              {tabs.map((t) => (
-                <button key={t} role="tab" aria-selected={tab === t} onClick={() => setTab(t)}
-                  className={`cursor-pointer rounded-full px-4 py-2 transition duration-200 ${tab === t ? 'bg-terra text-on-accent shadow-soft' : 'text-ink-soft hover:text-terra'}`}>
-                  {t}
-                </button>
-              ))}
-            </div>
-
-            {tab === 'Perfil Público' && atual.papel === 'CHEF' && chef && (
-              <form onSubmit={salvar} className="grid gap-5 md:grid-cols-[220px_1fr]">
-                <div className="rounded-xl border border-line bg-peach p-4 text-center">
-                  <Avatar className="mx-auto h-20 w-20" />
-                  <p className="mt-2 font-display text-lg font-bold">{chef.nome}</p>
-                  <p className="text-[11px] font-semibold text-terra">Chef</p>
-                </div>
-                <div className="space-y-4">
-                  <Campo label="Especialização">
-                    <select className="input" required value={draft.especializacao}
-                      onChange={(e) => { setSalvo(false); setDraft((d) => ({ ...d, especializacao: e.target.value })) }}>
-                      <option value="">Selecione</option>
-                      <Opcoes mapa={ENUMS.especializacao} />
-                    </select>
-                  </Campo>
-                  <Campo label="Biografia" dica={`${draft.bio.length} / 500`}>
-                    <textarea className="input h-24 resize-y" maxLength={500} value={draft.bio}
-                      onChange={(e) => { setSalvo(false); setDraft((d) => ({ ...d, bio: e.target.value })) }} />
-                  </Campo>
-                  {erroSalvar && <Aviso tipo="erro">{erroSalvar}</Aviso>}
-                  <div className="flex items-center justify-end gap-3">
-                    {salvo && <span className="text-xs font-semibold text-leaf">Salvo</span>}
-                    <button className="btn-primary" disabled={salvando}>{salvando ? 'Salvando...' : 'Salvar perfil'}</button>
-                  </div>
-                </div>
-              </form>
-            )}
-
-            {tab === 'Perfil Público' && atual.papel === 'CHEF' && !chef && !erro && <p className="text-sm text-ink-soft">Carregando perfil de chef...</p>}
-
-            {tab === 'Perfil Público' && atual.papel !== 'CHEF' && (
-              <p className="text-sm text-ink-soft">A edição do perfil de {nomes[atual.papel].toLowerCase()} ainda não está disponível pela API.</p>
-            )}
-
-            {tab === 'Kits Ilustrativos' && (
-              <div className="space-y-3">
-                <p className="text-xs text-ink-soft">Kits são só ilustrativos: não há compra, reserva nem pagamento.</p>
-                <div className="grid gap-3 md:grid-cols-3">
-                  {pros.map((p) => (
-                    <div key={p.id} className="rounded-xl border border-line bg-peach/60 p-4 text-xs">
-                      <p className="font-bold uppercase text-gold">{p.kit.label}</p>
-                      <p className="mt-1 text-sm font-semibold">{p.kit.title}</p>
-                      <p className="text-terra">{p.kit.price}</p>
-                      <p className="text-ink-faint">{p.kit.detail}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+            {perfil.papel === 'CHEF' && <Link to="/publicar" className="btn-primary">Nova receita</Link>}
+          </div>
+          <section className="card space-y-4 p-5">
+            <h2 className="text-lg font-bold">Editar perfil</h2>
+            <Formulario key={perfil.papel} perfil={perfil} />
           </section>
         </div>
       )}
-
-      <p className="mt-6 text-center text-xs text-ink-faint"><Link to="/conta" className="underline">Voltar à conta</Link></p>
     </Protegida>
   )
 }

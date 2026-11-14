@@ -1,16 +1,16 @@
-import { Flag, MoreVertical, Pencil, Star, Trash2, X } from 'lucide-react'
+import { MoreVertical, Pencil, Star, Trash2, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/Auth'
-import { useLocalState } from '../hooks/useLocalState'
+import { del, get, mensagem, post, put, urlImagem } from '../lib/api'
+import type { Comentario, Pagina } from '../lib/apiTipos'
 import { dataRelativa, fmtNum } from '../lib/format'
-import type { Comentario, Denuncia } from '../lib/tipos'
+import { useConfirmar, useToast } from './Feedback'
 import { Avatar } from './Photo'
 import Stars from './Stars'
-import { useConfirmar, useToast, Modal } from './Feedback'
-import { EstadoVazio, Skeleton, UploadImagem } from './Ui'
+import { Carregando, ErroApi, EstadoVazio, UploadImagem } from './Ui'
 
-const POR_PAGINA = 5
+const TAMANHO = 10
 const MAX = 2000
 
 // Nota em estrelas acessível por teclado (grupo de rádios).
@@ -28,64 +28,86 @@ function EntradaEstrelas({ valor, onChange }: { valor: number; onChange: (n: num
   )
 }
 
-export default function Comentarios({ receitaId, titulo }: { receitaId: string; titulo: string }) {
+export default function Comentarios({ receitaId }: { receitaId: number }) {
   const { usuario } = useAuth()
   const loc = useLocation()
   const toast = useToast()
   const confirmar = useConfirmar()
-  const [todos, setTodos] = useLocalState<Record<string, Comentario[]>>('gm-comentarios', {})
-  const [, setDenuncias] = useLocalState<Denuncia[]>('gm-denuncias', [])
+  const [lista, setLista] = useState<Comentario[]>([])
+  const [total, setTotal] = useState(0)
+  const [pagina, setPagina] = useState(0)
   const [carregando, setCarregando] = useState(true)
+  const [erro, setErro] = useState<Error | null>(null)
   const [ordem, setOrdem] = useState<'recentes' | 'nota'>('recentes')
-  const [visiveis, setVisiveis] = useState(POR_PAGINA)
   const [texto, setTexto] = useState('')
   const [nota, setNota] = useState(0)
   const [foto, setFoto] = useState<string | undefined>()
+  const [enviando, setEnviando] = useState(false)
+  const [errosCampo, setErrosCampo] = useState('')
   const [editando, setEditando] = useState<number | null>(null)
   const [textoEd, setTextoEd] = useState('')
   const [menu, setMenu] = useState<number | null>(null)
-  const [foto_aberta, setFotoAberta] = useState<string | null>(null)
-  const [denunciando, setDenunciando] = useState<Comentario | null>(null)
-  const [motivo, setMotivo] = useState('Conteúdo ofensivo')
+  const [fotoAberta, setFotoAberta] = useState<string | null>(null)
 
-  useEffect(() => { const t = setTimeout(() => setCarregando(false), 250); return () => clearTimeout(t) }, [receitaId])
+  const carregar = async (p: number) => {
+    setCarregando(true); setErro(null)
+    try {
+      const pg = await get<Pagina<Comentario>>(`/receitas/${receitaId}/comentarios?pagina=${p}&tamanho=${TAMANHO}`)
+      setLista((l) => (p === 0 ? pg.conteudo : [...l, ...pg.conteudo]))
+      setTotal(pg.totalElementos)
+      setPagina(p)
+    } catch (e) {
+      setErro(e as Error)
+    } finally {
+      setCarregando(false)
+    }
+  }
+  useEffect(() => { void carregar(0) }, [receitaId]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const lista = todos[receitaId] ?? []
-  const ts = (c: Comentario) => (typeof c.quando === 'number' ? c.quando : Date.parse(c.quando) || 0)
-  const ordenada = [...lista].sort((a, b) => (ordem === 'nota' ? b.nota - a.nota || ts(b) - ts(a) : ts(b) - ts(a)))
-  const notas = lista.filter((c) => c.nota > 0)
-  const media = notas.length ? notas.reduce((a, c) => a + c.nota, 0) / notas.length : 0
-  const dist = [5, 4, 3, 2, 1].map((n) => ({ n, q: notas.filter((c) => c.nota === n).length }))
+  const ordenada = [...lista].sort((a, b) => (ordem === 'nota' ? (b.nota ?? 0) - (a.nota ?? 0) : 0))
+  const notas = lista.filter((c) => (c.nota ?? 0) > 0)
+  const media = notas.length ? notas.reduce((a, c) => a + (c.nota ?? 0), 0) / notas.length : 0
+  const dist = [5, 4, 3, 2, 1].map((n) => ({ n, q: notas.filter((c) => Math.round(c.nota ?? 0) === n).length }))
+  const temMais = lista.length < total
 
-  const publicar = (e: React.FormEvent) => {
+  const publicar = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!usuario || !texto.trim()) return
-    const c: Comentario = { id: Date.now(), autorId: usuario.id, autor: usuario.username, texto: texto.trim(), nota, quando: Date.now(), foto }
-    setTodos((m) => ({ ...m, [receitaId]: [c, ...(m[receitaId] ?? [])] }))
-    setTexto(''); setNota(0); setFoto(undefined)
-    toast.sucesso('Comentário publicado.')
+    if (!texto.trim() || enviando) return
+    setEnviando(true); setErrosCampo('')
+    try {
+      const c = await post<Comentario>(`/receitas/${receitaId}/comentarios`, { texto: texto.trim(), nota: nota || undefined, foto })
+      setLista((l) => [c, ...l]); setTotal((t) => t + 1)
+      setTexto(''); setNota(0); setFoto(undefined)
+      toast.sucesso('Comentário publicado.')
+    } catch (er) {
+      setErrosCampo(mensagem(er))
+    } finally {
+      setEnviando(false)
+    }
   }
 
-  const salvarEdicao = (id: number) => {
+  const salvarEdicao = async (c: Comentario) => {
     if (!textoEd.trim()) return
-    setTodos((m) => ({ ...m, [receitaId]: (m[receitaId] ?? []).map((c) => (c.id === id ? { ...c, texto: textoEd.trim(), editado: true } : c)) }))
-    setEditando(null)
-    toast.sucesso('Comentário atualizado.')
+    try {
+      const novo = await put<Comentario>(`/comentarios/${c.id}`, { texto: textoEd.trim(), nota: c.nota ?? undefined, foto: c.foto ?? undefined })
+      setLista((l) => l.map((x) => (x.id === c.id ? novo : x)))
+      setEditando(null)
+      toast.sucesso('Comentário atualizado.')
+    } catch (er) {
+      toast.erro(mensagem(er)) // mantém o texto digitado
+    }
   }
 
   const excluir = async (c: Comentario) => {
     setMenu(null)
-    if (await confirmar({ titulo: 'Excluir comentário?', texto: 'Essa ação não pode ser desfeita.', confirmar: 'Excluir', perigo: true })) {
-      setTodos((m) => ({ ...m, [receitaId]: (m[receitaId] ?? []).filter((x) => x.id !== c.id) }))
+    if (!(await confirmar({ titulo: 'Excluir comentário?', texto: 'Essa ação não pode ser desfeita.', confirmar: 'Excluir', perigo: true }))) return
+    try {
+      await del(`/comentarios/${c.id}`)
+      setLista((l) => l.filter((x) => x.id !== c.id)); setTotal((t) => t - 1)
       toast.sucesso('Comentário excluído.')
+    } catch (er) {
+      toast.erro(mensagem(er))
     }
-  }
-
-  const denunciar = () => {
-    if (!usuario || !denunciando) return
-    setDenuncias((l) => [...l, { id: Date.now(), receita: titulo, comentario: denunciando.id, motivo, autor: usuario.username, quando: new Date().toLocaleDateString('pt-BR'), resolvida: false }])
-    setDenunciando(null)
-    toast.sucesso('Denúncia enviada para análise manual.')
   }
 
   return (
@@ -95,7 +117,7 @@ export default function Comentarios({ receitaId, titulo }: { receitaId: string; 
         {lista.length > 1 && (
           <label className="flex items-center gap-2 text-xs text-ink-soft">
             Ordenar
-            <select className="input !w-auto !py-1.5" value={ordem} onChange={(e) => { setOrdem(e.target.value as 'recentes' | 'nota'); setVisiveis(POR_PAGINA) }}>
+            <select className="input !w-auto !py-1.5" value={ordem} onChange={(e) => setOrdem(e.target.value as 'recentes' | 'nota')}>
               <option value="recentes">Mais recentes</option>
               <option value="nota">Melhor nota</option>
             </select>
@@ -108,7 +130,7 @@ export default function Comentarios({ receitaId, titulo }: { receitaId: string; 
           <div className="text-center sm:px-4">
             <p className="font-display text-4xl font-extrabold">{fmtNum(media)}</p>
             <Stars value={Math.round(media)} />
-            <p className="text-xs text-ink-faint">{notas.length} {notas.length === 1 ? 'avaliação' : 'avaliações'}</p>
+            <p className="text-xs text-ink-faint">{notas.length} {notas.length === 1 ? 'avaliação' : 'avaliações'}{temMais ? ' (carregadas)' : ''}</p>
           </div>
           <ul className="space-y-1" aria-label="Distribuição das notas">
             {dist.map(({ n, q }) => (
@@ -129,10 +151,11 @@ export default function Comentarios({ receitaId, titulo }: { receitaId: string; 
             <textarea id="novo-coment" className="input h-24" maxLength={MAX} placeholder="Você fez essa receita? Conte como ficou..." value={texto} onChange={(e) => setTexto(e.target.value)} aria-describedby="coment-cont" />
             <p id="coment-cont" className="mt-1 text-right text-[11px] text-ink-faint">{texto.length} / {MAX}</p>
           </div>
-          <UploadImagem rotulo="Foto do prato (opcional)" valor={foto} onChange={setFoto} max={900} />
+          <UploadImagem rotulo="Foto do prato (opcional)" valor={foto} onChange={setFoto} />
+          {errosCampo && <p role="alert" className="text-xs text-alert">{errosCampo}</p>}
           <div className="flex flex-wrap items-center justify-between gap-3">
             <EntradaEstrelas valor={nota} onChange={setNota} />
-            <button className="btn-primary" disabled={!texto.trim()}>Publicar</button>
+            <button className="btn-primary" disabled={!texto.trim() || enviando}>{enviando ? 'Publicando...' : 'Publicar'}</button>
           </div>
         </form>
       ) : (
@@ -141,40 +164,42 @@ export default function Comentarios({ receitaId, titulo }: { receitaId: string; 
         </p>
       )}
 
-      {carregando ? (
-        <div className="space-y-3" aria-busy="true"><Skeleton className="h-24" /><Skeleton className="h-24" /></div>
+      {erro ? (
+        <ErroApi erro={erro} onTentar={() => carregar(0)} />
+      ) : carregando && lista.length === 0 ? (
+        <Carregando texto="Carregando comentários" />
       ) : lista.length === 0 ? (
         <EstadoVazio titulo="Seja o primeiro a comentar" texto="Conte como ficou a sua versão desta receita." />
       ) : (
         <ul className="space-y-3">
-          {ordenada.slice(0, visiveis).map((c) => {
-            const meu = !!usuario && c.autorId === usuario.id
+          {ordenada.map((c) => {
+            const meu = usuario?.id === c.idUsuario
             return (
               <li key={c.id} className="rounded-2xl border border-line bg-cream p-4 text-sm">
                 <div className="flex items-center gap-3">
                   <Avatar className="h-9 w-9" />
                   <div className="flex-1 text-xs">
-                    <b className="text-sm">{c.autor}</b>
-                    <p className="text-ink-faint">{dataRelativa(c.quando)}{c.editado ? ' · editado' : ''}</p>
+                    <b className="text-sm">{c.username}</b>
+                    <p className="text-ink-faint">{dataRelativa(c.criadoEm)}{c.atualizadoEm && c.atualizadoEm !== c.criadoEm ? ' · editado' : ''}</p>
                   </div>
-                  {c.nota > 0 && <Stars value={c.nota} />}
-                  <div className="relative">
-                    <button aria-label="Ações do comentário" aria-expanded={menu === c.id} className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full hover:bg-peach" onClick={() => setMenu(menu === c.id ? null : c.id)}><MoreVertical size={16} /></button>
-                    {menu === c.id && (
-                      <div role="menu" className="absolute right-0 z-10 mt-1 w-44 rounded-xl border border-line bg-surface p-1 shadow-lift">
-                        {meu && <button role="menuitem" className="flex w-full cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-left text-xs hover:bg-peach" onClick={() => { setEditando(c.id); setTextoEd(c.texto); setMenu(null) }}><Pencil size={14} /> Editar</button>}
-                        {meu && <button role="menuitem" className="flex w-full cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-left text-xs text-alert hover:bg-peach" onClick={() => excluir(c)}><Trash2 size={14} /> Excluir</button>}
-                        {usuario && !meu && <button role="menuitem" className="flex w-full cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-left text-xs hover:bg-peach" onClick={() => { setDenunciando(c); setMenu(null) }}><Flag size={14} /> Denunciar</button>}
-                        {!usuario && <p className="px-3 py-2 text-xs text-ink-faint">Entre para interagir.</p>}
-                      </div>
-                    )}
-                  </div>
+                  {(c.nota ?? 0) > 0 && <Stars value={Math.round(c.nota ?? 0)} />}
+                  {meu && (
+                    <div className="relative">
+                      <button aria-label="Ações do comentário" aria-expanded={menu === c.id} className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full hover:bg-peach" onClick={() => setMenu(menu === c.id ? null : c.id)}><MoreVertical size={16} /></button>
+                      {menu === c.id && (
+                        <div role="menu" className="absolute right-0 z-10 mt-1 w-44 rounded-xl border border-line bg-surface p-1 shadow-lift">
+                          <button role="menuitem" className="flex w-full cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-left text-xs hover:bg-peach" onClick={() => { setEditando(c.id); setTextoEd(c.texto); setMenu(null) }}><Pencil size={14} /> Editar</button>
+                          <button role="menuitem" className="flex w-full cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-left text-xs text-alert hover:bg-peach" onClick={() => excluir(c)}><Trash2 size={14} /> Excluir</button>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
                 {editando === c.id ? (
                   <div className="mt-3 space-y-2">
                     <textarea aria-label="Editar comentário" className="input h-20" maxLength={MAX} value={textoEd} onChange={(e) => setTextoEd(e.target.value)} />
                     <div className="flex gap-2">
-                      <button className="btn-primary !py-1.5 text-xs" onClick={() => salvarEdicao(c.id)}>Salvar</button>
+                      <button className="btn-primary !py-1.5 text-xs" onClick={() => salvarEdicao(c)}>Salvar</button>
                       <button className="btn-ghost !py-1.5 text-xs" onClick={() => setEditando(null)}>Cancelar</button>
                     </div>
                   </div>
@@ -182,8 +207,8 @@ export default function Comentarios({ receitaId, titulo }: { receitaId: string; 
                   <p className="mt-2 whitespace-pre-wrap break-words text-ink-soft">{c.texto}</p>
                 )}
                 {c.foto && (
-                  <button className="mt-3 block cursor-zoom-in overflow-hidden rounded-xl" onClick={() => setFotoAberta(c.foto!)} aria-label="Ampliar foto do comentário">
-                    <img src={c.foto} alt={`Foto enviada por ${c.autor}`} loading="lazy" className="h-28 w-28 object-cover" />
+                  <button className="mt-3 block cursor-zoom-in overflow-hidden rounded-xl" onClick={() => setFotoAberta(urlImagem(c.foto) ?? null)} aria-label="Ampliar foto do comentário">
+                    <img src={urlImagem(c.foto)} alt={`Foto enviada por ${c.username}`} loading="lazy" className="h-28 w-28 object-cover" />
                   </button>
                 )}
               </li>
@@ -192,21 +217,12 @@ export default function Comentarios({ receitaId, titulo }: { receitaId: string; 
         </ul>
       )}
 
-      {ordenada.length > visiveis && <button className="btn-ghost w-full" onClick={() => setVisiveis(visiveis + POR_PAGINA)}>Carregar mais ({ordenada.length - visiveis})</button>}
+      {temMais && !erro && <button className="btn-ghost w-full" disabled={carregando} onClick={() => carregar(pagina + 1)}>{carregando ? 'Carregando...' : `Carregar mais (${total - lista.length})`}</button>}
 
-      <Modal titulo="Denunciar comentário" aberto={!!denunciando} onFechar={() => setDenunciando(null)}>
-        <label className="block text-xs font-semibold text-ink-soft">Motivo
-          <select className="input mt-1" value={motivo} onChange={(e) => setMotivo(e.target.value)}>
-            <option>Conteúdo ofensivo</option><option>Spam</option><option>Informação falsa</option><option>Outro</option>
-          </select>
-        </label>
-        <div className="flex justify-end gap-2"><button className="btn-ghost" onClick={() => setDenunciando(null)}>Cancelar</button><button className="btn-primary" onClick={denunciar}>Enviar denúncia</button></div>
-      </Modal>
-
-      {foto_aberta && (
+      {fotoAberta && (
         <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/85 p-4" role="dialog" aria-modal="true" aria-label="Foto ampliada" onClick={() => setFotoAberta(null)} onKeyDown={(e) => e.key === 'Escape' && setFotoAberta(null)}>
           <button autoFocus aria-label="Fechar foto" className="absolute right-4 top-4 flex h-11 w-11 cursor-pointer items-center justify-center rounded-full bg-surface"><X size={18} /></button>
-          <img src={foto_aberta} alt="Foto ampliada do comentário" className="max-h-full max-w-full rounded-2xl" />
+          <img src={fotoAberta} alt="Foto ampliada do comentário" className="max-h-full max-w-full rounded-2xl" />
         </div>
       )}
     </section>

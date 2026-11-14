@@ -21,9 +21,19 @@ npm run dev
 
 Outros comandos: `npm run build` (checa os tipos e gera `dist/`) e `npm run preview`.
 
+## API
+
+O front usa a API real (Backend/Readme.md, seção 3). O endereço fica em `VITE_API_URL`:
+
+- `npm run dev`: lê o `.env.local` (copie o `.env.example`). Para usar o back local, aponte para `http://localhost:8080`.
+- `npm run build`: lê o `.env.production` (API no Render).
+
+O cliente está em `src/lib/api.ts`: coloca o `Authorization`, lê o erro `{ status, mensagem, erros }` e renova o token em `/auth/refresh` quando vem 401. O access token fica só em memória; o refresh token fica no `localStorage` (chave `gm-refresh-token`), para a sessão sobreviver a recarregar a página.
+
+O Render grátis dorme: a primeira chamada pode levar uns 40 segundos, e as telas avisam isso.
+
 ## Observações
 
-- As listas (compras e cardápio), o perfil do profissional e os comentários ficam no `localStorage` do navegador, sem login.
-- Os dados de receitas e profissionais são mockados em `src/data/data.ts`; ainda não há integração com o Backend.
-- As fotos são placeholders (gradiente + emoji) até as imagens reais estarem disponíveis.
+- O CORS da API só libera `http://localhost:5173`. Para o site publicado funcionar, o endereço dele precisa entrar em `app.cors.allowed-origins` (ver `Backend/PENDENCIAS.md`).
+- A API ainda não tem: trocar senha, sessões, aprovação de profissional, denúncia de comentário, receitas de um chef, nota média e imagem de restaurante. As telas que dependiam disso foram removidas.
 - `vercel.json` redireciona todas as rotas para `index.html`, necessário para o roteamento no deploy.

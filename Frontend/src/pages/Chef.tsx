@@ -1,80 +1,40 @@
 import { BadgeCheck } from 'lucide-react'
-import { useEffect, useState } from 'react'
-import { useParams } from 'react-router-dom'
-import { ApiError } from '../api/http'
-import { buscarChefPublico, type ChefPerfilDto } from '../api/perfis'
+import { Link, useParams } from 'react-router-dom'
 import { Avatar } from '../components/Photo'
-import { EstadoVazio } from '../components/Ui'
+import { Carregando, ErroApi } from '../components/Ui'
 import { ENUMS } from '../data/enums'
+import type { ChefPerfil } from '../lib/apiTipos'
 import { useSeo } from '../lib/seo'
-
-type Estado = 'carregando' | 'ok' | 'nao-encontrado' | 'erro'
+import { useApi } from '../lib/useApi'
 
 export default function Chef() {
   const { id = '' } = useParams()
-  const [chef, setChef] = useState<ChefPerfilDto | null>(null)
-  const [estado, setEstado] = useState<Estado>('carregando')
-  useSeo({ titulo: chef ? `Chef ${chef.nome}` : 'Chef', descricao: chef?.bio ?? undefined })
+  const { dados: c, erro, lento, recarregar } = useApi<ChefPerfil>(/^\d+$/.test(id) ? `/chefs/${id}` : null)
+  useSeo({ titulo: c ? `Chef ${c.username}` : 'Chef', descricao: c?.bio ?? undefined })
 
-  useEffect(() => {
-    let ativo = true
-    setEstado('carregando')
-    buscarChefPublico(id)
-      .then((c) => {
-        if (!ativo) return
-        setChef(c)
-        setEstado(c ? 'ok' : 'nao-encontrado')
-      })
-      .catch((e) => {
-        if (!ativo) return
-        setChef(null)
-        setEstado(e instanceof ApiError && e.status === 404 ? 'nao-encontrado' : 'erro')
-      })
-    return () => {
-      ativo = false
-    }
-  }, [id])
+  if (!/^\d+$/.test(id)) return <ErroApi erro={{ message: 'Chef inválido.', status: 404 }} />
+  if (erro) return <ErroApi erro={erro} onTentar={recarregar} />
+  if (!c) return <Carregando lento={lento} texto="Carregando chef" />
 
-  if (estado === 'carregando')
-    return <p className="card p-10 text-center text-sm text-ink-soft">Carregando perfil...</p>
-
-  if (estado === 'nao-encontrado')
-    return (
-      <EstadoVazio
-        titulo="Chef não encontrado"
-        texto="O link pode estar errado ou o perfil não existe."
-        acao={{ to: '/profissionais', rotulo: 'Ver profissionais' }}
-      />
-    )
-
-  if (estado === 'erro' || !chef)
-    return (
-      <EstadoVazio
-        titulo="Não foi possível carregar o perfil"
-        texto="Tente novamente em instantes."
-        acao={{ to: '/', rotulo: 'Voltar ao início' }}
-      />
-    )
-
-  const especializacao = chef.especializacao
-    ? (ENUMS.especializacao as Record<string, string>)[chef.especializacao] ?? chef.especializacao
-    : null
-
+  // só dados públicos: a API não devolve e-mail nem dados da conta
   return (
     <div className="space-y-8">
       <header className="card flex flex-wrap items-center gap-5 p-6">
         <Avatar className="h-20 w-20" />
         <div className="min-w-0 flex-1 space-y-1">
-          <h1 className="flex flex-wrap items-center gap-2 text-3xl font-extrabold">
-            Chef {chef.nome}
-            <span className="inline-flex items-center gap-1 rounded-full bg-leaf-soft px-2.5 py-1 text-xs font-semibold text-leaf">
-              <BadgeCheck size={13} /> Verificado
-            </span>
-          </h1>
-          {especializacao && <p className="text-sm font-semibold text-terra">{especializacao}</p>}
-          {chef.bio && <p className="max-w-2xl text-sm text-ink-soft">{chef.bio}</p>}
+          <h1 className="flex flex-wrap items-center gap-2 text-3xl font-extrabold">Chef {c.username} <span className="inline-flex items-center gap-1 rounded-full bg-leaf-soft px-2.5 py-1 text-xs font-semibold text-leaf"><BadgeCheck size={13} /> Chef</span></h1>
+          {c.especializacao && <p className="text-sm font-semibold text-terra">{ENUMS.especializacao[c.especializacao]}</p>}
+          {c.bio && <p className="max-w-2xl text-sm text-ink-soft">{c.bio}</p>}
         </div>
       </header>
+
+      {c.idRestaurante && (
+        <section className="space-y-2" aria-labelledby="atua-t">
+          <h2 id="atua-t" className="text-xl font-bold">Onde atua</h2>
+          <Link to={`/restaurante/${c.idRestaurante}`} className="btn-ghost">{c.nomeRestaurante}</Link>
+        </section>
+      )}
+      <p className="text-xs text-ink-faint">Compartilhe esta página: <Link className="underline" to={`/chef/${c.id}`}>{location.origin}/chef/{c.id}</Link></p>
     </div>
   )
 }

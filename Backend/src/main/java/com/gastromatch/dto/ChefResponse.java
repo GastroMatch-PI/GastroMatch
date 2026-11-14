@@ -7,11 +7,15 @@ public record ChefResponse(
         Integer id,
         Integer idProfissional,
         String bio,
-        Especializacao especializacao
+        Especializacao especializacao,
+        // Restaurante onde o chef trabalha; nulo se não trabalha em nenhum cadastrado.
+        Integer idRestaurante
 ) {
     public static ChefResponse de(Chef chef) {
+        var restaurante = chef.getRestaurante();
         return new ChefResponse(
                 chef.getId(), chef.getProfissional().getId(),
-                chef.getProfissional().getBio(), chef.getEspecializacao());
+                chef.getProfissional().getBio(), chef.getEspecializacao(),
+                restaurante == null ? null : restaurante.getId());
     }
 }
