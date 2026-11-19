@@ -12,8 +12,10 @@ import com.gastromatch.dto.CadastroChefRequest;
 import com.gastromatch.dto.ChefPerfilResponse;
 import com.gastromatch.dto.ChefResponse;
 import com.gastromatch.dto.PaginaResponse;
+import com.gastromatch.dto.ReceitaResumoResponse;
 import com.gastromatch.entity.Chef;
 import com.gastromatch.entity.Profissional;
+import com.gastromatch.entity.Receita;
 import com.gastromatch.entity.Restaurante;
 import com.gastromatch.entity.Usuario;
 import com.gastromatch.entity.enums.Especializacao;
@@ -25,6 +27,7 @@ import com.gastromatch.exception.RequisicaoInvalidaException;
 import com.gastromatch.exception.UsuarioNaoEncontradoException;
 import com.gastromatch.repository.ChefRepository;
 import com.gastromatch.repository.ProfissionalRepository;
+import com.gastromatch.repository.ReceitaRepository;
 import com.gastromatch.repository.RestauranteRepository;
 import com.gastromatch.repository.UsuarioRepository;
 
@@ -38,15 +41,21 @@ public class ChefService {
     private final ProfissionalRepository profissionalRepository;
     private final ChefRepository chefRepository;
     private final RestauranteRepository restauranteRepository;
+    private final ReceitaRepository receitaRepository;
+    private final ReceitaService receitaService;
 
     public ChefService(UsuarioRepository usuarioRepository,
                        ProfissionalRepository profissionalRepository,
                        ChefRepository chefRepository,
-                       RestauranteRepository restauranteRepository) {
+                       RestauranteRepository restauranteRepository,
+                       ReceitaRepository receitaRepository,
+                       ReceitaService receitaService) {
         this.usuarioRepository = usuarioRepository;
         this.profissionalRepository = profissionalRepository;
         this.chefRepository = chefRepository;
         this.restauranteRepository = restauranteRepository;
+        this.receitaRepository = receitaRepository;
+        this.receitaService = receitaService;
     }
 
     /**
@@ -117,6 +126,16 @@ public class ChefService {
                 .buscar(usuarioRepository, List.of(chef.getProfissional().getId()))
                 .get(chef.getProfissional().getId());
         return ChefPerfilResponse.de(chef, username);
+    }
+
+    /** Receitas do chef, para a página do perfil público. 404 se o chef não existe. */
+    @Transactional(readOnly = true)
+    public PaginaResponse<ReceitaResumoResponse> listarReceitas(Integer idChef, Pageable pageable) {
+        if (!chefRepository.existsById(idChef)) {
+            throw new RecursoNaoEncontradoException("Chef não encontrado");
+        }
+        Page<Receita> pagina = receitaRepository.findByChefId(idChef, pageable);
+        return PaginaResponse.de(receitaService.resumir(pagina));
     }
 
     /** Atualiza perfil de um chef */

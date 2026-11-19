@@ -1,5 +1,6 @@
 package com.gastromatch.service;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
@@ -151,6 +152,69 @@ class ReceitaChefServiceTest {
         verify(etapaRepository, never()).delete(any());
     }
 
+    // ------------------------------------------------------- reordenar etapas
+
+    @Test
+    void reordenaCincoEtapasConformeASequenciaPedida() {
+        Receita receita = receitaDoChef(chefLogado, 5);
+        when(chefService.chefDoUsuario(USUARIO)).thenReturn(chefLogado);
+        List<EtapaReceita> etapas = List.of(
+                etapaComId(receita, 101, 1), etapaComId(receita, 102, 2), etapaComId(receita, 103, 3),
+                etapaComId(receita, 104, 4), etapaComId(receita, 105, 5));
+        when(etapaRepository.findByReceitaIdOrderByOrdemAscIdAsc(5)).thenReturn(etapas);
+
+        service.reordenarEtapas(USUARIO, 5, List.of(105, 103, 101, 104, 102));
+
+        assertEquals(1, etapaPorId(etapas, 105).getOrdem());
+        assertEquals(2, etapaPorId(etapas, 103).getOrdem());
+        assertEquals(3, etapaPorId(etapas, 101).getOrdem());
+        assertEquals(4, etapaPorId(etapas, 104).getOrdem());
+        assertEquals(5, etapaPorId(etapas, 102).getOrdem());
+    }
+
+    @Test
+    void naoDonoNaoReordenaEtapas() {
+        receitaDoChef(outroChef, 5);
+        when(chefService.chefDoUsuario(USUARIO)).thenReturn(chefLogado);
+
+        assertThrows(AcessoNegadoException.class,
+                () -> service.reordenarEtapas(USUARIO, 5, List.of(101, 102)));
+        verify(etapaRepository, never()).findByReceitaIdOrderByOrdemAscIdAsc(any());
+    }
+
+    @Test
+    void sequenciaComQuantidadeDiferenteEhRecusada() {
+        Receita receita = receitaDoChef(chefLogado, 5);
+        when(chefService.chefDoUsuario(USUARIO)).thenReturn(chefLogado);
+        when(etapaRepository.findByReceitaIdOrderByOrdemAscIdAsc(5))
+                .thenReturn(List.of(etapaComId(receita, 101, 1), etapaComId(receita, 102, 2)));
+
+        assertThrows(RequisicaoInvalidaException.class,
+                () -> service.reordenarEtapas(USUARIO, 5, List.of(101)));
+    }
+
+    @Test
+    void sequenciaComIdRepetidoEhRecusada() {
+        Receita receita = receitaDoChef(chefLogado, 5);
+        when(chefService.chefDoUsuario(USUARIO)).thenReturn(chefLogado);
+        when(etapaRepository.findByReceitaIdOrderByOrdemAscIdAsc(5))
+                .thenReturn(List.of(etapaComId(receita, 101, 1), etapaComId(receita, 102, 2)));
+
+        assertThrows(RequisicaoInvalidaException.class,
+                () -> service.reordenarEtapas(USUARIO, 5, List.of(101, 101)));
+    }
+
+    @Test
+    void sequenciaComIdDeOutraReceitaEhRecusada() {
+        Receita receita = receitaDoChef(chefLogado, 5);
+        when(chefService.chefDoUsuario(USUARIO)).thenReturn(chefLogado);
+        when(etapaRepository.findByReceitaIdOrderByOrdemAscIdAsc(5))
+                .thenReturn(List.of(etapaComId(receita, 101, 1), etapaComId(receita, 102, 2)));
+
+        assertThrows(RequisicaoInvalidaException.class,
+                () -> service.reordenarEtapas(USUARIO, 5, List.of(101, 999)));
+    }
+
     // ----------------------------------------------------------- apoio
 
     private static Chef chefComId(int id) {
@@ -166,6 +230,18 @@ class ReceitaChefServiceTest {
         // lenient: nem todo teste chega a buscar a receita (ex.: o de ingrediente repetido).
         org.mockito.Mockito.lenient().when(receitaRepository.findById(idReceita)).thenReturn(Optional.of(receita));
         return receita;
+    }
+
+    private static EtapaReceita etapaComId(Receita receita, int id, int ordem) {
+        EtapaReceita etapa = new EtapaReceita();
+        ReflectionTestUtils.setField(etapa, "id", id);
+        etapa.setReceita(receita);
+        etapa.setOrdem(ordem);
+        return etapa;
+    }
+
+    private static EtapaReceita etapaPorId(List<EtapaReceita> etapas, int id) {
+        return etapas.stream().filter(e -> e.getId().equals(id)).findFirst().orElseThrow();
     }
 
     private static ReceitaRequest receitaValida() {

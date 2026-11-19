@@ -1,6 +1,7 @@
 package com.gastromatch.dto;
 
 import com.gastromatch.entity.Usuario;
+import com.gastromatch.entity.enums.RoleUsuario;
 
 /**
  * Dados devolvidos ao cliente. Não tem password: é isso que impede o hash
@@ -10,11 +11,12 @@ public record UsuarioResponse(
         Integer id,
         String email,
         String username,
-        String capa
+        String capa,
+        RoleUsuario role
 ) {
     // Conversão centralizada: usada pelo UsuarioService e pelo AuthService.
     public static UsuarioResponse de(Usuario usuario) {
         return new UsuarioResponse(
-                usuario.getId(), usuario.getEmail(), usuario.getUsername(), usuario.getCapa());
+                usuario.getId(), usuario.getEmail(), usuario.getUsername(), usuario.getCapa(), usuario.getRole());
     }
 }

@@ -14,6 +14,10 @@ public interface IngredienteReceitaRepository extends JpaRepository<IngredienteR
     @Query("select ir from IngredienteReceita ir join fetch ir.ingrediente where ir.receita.id = :idReceita order by ir.id")
     List<IngredienteReceita> buscarPorReceita(@Param("idReceita") Integer idReceita);
 
+    // Usado antes de excluir um ingrediente do catálogo (409 amigável em vez de deixar
+    // o banco recusar pela FK ON DELETE RESTRICT de ingrediente_receita).
+    boolean existsByIngredienteId(Integer idIngrediente);
+
     // Usado ao substituir a lista de ingredientes de uma receita. Grava o que estiver
     // pendente antes e limpa o cache depois, para não sobrar linha antiga na memória.
     @Modifying(flushAutomatically = true, clearAutomatically = true)
