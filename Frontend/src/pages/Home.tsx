@@ -198,7 +198,6 @@ export default function Home() {
 
             <div className="flex flex-wrap gap-3">
               <a href="#geladeira" className="btn-primary !px-7 !py-3.5">
-                <Refrigerator size={18} />
                 Usar minha geladeira
               </a>
 
