@@ -20,6 +20,7 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Integer> {
     boolean existsByEmail(String email);
     // Sem diferenciar maiúscula: "Amos" e "amos" são o mesmo username (o banco também garante isso).
     boolean existsByUsernameIgnoreCase(String username);
+    boolean existsByUsernameIgnoreCaseAndIdNot(String username, Integer id);
 
     // Trava a linha até o fim da transação: duas requisições simultâneas não criam
     // dois perfis profissionais para a mesma conta.
@@ -29,4 +30,5 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Integer> {
 
     // Contas ligadas a perfis profissionais (para mostrar o username do chef nas receitas).
     List<Usuario> findByIdProfissionalIn(Collection<Integer> idsProfissional);
+    Optional<Usuario> findByIdProfissional(Integer idProfissional);
 }

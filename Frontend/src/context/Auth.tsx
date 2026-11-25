@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
-import { api, del, get, guardarSessao, lerRefreshToken, post, put, registrarOuvinteSessao, renovarSessao } from '../lib/api'
+import { api, comBloqueioSessao, del, get, guardarSessao, lerRefreshToken, post, put, registrarOuvinteSessao, renovarSessao } from '../lib/api'
 import type { ChefMe, NutricionistaMe, Pagina, PerfilProfissional, ReceitaResumo, RestauranteMe, SessaoDto, Usuario } from '../lib/apiTipos'
 
 type Ctx = {
@@ -8,6 +8,7 @@ type Ctx = {
   perfil: PerfilProfissional | null // a conta tem no máximo UM perfil profissional
   carregandoPerfil: boolean
   recarregarPerfil: () => Promise<void>
+  atualizarUsuario: (usuario: Usuario) => void
   favoritos: Set<number>
   alternarFavorito: (idReceita: number) => Promise<void>
   entrar: (email: string, password: string) => Promise<void>
@@ -47,6 +48,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setCarregandoPerfil(false)
   }, [])
 
+  const atualizarUsuario = useCallback((novoUsuario: Usuario) => {
+    setUsuario(novoUsuario)
+  }, [])
+
   const carregarFavoritos = useCallback(async () => {
     const ids = new Set<number>()
     for (let p = 0; p < 20; p++) {
@@ -71,7 +76,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const entrar = useCallback(async (email: string, password: string) => {
-    guardar(await api<SessaoDto>('/auth/login', { method: 'POST', body: { email, password }, auth: false }))
+    await comBloqueioSessao(async () => {
+      const sessao = await api<SessaoDto>('/auth/login', { method: 'POST', body: { email, password }, auth: false })
+      guardar(sessao)
+    })
   }, [guardar])
 
   const cadastrar = useCallback(async (email: string, username: string, password: string) => {
@@ -101,8 +109,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [favoritos])
 
   const value = useMemo(
-    () => ({ usuario, carregando, perfil, carregandoPerfil, recarregarPerfil, favoritos, alternarFavorito, entrar, cadastrar, sair }),
-    [usuario, carregando, perfil, carregandoPerfil, recarregarPerfil, favoritos, alternarFavorito, entrar, cadastrar, sair],
+    () => ({ usuario, carregando, perfil, carregandoPerfil, recarregarPerfil, atualizarUsuario, favoritos, alternarFavorito, entrar, cadastrar, sair }),
+    [usuario, carregando, perfil, carregandoPerfil, recarregarPerfil, atualizarUsuario, favoritos, alternarFavorito, entrar, cadastrar, sair],
   )
   return <AuthCtx.Provider value={value}>{children}</AuthCtx.Provider>
 }

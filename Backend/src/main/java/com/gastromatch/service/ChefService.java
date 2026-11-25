@@ -102,10 +102,16 @@ public class ChefService {
         Page<Chef> pagina = (especializacao == null)
                 ? chefRepository.findAll(pageable)
                 : chefRepository.findByEspecializacao(especializacao, pageable);
-        Map<Integer, String> usernames = UsernamesPorProfissional.buscar(usuarioRepository,
+        var usuarios = usuarioRepository.findByIdProfissionalIn(
                 pagina.getContent().stream().map(c -> c.getProfissional().getId()).toList());
-        return PaginaResponse.de(pagina.map(c ->
-                ChefPerfilResponse.de(c, usernames.get(c.getProfissional().getId()))));
+        Map<Integer, Usuario> porProfissional = usuarios.stream()
+                .collect(java.util.stream.Collectors.toMap(Usuario::getIdProfissional, u -> u));
+        return PaginaResponse.de(pagina.map(c -> {
+            Usuario usuario = porProfissional.get(c.getProfissional().getId());
+            return ChefPerfilResponse.de(c,
+                    usuario == null ? null : usuario.getUsername(),
+                    usuario == null ? null : usuario.getCapa());
+        }));
     }
 
     /** Perfil público de um chef. */
@@ -113,10 +119,10 @@ public class ChefService {
     public ChefPerfilResponse perfilPublico(Integer id) {
         Chef chef = chefRepository.buscarComPerfil(id)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Chef não encontrado"));
-        String username = UsernamesPorProfissional
-                .buscar(usuarioRepository, List.of(chef.getProfissional().getId()))
-                .get(chef.getProfissional().getId());
-        return ChefPerfilResponse.de(chef, username);
+        Usuario usuario = usuarioRepository.findByIdProfissional(chef.getProfissional().getId()).orElse(null);
+        return ChefPerfilResponse.de(chef,
+                usuario == null ? null : usuario.getUsername(),
+                usuario == null ? null : usuario.getCapa());
     }
 
     /** Atualiza perfil de um chef */

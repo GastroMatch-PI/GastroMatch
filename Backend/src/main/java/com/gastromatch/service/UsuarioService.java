@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.gastromatch.dto.CadastroUsuarioRequest;
+import com.gastromatch.dto.AtualizarPerfilUsuarioRequest;
 import com.gastromatch.dto.UsuarioResponse;
 import com.gastromatch.entity.Usuario;
 import com.gastromatch.exception.EmailJaCadastradoException;
@@ -56,5 +57,18 @@ public class UsuarioService {
         return usuarioRepository.findById(id)
                 .map(UsuarioResponse::de)
                 .orElseThrow(UsuarioNaoEncontradoException::new);
+    }
+
+    @Transactional
+    public UsuarioResponse atualizarPerfil(Integer id, AtualizarPerfilUsuarioRequest request) {
+        Usuario usuario = usuarioRepository.findById(id)
+                .orElseThrow(UsuarioNaoEncontradoException::new);
+        String username = request.username().trim();
+        if (usuarioRepository.existsByUsernameIgnoreCaseAndIdNot(username, id)) {
+            throw new UsernameJaCadastradoException();
+        }
+        usuario.setUsername(username);
+        usuario.setCapa(request.capa() == null || request.capa().isBlank() ? null : request.capa().trim());
+        return UsuarioResponse.de(usuario);
     }
 }

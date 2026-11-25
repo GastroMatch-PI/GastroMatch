@@ -9,6 +9,23 @@ export const API_URL = ((import.meta.env.VITE_API_URL as string | undefined) ?? 
 const REFRESH_KEY = 'gm-refresh-token'
 let accessToken: string | null = null
 let aoMudarSessao: ((s: SessaoDto | null) => void) | null = null
+const canalSessao = typeof BroadcastChannel !== 'undefined'
+  ? new BroadcastChannel('gastromatch-sessao')
+  : null
+
+// Os refresh tokens são rotacionados. Compartilhamos a sessão entre abas para que uma
+// aba não continue usando um token que outra acabou de trocar.
+canalSessao?.addEventListener('message', (evento: MessageEvent) => {
+  const dados = evento.data as { tipo?: string; sessao?: SessaoDto | null }
+  if (dados?.tipo !== 'sessao') return
+  const sessao = dados.sessao ?? null
+  accessToken = sessao?.accessToken ?? null
+  try {
+    if (sessao) localStorage.setItem(REFRESH_KEY, sessao.refreshToken)
+    else localStorage.removeItem(REFRESH_KEY)
+  } catch { /* sem storage: a sessão vale só nesta aba */ }
+  aoMudarSessao?.(sessao)
+})
 
 export const lerRefreshToken = () => {
   try { return localStorage.getItem(REFRESH_KEY) } catch { return null }
@@ -19,6 +36,7 @@ export function guardarSessao(s: SessaoDto | null) {
     if (s) localStorage.setItem(REFRESH_KEY, s.refreshToken)
     else localStorage.removeItem(REFRESH_KEY)
   } catch { /* sem storage: a sessão vale só nesta aba */ }
+  canalSessao?.postMessage({ tipo: 'sessao', sessao: s })
 }
 export const registrarOuvinteSessao = (f: ((s: SessaoDto | null) => void) | null) => { aoMudarSessao = f }
 export const temToken = () => accessToken !== null
@@ -50,27 +68,52 @@ async function lerErro(res: Response): Promise<ApiError> {
 }
 
 let renovando: Promise<boolean> | null = null
+const NOME_BLOQUEIO_SESSAO = 'gastromatch-refresh-token'
+
+/** Serializa login/refresh entre abas quando o navegador oferece Web Locks. */
+export function comBloqueioSessao<T>(acao: () => Promise<T>): Promise<T> {
+  if (typeof navigator !== 'undefined' && navigator.locks) {
+    return navigator.locks.request(NOME_BLOQUEIO_SESSAO, acao)
+  }
+  return acao()
+}
+
 /** Troca o refresh token por novos tokens (uma renovação por vez). */
 export function renovarSessao(): Promise<boolean> {
   if (renovando) return renovando
-  const rt = lerRefreshToken()
-  if (!rt) return Promise.resolve(false)
-  renovando = (async () => {
+  const rtSolicitado = lerRefreshToken()
+  if (!rtSolicitado) return Promise.resolve(false)
+
+  const efetuarRenovacao = async (): Promise<boolean> => {
+    const rt = lerRefreshToken()
+    if (!rt) return false
+    // Outra aba já renovou enquanto esta aguardava o bloqueio.
+    if (rt !== rtSolicitado && accessToken) return true
+
     try {
       const res = await fetch(`${API_URL}/auth/refresh`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ refreshToken: rt }) })
-      if (!res.ok) throw new Error('refresh')
+      if (!res.ok) {
+        // Uma falha de rede ou 5xx não significa que a sessão foi revogada.
+        // Só remove a sessão quando o próprio servidor rejeita o refresh token.
+        if (res.status === 400 || res.status === 401) {
+          if (lerRefreshToken() === rt) {
+            guardarSessao(null)
+            aoMudarSessao?.(null)
+          }
+        }
+        return false
+      }
       const s = (await res.json()) as SessaoDto
       guardarSessao(s)
       aoMudarSessao?.(s)
       return true
     } catch {
-      guardarSessao(null)
-      aoMudarSessao?.(null)
+      // Mantém a sessão local durante falhas temporárias de conexão/servidor.
       return false
-    } finally {
-      renovando = null
     }
-  })()
+  }
+
+  renovando = comBloqueioSessao(efetuarRenovacao).catch(() => false).finally(() => { renovando = null })
   return renovando
 }
 
@@ -122,24 +165,47 @@ export function qs(p: Record<string, string | number | number[] | undefined | nu
 /** Envia uma imagem (multipart, campo "arquivo") com progresso e cancelamento. Devolve a URL. */
 export function enviarImagem(arquivo: File, onProgresso?: (pct: number) => void, signal?: AbortSignal): Promise<string> {
   return new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest()
-    xhr.open('POST', `${API_URL}/imagens`)
-    if (accessToken) xhr.setRequestHeader('Authorization', `Bearer ${accessToken}`)
-    xhr.upload.onprogress = (e) => e.lengthComputable && onProgresso?.(Math.round((e.loaded / e.total) * 100))
-    xhr.onload = () => {
-      if (xhr.status >= 200 && xhr.status < 300) {
-        try { resolve((JSON.parse(xhr.responseText) as { url: string }).url) } catch { reject(new ApiError(500, 'Resposta inesperada do servidor.')) }
-      } else {
-        let corpo: { mensagem?: string } | null = null
-        try { corpo = JSON.parse(xhr.responseText) } catch { /* sem corpo */ }
-        reject(new ApiError(xhr.status, corpo?.mensagem ?? PADRAO[xhr.status] ?? 'Não foi possível enviar a imagem.'))
-      }
+    let xhr: XMLHttpRequest | null = null
+    let encerrado = false
+    const cancelar = () => {
+      encerrado = true
+      xhr?.abort()
+      reject(new DOMException('cancelado', 'AbortError'))
     }
-    xhr.onerror = () => reject(new ApiError(0, 'Sem conexão com o servidor.'))
-    signal?.addEventListener('abort', () => { xhr.abort(); reject(new DOMException('cancelado', 'AbortError')) })
-    const fd = new FormData()
-    fd.append('arquivo', arquivo)
-    xhr.send(fd)
+    if (signal?.aborted) return cancelar()
+    signal?.addEventListener('abort', cancelar, { once: true })
+
+    const enviar = (tentouRenovar = false) => {
+      if (encerrado) return
+      xhr = new XMLHttpRequest()
+      xhr.open('POST', `${API_URL}/imagens`)
+      if (accessToken) xhr.setRequestHeader('Authorization', `Bearer ${accessToken}`)
+      xhr.upload.onprogress = (e) => e.lengthComputable && onProgresso?.(Math.round((e.loaded / e.total) * 100))
+      xhr.onload = async () => {
+        if (encerrado) return
+        if (xhr!.status === 401 && !tentouRenovar && lerRefreshToken()) {
+          const renovada = await renovarSessao()
+          if (renovada) return enviar(true)
+        }
+        if (xhr!.status >= 200 && xhr!.status < 300) {
+          try { resolve((JSON.parse(xhr!.responseText) as { url: string }).url) } catch { reject(new ApiError(500, 'Resposta inesperada do servidor.')) }
+        } else {
+          let corpo: { mensagem?: string } | null = null
+          try { corpo = JSON.parse(xhr!.responseText) } catch { /* sem corpo */ }
+          reject(new ApiError(xhr!.status, corpo?.mensagem ?? PADRAO[xhr!.status] ?? 'Não foi possível enviar a imagem.'))
+        }
+        signal?.removeEventListener('abort', cancelar)
+      }
+      xhr.onerror = () => {
+        signal?.removeEventListener('abort', cancelar)
+        if (!encerrado) reject(new ApiError(0, 'Sem conexão com o servidor.'))
+      }
+      const fd = new FormData()
+      fd.append('arquivo', arquivo)
+      xhr.send(fd)
+    }
+
+    enviar()
   })
 }
 

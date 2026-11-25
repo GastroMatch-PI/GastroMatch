@@ -45,11 +45,12 @@ public class ReceitaController {
             @RequestParam(required = false) PerfilAlimentar perfil,
             @RequestParam(required = false) MetodoPreparo metodo,
             @RequestParam(required = false) List<Integer> ingredientes,
+            @RequestParam(required = false) Integer chefId,
             @RequestParam(defaultValue = "0") int pagina,
             @RequestParam(defaultValue = "20") int tamanho) {
 
         ReceitaFiltro filtro = new ReceitaFiltro(
-                texto, tempoMax, dificuldade, tipo, ocasiao, perfil, metodo, ingredientes);
+                texto, tempoMax, dificuldade, tipo, ocasiao, perfil, metodo, ingredientes, chefId);
         // Limita o tamanho da página para ninguém pedir a tabela inteira de uma vez.
         var pageable = PageRequest.of(
                 Math.max(pagina, 0), Math.min(Math.max(tamanho, 1), TAMANHO_MAXIMO),
