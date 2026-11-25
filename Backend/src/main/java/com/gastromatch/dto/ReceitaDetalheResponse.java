@@ -30,16 +30,19 @@ public record ReceitaDetalheResponse(
         ChefResumoResponse chef,
         List<IngredienteDaReceitaResponse> ingredientes,
         NutricaoResponse nutricao,
-        List<EtapaResponse> etapas
+        List<EtapaResponse> etapas,
+        // Nota média e quantidade de avaliações, para o cabeçalho da página da receita.
+        AvaliacaoResponse avaliacao
 ) {
     public static ReceitaDetalheResponse de(Receita r, int porcoes, String usernameDoChef,
                                             List<IngredienteDaReceitaResponse> ingredientes,
                                             NutricaoResponse nutricao,
-                                            List<EtapaResponse> etapas) {
+                                            List<EtapaResponse> etapas,
+                                            AvaliacaoResponse avaliacao) {
         return new ReceitaDetalheResponse(
                 r.getId(), r.getNome(), r.getDescricao(), r.getImagem(), r.getVideoUrl(),
                 r.getTempoPreparo(), r.getNPorcoes(), porcoes, r.getDificuldade(), r.getTipo(),
                 r.getMetodoPreparo(), r.getOcasiao(), r.getPerfil(),
-                ChefResumoResponse.de(r.getChef(), usernameDoChef), ingredientes, nutricao, etapas);
+                ChefResumoResponse.de(r.getChef(), usernameDoChef), ingredientes, nutricao, etapas, avaliacao);
     }
 }

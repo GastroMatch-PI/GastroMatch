@@ -67,7 +67,16 @@ jobs:
           export JWT_SECRET="$(openssl rand -base64 48 | tr -d '\n')"
           # O mvnw foi versionado sem permissão de execução.
           chmod +x mvnw
+          # O jacoco-maven-plugin roda na fase "test": gera o relatório e falha o build se a
+          # cobertura das classes de segurança/autenticação cair abaixo de 80% (pom.xml).
           ./mvnw -B test
+
+      - name: Publicar o relatório de cobertura
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cobertura-backend
+          path: Backend/target/site/jacoco
 
   testes-frontend:
     name: Testes e build do frontend

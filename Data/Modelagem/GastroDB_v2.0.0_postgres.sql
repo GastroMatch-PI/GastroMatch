@@ -70,10 +70,14 @@ CREATE TABLE IF NOT EXISTS usuario (
   senha_alterada_em   TIMESTAMPTZ  NULL,
   -- [ADIÇÃO] NULL = email ainda não verificado (verificação planejada).
   email_verificado_em TIMESTAMPTZ  NULL,
+  -- [ADIÇÃO] autoridade no Spring Security (B17/B35); nada a ver com o role do profissional.
+  -- Bancos que já existiam recebem esta coluna por GastroDB_v2.2.0_role_usuario.sql.
+  role                VARCHAR(10)  NOT NULL DEFAULT 'USER',
   criado_em           TIMESTAMPTZ  NOT NULL DEFAULT now(),
   atualizado_em       TIMESTAMPTZ  NOT NULL DEFAULT now(),
   -- [ADIÇÃO] UNIQUE garante a relação 0..1: um profissional tem no máximo um usuário
   CONSTRAINT uq_usuario_profissional UNIQUE (id_profissional),
+  CONSTRAINT chk_usuario_role CHECK (role IN ('USER','ADMIN')),
   CONSTRAINT fk_usuario_profissional
     FOREIGN KEY (id_profissional) REFERENCES profissional (id)
     ON DELETE SET NULL                                            -- [PROPOSTA] a conta sobrevive ao perfil

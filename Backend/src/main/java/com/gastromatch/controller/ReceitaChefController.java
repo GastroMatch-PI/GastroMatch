@@ -18,6 +18,7 @@ import com.gastromatch.dto.EtapaRequest;
 import com.gastromatch.dto.EtapaResponse;
 import com.gastromatch.dto.ReceitaDetalheResponse;
 import com.gastromatch.dto.ReceitaRequest;
+import com.gastromatch.dto.ReordenarEtapasRequest;
 import com.gastromatch.service.ReceitaChefService;
 
 import jakarta.validation.Valid;
@@ -76,6 +77,14 @@ public class ReceitaChefController {
     public ResponseEntity<Void> excluirEtapa(@AuthenticationPrincipal Integer usuarioId,
                                              @PathVariable Integer id, @PathVariable Integer idEtapa) {
         service.excluirEtapa(usuarioId, id, idEtapa);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PutMapping("/{id}/etapas/ordem")
+    public ResponseEntity<Void> reordenarEtapas(@AuthenticationPrincipal Integer usuarioId,
+                                                @PathVariable Integer id,
+                                                @Valid @RequestBody ReordenarEtapasRequest request) {
+        service.reordenarEtapas(usuarioId, id, request.idsEtapas());
         return ResponseEntity.noContent().build();
     }
 

@@ -31,6 +31,7 @@ class ReceitaServicePorcoesTest {
     @Mock DicaRepository dicaRepository;
     @Mock IngredienteReceitaRepository ingredienteReceitaRepository;
     @Mock UsuarioRepository usuarioRepository;
+    @Mock ComentarioService comentarioService;
 
     @InjectMocks ReceitaService service;
 
