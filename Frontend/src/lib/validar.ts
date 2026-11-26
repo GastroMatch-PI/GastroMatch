@@ -70,14 +70,37 @@ export function primeiroErro(erros: Record<string, string>, esquema: Esquema): s
   return Object.keys(esquema).find((c) => erros[c])
 }
 
-// Política de senha igual à do back end: 8 a 72 caracteres.
-export const POLITICA_SENHA = { min: 8, max: 72 }
+// Política de senha igual à do back end (B26): 10 a 72 caracteres e pelo menos 3 dos 4 tipos
+// de caractere. A lista de senhas proibidas e a checagem contra e-mail/username só existem
+// no back end (dependem da conta e de um arquivo de recursos); aqui só o essencial de tamanho
+// e mistura, para orientar antes de enviar.
+export const POLITICA_SENHA = { min: 10, max: 72, tiposExigidos: 3 }
+function tiposDeCaractere(s: string) {
+  const minuscula = /[a-z]/.test(s)
+  const maiuscula = /[A-Z]/.test(s)
+  const numero = /\d/.test(s)
+  const simbolo = /[^A-Za-z0-9]/.test(s)
+  return [minuscula, maiuscula, numero, simbolo].filter(Boolean).length
+}
 export function requisitosSenha(s: string) {
   return [
     { ok: s.length >= POLITICA_SENHA.min, texto: `Pelo menos ${POLITICA_SENHA.min} caracteres` },
     { ok: s.length <= POLITICA_SENHA.max, texto: `No máximo ${POLITICA_SENHA.max} caracteres` },
+    {
+      ok: tiposDeCaractere(s) >= POLITICA_SENHA.tiposExigidos,
+      texto: 'Misture letra minúscula, maiúscula, número e símbolo (pelo menos 3 tipos)',
+    },
   ]
 }
+
+/** Regra de formulário: primeiro requisito de requisitosSenha() que falhar. */
+export const senhaForte =
+  (): Regra =>
+  (v) => {
+    if (v === '') return null
+    const falha = requisitosSenha(v).find((r) => !r.ok)
+    return falha ? falha.texto : null
+  }
 /** Força de 0 a 4 (só orienta; a regra obrigatória é a política acima). */
 export function forcaSenha(s: string): number {
   let n = 0

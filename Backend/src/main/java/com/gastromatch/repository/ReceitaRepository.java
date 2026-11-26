@@ -49,4 +49,9 @@ public interface ReceitaRepository extends JpaRepository<Receita, Integer>, JpaS
 
     @Query("select max(r.tempoPreparo) from Receita r")
     Integer tempoMaximoDisponivel();
+
+    // Perfil público do chef (GET /chefs/{id}/receitas). Não há rascunho/publicada no esquema:
+    // toda receita gravada já é pública, então aqui é simplesmente "as receitas do chef".
+    @EntityGraph(attributePaths = {"chef", "chef.profissional"})
+    Page<Receita> findByChefId(Integer idChef, Pageable pageable);
 }

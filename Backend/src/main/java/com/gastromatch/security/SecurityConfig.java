@@ -44,15 +44,23 @@ public class SecurityConfig {
                 // Leitura pública: só GET e só estas rotas. Escrever exige login.
                 .requestMatchers(HttpMethod.GET, "/receitas", "/receitas/*", "/receitas/*/comentarios", "/ingredientes").permitAll()
                 // Diretório de profissionais e restaurantes (e o mapa).
-                .requestMatchers(HttpMethod.GET, "/chefs", "/chefs/*", "/nutricionistas", "/nutricionistas/*",
-                        "/restaurantes", "/restaurantes/*").permitAll()
+                .requestMatchers(HttpMethod.GET, "/chefs", "/chefs/*", "/chefs/*/receitas",
+                        "/nutricionistas", "/nutricionistas/*", "/restaurantes", "/restaurantes/*").permitAll()
                 // Ver uma imagem é público (o envio, POST /imagens, exige login).
                 .requestMatchers(HttpMethod.GET, "/imagens/*").permitAll()
                 // Health check do host (só o /health está exposto, ver application.properties).
                 .requestMatchers(HttpMethod.GET, "/actuator/health").permitAll()
                 // Swagger: só existe quando habilitado (profile dev); em produção dá 404.
-                .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll().requestMatchers("/error").permitAll()
-                .anyRequest().authenticated()) // sem isto, exceção não tratada aparece como 401
+                .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
+                // Sem isto, exceção não tratada aparece como 401.
+                .requestMatchers("/error").permitAll()
+                // Namespace administrativo (B35): só quem tem ROLE_ADMIN (ver JwtAuthFilter).
+                .requestMatchers("/admin/**").hasRole("ADMIN")
+                // Catálogo de ingredientes (B39): o GET já é público acima; escrever é só ADMIN.
+                .requestMatchers(HttpMethod.POST, "/ingredientes").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.PUT, "/ingredientes/*").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.DELETE, "/ingredientes/*").hasRole("ADMIN")
+                .anyRequest().authenticated())
             // Sem isso o padrão seria 403 para quem não enviou token. O correto é 401.
             .exceptionHandling(e -> e.authenticationEntryPoint((req, res, ex) -> {
                 res.setStatus(401);

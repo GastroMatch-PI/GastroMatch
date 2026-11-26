@@ -1,5 +1,7 @@
 package com.gastromatch.dto;
 
+import com.gastromatch.validation.SenhaForte;
+
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -18,9 +20,9 @@ public record CadastroUsuarioRequest(
         @Size(min = 3, max = 50, message = "Username deve ter entre 3 e 50 caracteres")
         String username,
 
-        // Máximo de 72: o BCrypt só considera os primeiros 72 bytes da senha.
+        // Tamanho, mistura de caracteres e lista de senhas comuns: tudo em @SenhaForte (B26).
         @NotBlank(message = "Senha é obrigatória")
-        @Size(min = 8, max = 72, message = "Senha deve ter entre 8 e 72 caracteres")
+        @SenhaForte
         String password
 ) {
     // Evita que a senha em texto puro vá parar em logs.
