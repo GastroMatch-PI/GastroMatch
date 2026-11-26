@@ -5,6 +5,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -18,6 +19,7 @@ import com.gastromatch.dto.NutricaoResponse;
 import com.gastromatch.dto.PaginaResponse;
 import com.gastromatch.dto.ReceitaDetalheResponse;
 import com.gastromatch.dto.ReceitaFiltro;
+import com.gastromatch.dto.ReceitaFiltrosResponse;
 import com.gastromatch.dto.ReceitaResumoResponse;
 import com.gastromatch.entity.Dica;
 import com.gastromatch.entity.EtapaReceita;
@@ -33,7 +35,10 @@ import com.gastromatch.repository.ReceitaRepository;
 import com.gastromatch.repository.ReceitaSpecs;
 import com.gastromatch.repository.UsuarioRepository;
 
-/** Leitura de receitas (rotas públicas). A escrita, só para chefs, fica no ReceitaChefService. */
+/**
+ * Leitura de receitas (rotas públicas). A escrita, só para chefs, fica no
+ * ReceitaChefService.
+ */
 @Service
 public class ReceitaService {
 
@@ -62,12 +67,27 @@ public class ReceitaService {
     }
 
     @Transactional(readOnly = true)
+    public ReceitaFiltrosResponse listarFiltrosDisponiveis() {
+        return new ReceitaFiltrosResponse(
+                receitaRepository.tiposDisponiveis().stream().sorted().toList(),
+                receitaRepository.metodosDisponiveis().stream().sorted().toList(),
+                receitaRepository.ocasioesDisponiveis().stream().sorted().toList(),
+                receitaRepository.perfisDisponiveis().stream().sorted().toList(),
+                receitaRepository.dificuldadesDisponiveis().stream().sorted().toList(),
+                receitaRepository.tempoMinimoDisponivel(),
+                receitaRepository.tempoMaximoDisponivel());
+    }
+
+    @Transactional(readOnly = true)
     public PaginaResponse<ReceitaResumoResponse> listar(ReceitaFiltro filtro, Pageable pageable) {
         Page<Receita> pagina = receitaRepository.findAll(ReceitaSpecs.comFiltros(filtro), pageable);
         return PaginaResponse.de(resumir(pagina));
     }
 
-    /** Converte uma página de receitas em resumos, buscando os usernames dos chefs de uma vez. */
+    /**
+     * Converte uma página de receitas em resumos, buscando os usernames dos chefs
+     * de uma vez.
+     */
     @Transactional(readOnly = true)
     public Page<ReceitaResumoResponse> resumir(Page<Receita> pagina) {
         Map<Integer, String> usernames = usernamesDosChefs(pagina.getContent());
@@ -82,8 +102,10 @@ public class ReceitaService {
     }
 
     /**
-     * Receita completa. Com "porcoes", as quantidades dos ingredientes são recalculadas
-     * proporcionalmente e a nutrição total acompanha; null mantém as porções da receita.
+     * Receita completa. Com "porcoes", as quantidades dos ingredientes são
+     * recalculadas
+     * proporcionalmente e a nutrição total acompanha; null mantém as porções da
+     * receita.
      */
     @Transactional(readOnly = true)
     public ReceitaDetalheResponse detalhar(Integer id, Integer porcoes) {
@@ -102,8 +124,7 @@ public class ReceitaService {
                 .map(ir -> IngredienteDaReceitaResponse.de(ir, CalculoReceita.ajustarQuantidade(
                         ir.getQuantidade(), receita.getNPorcoes(), porcoesDesejadas)))
                 .toList();
-        NutricaoResponse nutricao =
-                CalculoReceita.nutricao(itens, receita.getNPorcoes(), porcoesDesejadas);
+        NutricaoResponse nutricao = CalculoReceita.nutricao(itens, receita.getNPorcoes(), porcoesDesejadas);
 
         Map<Integer, List<DicaResponse>> dicasPorEtapa = new HashMap<>();
         for (Dica dica : dicaRepository.buscarPorReceita(id)) {
