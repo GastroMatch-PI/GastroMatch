@@ -41,7 +41,7 @@ export default function Carrossel({ itens, rotulo }: { itens: ReactNode[]; rotul
       <div className="overflow-hidden rounded-3xl">
         <div className="flex transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none" style={{ transform: `translateX(-${i * 100}%)` }} aria-live={auto && !pausado ? 'off' : 'polite'}>
           {itens.map((it, k) => (
-            <div key={k} role="group" aria-roledescription="slide" aria-label={`${k + 1} de ${n}`} aria-hidden={k !== i} inert={k !== i} className="w-full shrink-0 px-0.5">{it}</div>
+            <div key={k} role="group" aria-roledescription="slide" aria-label={`${k + 1} de ${n}`} aria-hidden={k !== i} inert={k !== i} className="restaurant-promo-slide w-full shrink-0 px-3 py-4">{it}</div>
           ))}
         </div>
       </div>
