@@ -12,7 +12,9 @@ import org.springframework.web.bind.annotation.RestController;
 import com.gastromatch.dto.AtualizarUsuarioRequest;
 import com.gastromatch.dto.TrocaSenhaRequest;
 import com.gastromatch.dto.UsuarioResponse;
+import com.gastromatch.dto.AtualizarPerfilUsuarioRequest;
 import com.gastromatch.service.UsuarioService;
+import jakarta.validation.Valid;
 
 import jakarta.validation.Valid;
 

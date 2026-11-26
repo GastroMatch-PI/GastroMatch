@@ -51,6 +51,9 @@ public final class ReceitaSpecs {
             if (f.metodo() != null) {
                 condicoes.add(cb.equal(root.get("metodoPreparo"), f.metodo()));
             }
+            if (f.chefId() != null) {
+                condicoes.add(cb.equal(root.get("chef").get("id"), f.chefId()));
+            }
 
             // "Ingredientes que tenho": a receita precisa ter ao menos um ingrediente
             // e NENHUM que esteja fora da lista informada.

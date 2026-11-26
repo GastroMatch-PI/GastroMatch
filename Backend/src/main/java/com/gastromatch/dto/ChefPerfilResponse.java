@@ -7,15 +7,16 @@ import com.gastromatch.entity.enums.Especializacao;
 public record ChefPerfilResponse(
         Integer id,
         String username,
+        String foto,
         String bio,
         Especializacao especializacao,
         Integer idRestaurante,
         String nomeRestaurante
 ) {
-    public static ChefPerfilResponse de(Chef chef, String username) {
+    public static ChefPerfilResponse de(Chef chef, String username, String foto) {
         var restaurante = chef.getRestaurante();
         return new ChefPerfilResponse(
-                chef.getId(), username, chef.getProfissional().getBio(), chef.getEspecializacao(),
+                chef.getId(), username, foto, chef.getProfissional().getBio(), chef.getEspecializacao(),
                 restaurante == null ? null : restaurante.getId(),
                 restaurante == null ? null : restaurante.getNome());
     }
