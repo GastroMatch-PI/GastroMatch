@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.gastromatch.dto.PaginaResponse;
 import com.gastromatch.dto.ReceitaDetalheResponse;
 import com.gastromatch.dto.ReceitaFiltro;
+import com.gastromatch.dto.ReceitaFiltrosResponse;
 import com.gastromatch.dto.ReceitaResumoResponse;
 import com.gastromatch.entity.enums.Dificuldade;
 import com.gastromatch.entity.enums.MetodoPreparo;
@@ -61,8 +62,14 @@ public class ReceitaController {
     @GetMapping("/{id}")
     public ResponseEntity<ReceitaDetalheResponse> detalhar(
             @PathVariable Integer id,
-            // Opcional: recalcula as quantidades e a nutrição total para este número de porções.
+            // Opcional: recalcula as quantidades e a nutrição total para este número de
+            // porções.
             @RequestParam(required = false) Integer porcoes) {
         return ResponseEntity.ok(receitaService.detalhar(id, porcoes));
+    }
+
+    @GetMapping("/filtros")
+    public ResponseEntity<ReceitaFiltrosResponse> filtros() {
+        return ResponseEntity.ok(receitaService.listarFiltrosDisponiveis());
     }
 }

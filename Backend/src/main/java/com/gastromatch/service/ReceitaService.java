@@ -5,6 +5,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -18,6 +19,7 @@ import com.gastromatch.dto.NutricaoResponse;
 import com.gastromatch.dto.PaginaResponse;
 import com.gastromatch.dto.ReceitaDetalheResponse;
 import com.gastromatch.dto.ReceitaFiltro;
+import com.gastromatch.dto.ReceitaFiltrosResponse;
 import com.gastromatch.dto.ReceitaResumoResponse;
 import com.gastromatch.entity.Dica;
 import com.gastromatch.entity.EtapaReceita;
@@ -33,7 +35,10 @@ import com.gastromatch.repository.ReceitaRepository;
 import com.gastromatch.repository.ReceitaSpecs;
 import com.gastromatch.repository.UsuarioRepository;
 
-/** Leitura de receitas (rotas públicas). A escrita, só para chefs, fica no ReceitaChefService. */
+/**
+ * Leitura de receitas (rotas públicas). A escrita, só para chefs, fica no
+ * ReceitaChefService.
+ */
 @Service
 public class ReceitaService {
 
@@ -45,17 +50,32 @@ public class ReceitaService {
     private final DicaRepository dicaRepository;
     private final IngredienteReceitaRepository ingredienteReceitaRepository;
     private final UsuarioRepository usuarioRepository;
+    private final ComentarioService comentarioService;
 
     public ReceitaService(ReceitaRepository receitaRepository,
                           EtapaReceitaRepository etapaRepository,
                           DicaRepository dicaRepository,
                           IngredienteReceitaRepository ingredienteReceitaRepository,
-                          UsuarioRepository usuarioRepository) {
+                          UsuarioRepository usuarioRepository,
+                          ComentarioService comentarioService) {
         this.receitaRepository = receitaRepository;
         this.etapaRepository = etapaRepository;
         this.dicaRepository = dicaRepository;
         this.ingredienteReceitaRepository = ingredienteReceitaRepository;
         this.usuarioRepository = usuarioRepository;
+        this.comentarioService = comentarioService;
+    }
+
+    @Transactional(readOnly = true)
+    public ReceitaFiltrosResponse listarFiltrosDisponiveis() {
+        return new ReceitaFiltrosResponse(
+                receitaRepository.tiposDisponiveis().stream().sorted().toList(),
+                receitaRepository.metodosDisponiveis().stream().sorted().toList(),
+                receitaRepository.ocasioesDisponiveis().stream().sorted().toList(),
+                receitaRepository.perfisDisponiveis().stream().sorted().toList(),
+                receitaRepository.dificuldadesDisponiveis().stream().sorted().toList(),
+                receitaRepository.tempoMinimoDisponivel(),
+                receitaRepository.tempoMaximoDisponivel());
     }
 
     @Transactional(readOnly = true)
@@ -64,7 +84,10 @@ public class ReceitaService {
         return PaginaResponse.de(resumir(pagina));
     }
 
-    /** Converte uma página de receitas em resumos, buscando os usernames dos chefs de uma vez. */
+    /**
+     * Converte uma página de receitas em resumos, buscando os usernames dos chefs
+     * de uma vez.
+     */
     @Transactional(readOnly = true)
     public Page<ReceitaResumoResponse> resumir(Page<Receita> pagina) {
         Map<Integer, String> usernames = usernamesDosChefs(pagina.getContent());
@@ -79,8 +102,10 @@ public class ReceitaService {
     }
 
     /**
-     * Receita completa. Com "porcoes", as quantidades dos ingredientes são recalculadas
-     * proporcionalmente e a nutrição total acompanha; null mantém as porções da receita.
+     * Receita completa. Com "porcoes", as quantidades dos ingredientes são
+     * recalculadas
+     * proporcionalmente e a nutrição total acompanha; null mantém as porções da
+     * receita.
      */
     @Transactional(readOnly = true)
     public ReceitaDetalheResponse detalhar(Integer id, Integer porcoes) {
@@ -99,8 +124,7 @@ public class ReceitaService {
                 .map(ir -> IngredienteDaReceitaResponse.de(ir, CalculoReceita.ajustarQuantidade(
                         ir.getQuantidade(), receita.getNPorcoes(), porcoesDesejadas)))
                 .toList();
-        NutricaoResponse nutricao =
-                CalculoReceita.nutricao(itens, receita.getNPorcoes(), porcoesDesejadas);
+        NutricaoResponse nutricao = CalculoReceita.nutricao(itens, receita.getNPorcoes(), porcoesDesejadas);
 
         Map<Integer, List<DicaResponse>> dicasPorEtapa = new HashMap<>();
         for (Dica dica : dicaRepository.buscarPorReceita(id)) {
@@ -113,7 +137,8 @@ public class ReceitaService {
                 .toList();
 
         String username = usernamesDosChefs(List.of(receita)).get(receita.getChef().getProfissional().getId());
-        return ReceitaDetalheResponse.de(receita, porcoesDesejadas, username, ingredientes, nutricao, etapas);
+        var avaliacao = comentarioService.agregarAvaliacoes(id);
+        return ReceitaDetalheResponse.de(receita, porcoesDesejadas, username, ingredientes, nutricao, etapas, avaliacao);
     }
 
     // idProfissional -> username da conta ligada a ele.

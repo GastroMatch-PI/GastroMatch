@@ -33,7 +33,8 @@ describe('validar', () => {
   })
   it('senha', () => {
     expect(requisitosSenha('abc').some((r) => !r.ok)).toBe(true)
-    expect(requisitosSenha('abcdefgh').every((r) => r.ok)).toBe(true)
+    expect(requisitosSenha('abcdefgh').every((r) => r.ok)).toBe(false)
+    expect(requisitosSenha('Abacaxi#2025').every((r) => r.ok)).toBe(true)
     expect(forcaSenha('abc')).toBe(0)
     expect(forcaSenha('Abcdefgh1234!')).toBe(4)
   })

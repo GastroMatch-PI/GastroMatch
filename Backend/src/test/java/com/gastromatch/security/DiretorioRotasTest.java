@@ -1,6 +1,7 @@
 package com.gastromatch.security;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -65,10 +66,12 @@ class DiretorioRotasTest {
     @Test
     void listagensPublicasSemTokenDevemRetornar200() throws Exception {
         when(chefService.listar(any(), any())).thenReturn(paginaVazia());
+        when(chefService.listarReceitas(any(), any())).thenReturn(paginaVazia());
         when(nutricionistaService.listar(any())).thenReturn(paginaVazia());
         when(restauranteService.listar(any(), any(), any(), any(), any())).thenReturn(paginaVazia());
 
         mockMvc.perform(get("/chefs")).andExpect(status().isOk());
+        mockMvc.perform(get("/chefs/1/receitas")).andExpect(status().isOk());
         mockMvc.perform(get("/nutricionistas")).andExpect(status().isOk());
         mockMvc.perform(get("/restaurantes")).andExpect(status().isOk());
         mockMvc.perform(get("/restaurantes?cidade=Sao Paulo&texto=massa")).andExpect(status().isOk());
@@ -77,10 +80,13 @@ class DiretorioRotasTest {
     @Test
     void perfilInexistenteSemTokenDeveRetornar404() throws Exception {
         when(chefService.perfilPublico(99)).thenThrow(new RecursoNaoEncontradoException("Chef não encontrado"));
+        when(chefService.listarReceitas(eq(99), any()))
+                .thenThrow(new RecursoNaoEncontradoException("Chef não encontrado"));
         when(nutricionistaService.buscar(99)).thenThrow(new RecursoNaoEncontradoException("não achou"));
         when(restauranteService.detalhar(99)).thenThrow(new RecursoNaoEncontradoException("não achou"));
 
         mockMvc.perform(get("/chefs/99")).andExpect(status().isNotFound());
+        mockMvc.perform(get("/chefs/99/receitas")).andExpect(status().isNotFound());
         mockMvc.perform(get("/nutricionistas/99")).andExpect(status().isNotFound());
         mockMvc.perform(get("/restaurantes/99")).andExpect(status().isNotFound());
     }

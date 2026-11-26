@@ -21,6 +21,7 @@ import com.gastromatch.config.CorsConfig;
 import com.gastromatch.controller.UsuarioController;
 import com.gastromatch.dto.UsuarioResponse;
 import com.gastromatch.entity.Usuario;
+import com.gastromatch.entity.enums.RoleUsuario;
 import com.gastromatch.repository.UsuarioRepository;
 import com.gastromatch.service.UsuarioService;
 
@@ -59,7 +60,7 @@ class SecurityConfigTest {
 
         when(usuarioRepository.findById(1)).thenReturn(Optional.of(usuario));
         when(usuarioService.buscarPorId(1))
-                .thenReturn(new UsuarioResponse(1, "teste@gastro.local", "teste", null));
+                .thenReturn(new UsuarioResponse(1, "teste@gastro.local", "teste", null, RoleUsuario.USER));
     }
 
     @Test
