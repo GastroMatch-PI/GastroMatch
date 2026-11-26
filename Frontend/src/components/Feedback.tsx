@@ -112,12 +112,16 @@ function ModalConfirmar({ titulo, texto, confirmar = 'Confirmar', perigo, onFech
 // Modal genérico (mesma regra de foco e ESC) para formulários curtos.
 export function Modal({ titulo, aberto, onFechar, children }: { titulo: string; aberto: boolean; onFechar: () => void; children: ReactNode }) {
   const ref = useRef<HTMLDivElement>(null)
+  // Quem usa o Modal passa uma função nova a cada render. Ela fica numa referência para o
+  // efeito do foco rodar só ao abrir: se rodasse de novo, o cursor voltaria ao primeiro campo.
+  const fechar = useRef(onFechar)
+  useEffect(() => { fechar.current = onFechar })
   useEffect(() => {
     if (!aberto) return
     const anterior = document.activeElement as HTMLElement | null
     ref.current?.querySelector<HTMLElement>('input, textarea, select, button')?.focus()
     const key = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onFechar()
+      if (e.key === 'Escape') fechar.current()
       if (e.key === 'Tab') {
         const els = ref.current?.querySelectorAll<HTMLElement>('button, input, select, textarea, [href]')
         if (!els?.length) return
@@ -128,7 +132,7 @@ export function Modal({ titulo, aberto, onFechar, children }: { titulo: string; 
     }
     document.addEventListener('keydown', key)
     return () => { document.removeEventListener('keydown', key); anterior?.focus() }
-  }, [aberto, onFechar])
+  }, [aberto])
   if (!aberto) return null
   return (
     <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm" onClick={onFechar}>
