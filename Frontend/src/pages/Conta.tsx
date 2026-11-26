@@ -63,7 +63,7 @@ export default function Conta() {
       // O campo `capa` já existe no banco e guarda o caminho da foto enviado pela API.
       const atualizado = await put<Usuario>('/usuarios/me', {
         username: username.trim(),
-        capa: foto ?? null,
+        capa: foto ?? '', // '' remove a foto; a API ignora o campo quando é null
       })
       atualizarUsuario(atualizado)
 
