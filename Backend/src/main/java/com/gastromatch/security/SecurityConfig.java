@@ -52,6 +52,8 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/actuator/health").permitAll()
                 // Swagger: só existe quando habilitado (profile dev); em produção dá 404.
                 .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
+                // Sem isto, exceção não tratada aparece como 401.
+                .requestMatchers("/error").permitAll()
                 // Namespace administrativo (B35): só quem tem ROLE_ADMIN (ver JwtAuthFilter).
                 .requestMatchers("/admin/**").hasRole("ADMIN")
                 // Catálogo de ingredientes (B39): o GET já é público acima; escrever é só ADMIN.
