@@ -2,6 +2,7 @@ package com.gastromatch.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -232,6 +233,28 @@ class UsuarioServiceTest {
 
         assertEquals("mariachef", usuario.getUsername());
         assertNotNull(usuario); // nada mudou, nenhuma exceção
+    }
+
+    @Test
+    void capaVaziaRemoveAFoto() {
+        when(usuarioRepository.findById(USUARIO)).thenReturn(Optional.of(usuario));
+        usuario.setCapa("/imagens/0123456789abcdef0123456789abcdef.jpg");
+
+        UsuarioResponse resposta = service.atualizar(USUARIO, new AtualizarUsuarioRequest(null, ""));
+
+        assertNull(usuario.getCapa());
+        assertNull(resposta.capa());
+    }
+
+    @Test
+    void capaNulaOuSoComEspacosMantemAFoto() {
+        when(usuarioRepository.findById(USUARIO)).thenReturn(Optional.of(usuario));
+        usuario.setCapa("/imagens/0123456789abcdef0123456789abcdef.jpg");
+
+        service.atualizar(USUARIO, new AtualizarUsuarioRequest(null, null));
+        service.atualizar(USUARIO, new AtualizarUsuarioRequest(null, " "));
+
+        assertEquals("/imagens/0123456789abcdef0123456789abcdef.jpg", usuario.getCapa());
     }
 
     @Test

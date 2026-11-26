@@ -24,6 +24,7 @@ public record ReceitaFiltro(
         Ocasiao ocasiao,
         PerfilAlimentar perfil,
         MetodoPreparo metodo,
-        List<Integer> ingredientes
+        List<Integer> ingredientes,
+        Integer chefId
 ) {
 }

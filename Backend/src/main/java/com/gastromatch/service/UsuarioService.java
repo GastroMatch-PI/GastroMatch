@@ -111,8 +111,9 @@ public class UsuarioService {
 
     /**
      * Edita username e/ou capa da conta logada. Cada campo omitido ou em branco não é
-     * alterado; e-mail e senha não entram aqui de propósito (B18/B19). atualizado_em é
-     * mantido pelo gatilho do banco, não precisa ser tocado aqui.
+     * alterado, com uma exceção: capa como texto vazio ("") remove a foto. E-mail e senha
+     * não entram aqui de propósito (B18/B19). atualizado_em é mantido pelo gatilho do
+     * banco, não precisa ser tocado aqui.
      */
     @Transactional
     public UsuarioResponse atualizar(Integer usuarioId, AtualizarUsuarioRequest request) {
@@ -122,7 +123,9 @@ public class UsuarioService {
         if (request.username() != null && !request.username().isBlank()) {
             usuario.setUsername(novoUsername(usuario, request.username().trim()));
         }
-        if (request.capa() != null && !request.capa().isBlank()) {
+        if (request.capa() != null && request.capa().isEmpty()) {
+            usuario.setCapa(null);
+        } else if (request.capa() != null && !request.capa().isBlank()) {
             String capa = request.capa().trim();
             validarCapa(capa);
             usuario.setCapa(capa);
