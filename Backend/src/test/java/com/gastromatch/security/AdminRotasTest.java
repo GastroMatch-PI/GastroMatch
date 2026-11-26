@@ -90,10 +90,12 @@ class AdminRotasTest {
     void alterarUmCaractereDoTokenNuncaElevaPrivilegio() throws Exception {
         when(usuarioRepository.findById(1)).thenReturn(Optional.of(usuarioComum));
         String tokenValido = jwtService.gerarAccessToken(usuarioComum);
-        // Troca o último caractere: a assinatura deixa de bater (não é mais uma questão de role).
-        char ultimo = tokenValido.charAt(tokenValido.length() - 1);
-        char trocado = (ultimo == 'a') ? 'b' : 'a';
-        String tokenAdulterado = tokenValido.substring(0, tokenValido.length() - 1) + trocado;
+        // Troca o primeiro caractere da assinatura, para ela deixar de bater. O último não
+        // serve: parte dos bits dele é ignorada em base64url e a assinatura podia continuar igual.
+        int inicioAssinatura = tokenValido.lastIndexOf('.') + 1;
+        char trocado = (tokenValido.charAt(inicioAssinatura) == 'a') ? 'b' : 'a';
+        String tokenAdulterado = tokenValido.substring(0, inicioAssinatura) + trocado
+                + tokenValido.substring(inicioAssinatura + 1);
 
         mockMvc.perform(get("/admin/qualquer-coisa").header("Authorization", "Bearer " + tokenAdulterado))
                 .andExpect(status().isUnauthorized());
