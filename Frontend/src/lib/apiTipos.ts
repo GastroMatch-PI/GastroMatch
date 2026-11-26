@@ -40,9 +40,10 @@ export type ReceitaDetalhe = Omit<ReceitaResumo, 'chef'> & {
 export type Ingrediente = { id: number; nome: string; porcaoBase: number; calorias: number; gordura: number; proteina: number; carboidrato: number }
 
 export type Comentario = {
-  id: number; idReceita: number; idUsuario: number; username: string; texto: string
+  id: number; idReceita: number; idUsuario: number; username: string; capaAutor?: string | null; texto: string
   nota?: number | null; foto?: string | null; criadoEm: string; atualizadoEm?: string | null
 }
+export type ComentariosDaReceita = { comentarios: Pagina<Comentario>; avaliacao: { media: number | null; quantidade: number } }
 
 // Perfis profissionais
 export type ChefPerfil = { id: number; username: string; foto?: string | null; bio?: string | null; especializacao?: Especializacao | null; idRestaurante?: number | null; nomeRestaurante?: string | null }
