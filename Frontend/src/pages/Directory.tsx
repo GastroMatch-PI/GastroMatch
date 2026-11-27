@@ -22,7 +22,7 @@ function Chefs({ esp }: { esp: string }) {
       <div className={`grid gap-4 lg:grid-cols-2 transition-opacity ${carregando ? 'opacity-60' : ''}`}>
         {dados.conteudo.map((c) => (
           <article key={c.id} className="card card-hover flex gap-4 p-5">
-            <Avatar className="h-14 w-14" />
+            <Avatar className="h-14 w-14" foto={c.foto} alt={`Foto de ${c.username}`} />
             <div className="min-w-0 flex-1 space-y-1">
               <h2 className="text-lg font-bold"><Link to={`/chef/${c.id}`} className="hover:text-terra">Chef {c.username}</Link></h2>
               {c.especializacao && <p className="text-xs font-semibold text-terra">{ENUMS.especializacao[c.especializacao]}</p>}
@@ -48,7 +48,7 @@ function Nutricionistas() {
       <div className={`grid gap-4 lg:grid-cols-2 transition-opacity ${carregando ? 'opacity-60' : ''}`}>
         {dados.conteudo.map((n) => (
           <article key={n.id} className="card card-hover flex gap-4 p-5">
-            <Avatar className="h-14 w-14" />
+            <Avatar className="h-14 w-14" foto={n.foto} alt={`Foto de ${n.username}`} />
             <div className="min-w-0 flex-1 space-y-1">
               <h2 className="text-lg font-bold">{n.username}</h2>
               <p className="text-xs font-semibold text-terra">Nutricionista · {n.crn}</p>

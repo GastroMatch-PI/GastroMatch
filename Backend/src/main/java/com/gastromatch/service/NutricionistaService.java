@@ -2,6 +2,7 @@ package com.gastromatch.service;
 
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -90,9 +91,11 @@ public class NutricionistaService {
         Page<Nutricionista> pagina =
                 nutricionistaRepository.findByStatusVerificacao(StatusVerificacao.APROVADO, pageable);
         List<Integer> ids = pagina.getContent().stream().map(n -> n.getProfissional().getId()).toList();
-        Map<Integer, String> usernames = UsernamesPorProfissional.buscar(usuarioRepository, ids);
+        Map<Integer, Usuario> contas = ids.isEmpty() ? Map.of()
+                : usuarioRepository.findByIdProfissionalIn(ids).stream()
+                        .collect(Collectors.toMap(Usuario::getIdProfissional, u -> u, (a, b) -> a));
         return PaginaResponse.de(pagina.map(n ->
-                NutricionistaResumoResponse.de(n, usernames.get(n.getProfissional().getId()))));
+                NutricionistaResumoResponse.de(n, contas.get(n.getProfissional().getId()))));
     }
 
     /** Perfil público. Quem a equipe escondeu responde 404, como se não existisse. */
@@ -100,9 +103,7 @@ public class NutricionistaService {
     public NutricionistaResumoResponse buscar(Integer id) {
         Nutricionista n = nutricionistaRepository.findByIdAndStatusVerificacao(id, StatusVerificacao.APROVADO)
                 .orElseThrow(() -> new RecursoNaoEncontradoException(NAO_ENCONTRADA));
-        String username = UsernamesPorProfissional
-                .buscar(usuarioRepository, List.of(n.getProfissional().getId()))
-                .get(n.getProfissional().getId());
-        return NutricionistaResumoResponse.de(n, username);
+        Usuario conta = usuarioRepository.findByIdProfissional(n.getProfissional().getId()).orElse(null);
+        return NutricionistaResumoResponse.de(n, conta);
     }
 }
