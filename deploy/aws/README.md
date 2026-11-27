@@ -47,7 +47,8 @@ sem cadastro, e o Caddy cria o certificado HTTPS).
 ## Quando a senha do banco mudar
 
 Quem trocar a senha no Supabase precisa avisar o time: Render, EC2 e os `.env` usam a mesma.
-Com a senha errada, a API insiste e o Supabase passa a recusar conexões, inclusive as do Render.
+Não deixe a API insistindo com a senha errada: tentativas repetidas podem fazer o Supabase
+bloquear conexões.
 
 Dentro do EC2, nesta ordem:
 
@@ -70,6 +71,36 @@ sudo bash -c '. /etc/gastromatch.env; docker run --rm -e PGPASSWORD="$DB_PASSWOR
 # 4. só se respondeu 1: ligar de novo
 sudo bash /opt/gastromatch/deploy/aws/atualizar.sh --agora
 ```
+
+## Voltar a uma versão anterior
+
+`https://<endereço>/versao` mostra o commit publicado.
+
+**Jeito normal:** reverta o PR no GitHub (botão **Revert**) e leve a reversão até a `main`. O
+servidor publica sozinho.
+
+**Emergência**, dentro do EC2, trocando `COMMIT` por um commit que funcionava:
+
+```bash
+# pare a atualização automática, para ela não voltar à versão nova
+sudo systemctl stop gastromatch-atualizar.timer
+```
+
+```bash
+sudo git -C /opt/gastromatch checkout -qf COMMIT
+```
+
+```bash
+cd /opt/gastromatch && sudo VERSAO=COMMIT docker compose --env-file /etc/gastromatch.env -f deploy/aws/docker-compose.yml up -d --build
+```
+
+Depois de corrigir a `main`, volte ao normal:
+
+```bash
+sudo bash /opt/gastromatch/deploy/aws/atualizar.sh --agora && sudo systemctl start gastromatch-atualizar.timer
+```
+
+A parada do timer vale até o servidor reiniciar.
 
 ## Nos dias de apresentação
 

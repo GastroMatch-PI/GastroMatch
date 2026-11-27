@@ -1,76 +1,86 @@
 # GastroMatch
 
-Plataforma gastronômica que conecta usuários, receitas, chefs, restaurantes e nutricionistas — pesquisa, descoberta, modo de preparo guiado, comunidade e diretório de profissionais, tudo acessível sem necessidade de cadastro inicial.
+Plataforma gastronômica com receitas passo a passo, tabela nutricional, avaliações e perfis de chefs, nutricionistas e restaurantes. É o **Projeto Integrador II** (DevOps, Ciência de Dados e Computação em Nuvem).
 
-## Visão do Produto
+## Acesso
 
-O GastroMatch permite que qualquer visitante, sem login, possa:
+| Ambiente | Endereço | Observação |
+|---|---|---|
+| AWS (demonstração) | <https://184-197-177-43.sslip.io> | disponível com o Learner Lab ligado |
+| Vercel + Render (reserva) | <https://gastromatch-front.vercel.app> | a primeira chamada pode levar cerca de 1 minuto |
+| Saúde da API na AWS | <https://184-197-177-43.sslip.io/api/actuator/health> | |
 
-- Pesquisar, filtrar e descobrir receitas
-- Assistir vídeos de preparo
-- Seguir o passo a passo da receita ("modo cozinhar")
-- Montar listas de compras e cardápios
-- Encontrar restaurantes e profissionais (chefs e nutricionistas) próximos
-- Consultar informações nutricionais calculadas
-- Participar da comunidade (leitura de comentários e fórum)
+## O problema
 
-Profissionais (chefs, restaurantes e nutricionistas) têm áreas próprias, com cadastro, para publicar receitas, divulgar seus serviços e construir reputação na plataforma.
+Quem cozinha não sabe o valor nutricional nem se o preparo é confiável; quem publica não sabe o que o público ainda não encontra. Os dados do GastroMatch ajudam o **chef** a decidir **que receita publicar a seguir**.
 
 ## Funcionalidades
 
-### Usuário visitante (sem cadastro)
-- Busca de receitas por texto, ingredientes disponíveis ("o que eu tenho na geladeira"), tempo de preparo, dificuldade, tipo de dieta, ocasião, tipo de refeição e método de preparo
-- Página da receita com passo a passo estruturado, imagens por etapa, vídeo de preparo e dicas de chefs da comunidade
-- Ajuste automático de porções, recalculando ingredientes proporcionalmente
-- Listas locais (compras, cardápio da semana, favoritos), com opção de criar conta para sincronizar entre dispositivos
-- Diretório de restaurantes e profissionais, com mini mapa gastronômico
-- Tabela nutricional calculada automaticamente a partir de uma base de ingredientes confiável
-- Comunidade: leitura de comentários, avaliações e fórum de discussão (publicação exige conta)
+- Busca de receitas por texto e filtros, e pelos ingredientes que a pessoa tem
+- Receita com etapas, dicas, erros comuns, vídeo do YouTube, ajuste de porções e modo cozinhar
+- Tabela nutricional calculada a partir dos ingredientes (em g e ml)
+- Cadastro, login, favoritos, comentários e notas
+- Perfis de chef, nutricionista e restaurante; publicação de receitas e envio de imagens
+- [Indicadores](docs/evidencias/indicadores.md): cobertura nutricional, oferta e avaliação por perfil alimentar
 
-### Profissional (chef / restaurante / nutricionista)
-- Cadastro e página de onboarding dedicada (sem aprovação: o perfil já fica no ar)
-- Publicação de receitas com vídeo de preparo (link do YouTube)
-- Vídeos de perfil exibidos em formato de feed/reels na comunidade
-- Dicas e alertas de erros comuns associados a qualquer receita (relação muitos-para-muitos entre chefs e receitas)
-- Divulgação de restaurante, aulas e eventos (fase posterior ao básico)
-- Kits ilustrativos ("caixa surpresa") exibidos no perfil, sem compra ou checkout pela plataforma
-- Contato com o usuário sempre por fora, via redes sociais do profissional (a plataforma atua como vitrine, não como intermediária)
-
-## Escopo do MVP
-
-**Incluso:**
-- Busca e descoberta de receitas sem login
-- CRUD de receitas estruturado por etapas
-- Ajuste automático de porções
-- Página da receita / modo cozinhar, com dicas de chef e comentários (mockados nesta fase)
-- Vídeo de receitas (link do YouTube incorporado na página da receita, com salto por etapa)
-- Listas locais
-- Descoberta simples de restaurantes e profissionais, com mini mapa
-- Feed da comunidade em modo visualização
-- Cadastro de profissionais
-- Kits ilustrativos
-
-**Fora do MVP (fases futuras):**
-- Publicação de conteúdo pela comunidade (exige conta)
-- Página completa de restaurante (cardápio, história, bastidores)
-- Mapa gastronômico completo
-- Busca por perfil nutricional
-- Marketplace de chef particular e consulta com nutricionista dentro da plataforma
-- Compra real de kits (estoque, logística, pagamento)
-- Leitura automática (text-to-speech) e recursos de IA/visão computacional
+**Ainda não implementado:** fórum, kits, lista de compras e cardápio, mapa, feed de vídeos, painel de indicadores no site e tela de administração.
 
 ## Arquitetura
 
-- **Frontend:** React + Vite — interface, navegação, filtros, página de receita/modo cozinha, mapas, perfis, feed, área profissional.
-- **Backend:** Java + Spring Boot — API REST, autenticação, regras de negócio, buscas e integrações externas.
-- **Armazenamento de mídia:** imagens hospedadas na própria infraestrutura (upload → backend → object storage → CDN). Os vídeos das receitas ficam no YouTube: o backend guarda só o link (`videoUrl`) e o front incorpora o player.
-- **Área administrativa:** moderação reativa por denúncia (sem fila de revisão prévia), gestão de conteúdo e usuários.
+```text
+Navegador --HTTPS--> EC2 (Caddy: front e /api) --> Spring Boot --> Supabase (banco e imagens)
+GitHub (main, CI aprovado) <-- o EC2 consulta a cada 2 minutos e publica
+```
 
-> Este README não detalha o modelo de dados/banco — a modelagem está documentada separadamente.
+- **Front:** React, TypeScript, Vite e Tailwind ([Frontend](Frontend/README.md))
+- **API:** Java 21 e Spring Boot ([Backend](Backend/Readme.md))
+- **Banco:** PostgreSQL ([scripts](Data/Modelagem))
+- **Nuvem:** AWS EC2 com Docker ([roteiro](deploy/aws/README.md))
 
-## Status do Projeto
+## Como rodar no seu computador
 
-Em desenvolvimento — fase de definição de escopo e modelagem das funcionalidades do MVP.
+Precisa de Docker, Java 21 e Node 22.
+
+```bash
+# banco local
+cd Backend
+cp .env.example .env      # preencha DB_PASSWORD e JWT_SECRET
+docker compose up -d
+```
+
+```bash
+# API em http://localhost:8080 (no Windows: .\mvnw.cmd spring-boot:run)
+./mvnw spring-boot:run
+```
+
+```bash
+# front em http://localhost:5173
+cd Frontend
+cp .env.example .env.local   # use VITE_API_URL=http://localhost:8080
+npm ci
+npm run dev
+```
+
+Detalhes em [SETUP-BANCO.md](Backend/SETUP-BANCO.md).
+
+## Testes e indicadores
+
+| O que | Comando |
+|---|---|
+| Back (precisa do banco) | `cd Backend && ./mvnw test` |
+| Front | `cd Frontend && npm run lint && npm run coverage` |
+| Indicadores: testes | `node --test Data/indicadores/indicadores.test.mjs` |
+| Indicadores: nova coleta | `node Data/indicadores/indicadores.mjs` |
+
+## Evidências do projeto
+
+| Evidência | Onde |
+|---|---|
+| Plano do projeto | [PDF](docs/plano-projeto-integrador-ii.pdf) e [fonte](docs/plano-projeto-integrador-ii.md) |
+| Indicadores e dados | [relatório](docs/evidencias/indicadores.md), [amostra](Data/amostra/receitas.json), [script](Data/indicadores/indicadores.mjs) |
+| Pipeline | [ci.yml](.github/workflows/ci.yml) e aba [Actions](https://github.com/GastroMatch-PI/GastroMatch/actions) |
+| Implantação e recuperação | [deploy/aws](deploy/aws/README.md) |
+| Falha analisada | [incidente de 27/11](docs/evidencias/incidente-2026-11-27.md) |
 
 ## Como Contribuir
 
