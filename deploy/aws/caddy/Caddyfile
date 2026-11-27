@@ -1,0 +1,16 @@
+# SITE_ADDRESS é o endereço do site (ex.: 1-2-3-4.sslip.io). Com um nome, o Caddy cria o HTTPS sozinho.
+{$SITE_ADDRESS} {
+	encode zstd gzip
+
+	# /api/receitas chega na API como /receitas.
+	handle_path /api/* {
+		reverse_proxy api:8080
+	}
+
+	# O resto é o front. Rotas como /receita/54 caem no index.html.
+	handle {
+		root * /srv
+		try_files {path} /index.html
+		file_server
+	}
+}

@@ -1,0 +1,4 @@
+# Estes arquivos rodam no Linux: precisam de fim de linha LF mesmo quando editados no Windows.
+*.sh text eol=lf
+*.yml text eol=lf
+caddy/Caddyfile text eol=lf
