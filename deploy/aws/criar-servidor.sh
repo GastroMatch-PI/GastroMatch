@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Rode no terminal do AWS Academy Learner Lab (com o lab ligado).
+# Rode no CloudShell do console da AWS (com o Learner Lab ligado).
 # Cria o servidor do GastroMatch: firewall, EC2 com Ubuntu e IP fixo.
 # Pode rodar de novo: o que já existe é reaproveitado.
 set -euo pipefail
@@ -67,6 +67,6 @@ Servidor pronto.
   IP:      $IP
   Site:    https://${IP//./-}.sslip.io  (só abre depois da instalação)
 
-Agora espere 1 minuto e entre no servidor:
-  ssh -i ~/.ssh/labsuser.pem ubuntu@$IP
+Agora espere 1 minuto e entre no servidor pelo console da AWS:
+  EC2 > Instances > $NOME > Connect > EC2 Instance Connect (usuário ubuntu)
 FIM

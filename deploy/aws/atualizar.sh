@@ -30,7 +30,11 @@ else:
 }
 
 senha_recusada() {
-  compose logs --tail 200 api 2>/dev/null | grep 'password authentication failed' >/dev/null
+  local registros
+  # Todo o log desde o início desta publicação: depois da recusa o Spring escreve centenas de
+  # linhas de erro, e olhar só o final do log deixaria a mensagem passar.
+  registros=$(compose logs --no-color --since "$INICIO" api 2>/dev/null) || return 1
+  [[ $registros == *"password authentication failed"* || $registros == *ECIRCUITBREAKER* ]]
 }
 
 api_no_ar() {
@@ -80,6 +84,7 @@ principal() {
     return 1
   fi
 
+  INICIO=$(date -u +%Y-%m-%dT%H:%M:%SZ)
   compose up -d --remove-orphans
 
   if ! api_no_ar; then

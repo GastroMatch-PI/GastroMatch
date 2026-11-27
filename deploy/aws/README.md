@@ -16,7 +16,9 @@ mudam a cada sessão), e um merge feito com o servidor desligado é publicado qu
 ## Criar o servidor (uma vez)
 
 1. No Learner Lab, clique em **Start Lab** e espere o círculo ao lado de "AWS" ficar verde.
-2. No terminal do lab, troque `BRANCH` pela branch que tem estes arquivos (`main` depois do merge):
+2. Clique em **AWS** para abrir o console (região **N. Virginia**) e abra o **CloudShell**.
+   Não use o terminal da página do lab: ele usa uma identidade sem permissão para criar o servidor.
+   No CloudShell, troque `BRANCH` pela branch que tem estes arquivos (`main` depois do merge):
 
    ```bash
    BRANCH=main
@@ -24,7 +26,8 @@ mudam a cada sessão), e um merge feito com o servidor desligado é publicado qu
    bash criar-servidor.sh
    ```
 
-3. Entre no servidor com o comando `ssh` que o script mostra.
+3. Entre no servidor: **EC2 > Instances > gastromatch > Connect > EC2 Instance Connect**,
+   usuário `ubuntu`. Nesse terminal do navegador, confira se o texto colado veio uma vez só.
 4. Dentro do servidor:
 
    ```bash
@@ -40,6 +43,33 @@ mudam a cada sessão), e um merge feito com o servidor desligado é publicado qu
 
 O site fica em `https://<IP-com-hífens>.sslip.io` (o `sslip.io` transforma o IP em um nome,
 sem cadastro, e o Caddy cria o certificado HTTPS).
+
+## Quando a senha do banco mudar
+
+Quem trocar a senha no Supabase precisa avisar o time: Render, EC2 e os `.env` usam a mesma.
+Com a senha errada, a API insiste e o Supabase passa a recusar conexões, inclusive as do Render.
+
+Dentro do EC2, nesta ordem:
+
+```bash
+# 1. parar a API
+sudo docker stop gastromatch-api-1
+```
+
+```bash
+# 2. gravar a senha nova (ela aparece na tela; limpe depois com clear)
+read -rp "Nova senha: " S && sudo sed -i '/^DB_PASSWORD=/d' /etc/gastromatch.env && printf "DB_PASSWORD='%s'\n" "$S" | sudo tee -a /etc/gastromatch.env >/dev/null && unset S && echo "Senha trocada"
+```
+
+```bash
+# 3. testar com uma única tentativa: tem de responder 1
+sudo bash -c '. /etc/gastromatch.env; docker run --rm -e PGPASSWORD="$DB_PASSWORD" postgres:16 psql -w "${DB_URL#jdbc:}&user=$DB_USERNAME" -tAc "select 1"'
+```
+
+```bash
+# 4. só se respondeu 1: ligar de novo
+sudo bash /opt/gastromatch/deploy/aws/atualizar.sh --agora
+```
 
 ## Nos dias de apresentação
 
