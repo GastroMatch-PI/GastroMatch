@@ -7,6 +7,7 @@ public record RestauranteDetalheResponse(
         Integer id,
         String nome,
         String bio,
+        String imagem,
         Integer numero,
         String rua,
         String cep,
@@ -19,7 +20,7 @@ public record RestauranteDetalheResponse(
 ) {
     public static RestauranteDetalheResponse de(RestauranteResumoResponse r, List<ChefResumoResponse> chefs) {
         return new RestauranteDetalheResponse(
-                r.id(), r.nome(), r.bio(), r.numero(), r.rua(), r.cep(), r.bairro(), r.cidade(),
+                r.id(), r.nome(), r.bio(), r.imagem(), r.numero(), r.rua(), r.cep(), r.bairro(), r.cidade(),
                 r.estado(), r.latitude(), r.longitude(), chefs);
     }
 }

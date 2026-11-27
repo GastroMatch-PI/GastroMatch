@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 export default function Footer() {
   return (
     <footer className="border-t border-line bg-peach/60">
-      <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-10 text-sm md:flex-row md:items-center md:justify-between">
+      <div className="mx-auto flex max-w-screen-2xl flex-col gap-4 px-4 py-10 text-sm md:flex-row md:items-center md:justify-between sm:px-6">
         <div>
           <p className="flex items-center gap-2 font-display text-lg font-extrabold text-terra">
             GastroMatch

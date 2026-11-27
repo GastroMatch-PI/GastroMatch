@@ -2,14 +2,11 @@ import {
   ArrowRight,
   ChevronLeft,
   ChevronRight,
-  Plus,
-  Refrigerator,
-  Search,
-  Sparkles,
+  Filter,
   X,
 } from 'lucide-react'
 import { motion } from 'motion/react'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import CardRestaurante from '../components/CardRestaurante'
 import Carrossel from '../components/Carrossel'
@@ -19,7 +16,6 @@ import { Carregando, ErroApi, EstadoVazio } from '../components/Ui'
 import { ENUMS } from '../data/enums'
 import { qs } from '../lib/api'
 import type {
-  Ingrediente,
   Pagina,
   ReceitaResumo,
   RestauranteResumo,
@@ -63,53 +59,21 @@ const imagensHero = [
 export default function Home() {
   useSeo({ titulo: 'GastroMatch' })
 
-  const [tipo, setTipo] = useState('')
-  const [busca, setBusca] = useState('')
-  const [selecionados, setSelecionados] = useState<number[]>([])
-  const [procurou, setProcurou] = useState(false)
+  const [filtros, setFiltros] = useState({ tipo: '', metodo: '', ocasiao: '', perfil: '', dificuldade: '', tempoMax: '' })
+  const [filtrosAbertos, setFiltrosAbertos] = useState(false)
+  const [mobile, setMobile] = useState(() => window.matchMedia('(max-width: 1023px)').matches)
   const [imagemAtual, setImagemAtual] = useState(0)
 
-  const ingredientes = useApi<Ingrediente[]>('/ingredientes')
-  const destaques = useApi<Pagina<ReceitaResumo>>(
-    `/receitas${qs({ tipo, tamanho: 7 })}`,
-  )
+  const destaques = useApi<Pagina<ReceitaResumo>>('/receitas' + qs({ ...filtros, tamanho: 7 }))
   const restaurantes = useApi<Pagina<RestauranteResumo>>(
     '/restaurantes?tamanho=10',
   )
 
-  const daGeladeira = useApi<Pagina<ReceitaResumo>>(
-    procurou && selecionados.length >= 2
-      ? `/receitas${qs({ ingredientes: selecionados, tamanho: 12 })}`
-      : null,
-  )
-
-  const catalogo = ingredientes.dados ?? []
-
-  const nomes = useMemo(
-    () => new Map(catalogo.map((ingrediente) => [ingrediente.id, ingrediente.nome])),
-    [catalogo],
-  )
-
-  const sugestoes = useMemo(
-    () =>
-      catalogo
-        .filter(
-          (ingrediente) =>
-            !selecionados.includes(ingrediente.id) &&
-            ingrediente.nome.toLowerCase().includes(busca.trim().toLowerCase()),
-        )
-        .slice(0, 14),
-    [catalogo, selecionados, busca],
-  )
-
-  const alternarIngrediente = (id: number) => {
-    setProcurou(false)
-    setSelecionados((atuais) =>
-      atuais.includes(id)
-        ? atuais.filter((ingredienteId) => ingredienteId !== id)
-        : [...atuais, id],
-    )
-  }
+  const atualizarFiltro = (campo: keyof typeof filtros, valor: string) =>
+    setFiltros((atuais) => ({ ...atuais, [campo]: valor }))
+  const limparFiltros = () =>
+    setFiltros({ tipo: '', metodo: '', ocasiao: '', perfil: '', dificuldade: '', tempoMax: '' })
+  const filtrosAtivos = Object.values(filtros).filter(Boolean).length
 
   const irParaImagem = (direcao: number) => {
     setImagemAtual(
@@ -124,6 +88,51 @@ export default function Home() {
 
     return () => window.clearInterval(intervalo)
   }, [])
+
+  useEffect(() => {
+    const media = window.matchMedia('(max-width: 1023px)')
+    const atualizar = () => {
+      setMobile(media.matches)
+      if (!media.matches) setFiltrosAbertos(false)
+    }
+    media.addEventListener('change', atualizar)
+    return () => media.removeEventListener('change', atualizar)
+  }, [])
+
+  useEffect(() => {
+    if (!mobile || !filtrosAbertos) return
+    const overflowAnterior = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = overflowAnterior }
+  }, [mobile, filtrosAbertos])
+
+  const painelFiltros = (
+    <>
+      <div className="flex items-center justify-between lg:hidden">
+        <h2 className="text-lg font-bold">Filtros</h2>
+        <button type="button" aria-label="Fechar filtros" className="flex h-10 w-10 items-center justify-center rounded-full border border-line" onClick={() => setFiltrosAbertos(false)}><X size={18} /></button>
+      </div>
+      <h2 className="hidden text-lg font-bold lg:block">Filtros</h2>
+      {[
+        { campo: 'tipo', rotulo: 'Refeição', opcoes: ENUMS.tipo },
+        { campo: 'metodo', rotulo: 'Método de preparo', opcoes: ENUMS.metodo },
+        { campo: 'ocasiao', rotulo: 'Ocasião', opcoes: ENUMS.ocasiao },
+        { campo: 'perfil', rotulo: 'Perfil alimentar', opcoes: ENUMS.perfil },
+        { campo: 'dificuldade', rotulo: 'Dificuldade', opcoes: ENUMS.dificuldade },
+        { campo: 'tempoMax', rotulo: 'Tempo de preparo', opcoes: { '20': 'Até 20 min', '30': 'Até 30 min', '60': 'Até 60 min' } },
+      ].map((f) => (
+        <label key={f.campo} className="block text-xs font-semibold text-ink-soft">
+          {f.rotulo}
+          <select className="input mt-1" value={filtros[f.campo as keyof typeof filtros]} onChange={(e) => atualizarFiltro(f.campo as keyof typeof filtros, e.target.value)}>
+            <option value="">Todos</option>
+            {Object.entries(f.opcoes).map(([valor, rotulo]) => <option key={valor} value={valor}>{rotulo}</option>)}
+          </select>
+        </label>
+      ))}
+      <button type="button" className="btn-ghost w-full" onClick={limparFiltros}>Limpar filtros</button>
+      <button type="button" className="btn-primary w-full lg:hidden" onClick={() => setFiltrosAbertos(false)}>Ver {destaques.dados?.totalElementos ?? 0} resultados</button>
+    </>
+  )
 
   return (
     <div className="space-y-16">
@@ -191,14 +200,9 @@ export default function Home() {
             }}
             className="flex flex-wrap items-end justify-between gap-6"
           >
-            {/* <p className="max-w-md text-base text-ink-soft">
-              Receitas de chefs, nutricionistas e restaurantes. Escolha o que tem
-              na geladeira e veja o que dá para fazer agora.
-            </p> */}
-
             <div className="flex flex-wrap gap-3">
-              <a href="#geladeira" className="btn-primary !px-7 !py-3.5">
-                Usar minha geladeira
+              <a href="#receitas" className="btn-primary !px-7 !py-3.5">
+                Explorar receitas
               </a>
 
               <Link to="/receitas" className="btn-ghost !px-7 !py-3.5">
@@ -230,115 +234,6 @@ export default function Home() {
         </div>
       </section>
 
-      <Reveal>
-        <section
-          id="geladeira"
-          className="card scroll-mt-24 space-y-5 p-5 md:p-8"
-          aria-labelledby="gel-t"
-        >
-          <h2
-            id="gel-t"
-            className="flex items-center gap-2 text-2xl font-bold"
-          >
-            <Refrigerator size={22} className="text-terra" />
-            O que tenho em casa
-          </h2>
-
-          <p className="text-sm text-ink-soft">
-            Escolha ao menos 2 ingredientes. Só aparecem receitas feitas
-            inteiramente com o que você escolheu.
-          </p>
-
-          {selecionados.length > 0 && (
-            <ul className="flex flex-wrap gap-2" aria-label="Ingredientes escolhidos">
-              {selecionados.map((id) => (
-                <li key={id}>
-                  <button
-                    type="button"
-                    className="chip border-terra bg-terra text-on-accent"
-                    onClick={() => alternarIngrediente(id)}
-                    aria-label={`Remover ${nomes.get(id) ?? 'ingrediente'}`}
-                  >
-                    <X size={13} />
-                    {nomes.get(id)}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-
-          {ingredientes.erro ? (
-            <ErroApi erro={ingredientes.erro} onTentar={ingredientes.recarregar} />
-          ) : ingredientes.carregando ? (
-            <Carregando lento={ingredientes.lento} texto="Carregando ingredientes" />
-          ) : (
-            <>
-              <div className="relative max-w-sm">
-                <Search
-                  size={16}
-                  className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-faint"
-                />
-                <input
-                  className="input !rounded-full !pl-10"
-                  placeholder="Buscar ingrediente"
-                  aria-label="Buscar ingrediente"
-                  value={busca}
-                  onChange={(evento) => setBusca(evento.target.value)}
-                />
-              </div>
-
-              <div className="flex flex-wrap gap-2">
-                {sugestoes.map((ingrediente) => (
-                  <button
-                    key={ingrediente.id}
-                    type="button"
-                    onClick={() => alternarIngrediente(ingrediente.id)}
-                    className="chip border-line bg-surface text-ink-soft hover:bg-peach"
-                  >
-                    <Plus size={13} />
-                    {ingrediente.nome}
-                  </button>
-                ))}
-
-                {sugestoes.length === 0 && (
-                  <p className="text-xs text-ink-faint">
-                    Nenhum ingrediente encontrado.
-                  </p>
-                )}
-              </div>
-            </>
-          )}
-
-          <button
-            type="button"
-            className="btn-primary"
-            disabled={selecionados.length < 2}
-            onClick={() => setProcurou(true)}
-          >
-            <Sparkles size={16} />
-            Encontrar receitas
-          </button>
-
-          {procurou && (
-            daGeladeira.erro ? (
-              <ErroApi erro={daGeladeira.erro} onTentar={daGeladeira.recarregar} />
-            ) : !daGeladeira.dados ? (
-              <Carregando lento={daGeladeira.lento} texto="Procurando receitas" />
-            ) : daGeladeira.dados.conteudo.length === 0 ? (
-              <p className="rounded-2xl bg-peach p-4 text-sm text-ink-soft">
-                Nenhuma receita usa só esses ingredientes. Tente acrescentar mais.
-              </p>
-            ) : (
-              <div className="grid gap-5 pt-3 sm:grid-cols-2 lg:grid-cols-3">
-                {daGeladeira.dados.conteudo.map((receita) => (
-                  <RecipeCard key={receita.id} receita={receita} />
-                ))}
-              </div>
-            )
-          )}
-        </section>
-      </Reveal>
-
       <section id="receitas" className="space-y-8">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <h2 className="font-display text-5xl font-extrabold uppercase leading-none tracking-tight sm:text-7xl">
@@ -350,29 +245,40 @@ export default function Home() {
           </Link>
         </div>
 
-        <div
-          className="-mx-4 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0"
-          role="group"
-          aria-label="Filtrar por refeição"
+        <button
+          type="button"
+          className="btn-ghost lg:hidden"
+          aria-expanded={filtrosAbertos}
+          aria-controls="filtros-home"
+          onClick={() => setFiltrosAbertos(true)}
         >
-          <div className="flex w-max gap-2 sm:w-auto sm:flex-wrap">
-            {[['', 'Todas'], ...Object.entries(ENUMS.tipo)].map(([chave, nome]) => (
-              <button
-                key={chave}
-                type="button"
-                onClick={() => setTipo(chave)}
-                aria-pressed={tipo === chave}
-                className={`chip !px-5 !py-2.5 text-sm ${
-                  tipo === chave
-                    ? 'border-terra bg-terra text-on-accent'
-                    : 'border-line bg-surface text-ink-soft hover:border-terra/50 hover:text-terra'
-                }`}
-              >
-                {nome}
-              </button>
-            ))}
-          </div>
-        </div>
+          <Filter size={15} /> Filtros{filtrosAtivos ? ` (${filtrosAtivos})` : ''}
+        </button>
+
+        <div className="grid gap-8 lg:grid-cols-[260px_1fr]">
+          {mobile && filtrosAbertos && (
+            <button
+              type="button"
+              aria-label="Fechar filtros"
+              className="fixed inset-0 z-40 bg-black/70"
+              onClick={() => setFiltrosAbertos(false)}
+            />
+          )}
+          <aside
+            id="filtros-home"
+            aria-label="Filtros de receitas"
+            role={mobile ? 'dialog' : undefined}
+            aria-modal={mobile && filtrosAbertos ? true : undefined}
+            inert={mobile && !filtrosAbertos}
+            className={`space-y-4 ${
+              mobile
+                ? `fixed inset-y-0 left-0 z-50 w-[86%] max-w-sm overflow-y-auto border-r border-line bg-surface p-5 transition-transform duration-500 ${filtrosAbertos ? 'translate-x-0' : '-translate-x-full'}`
+                : 'card self-start p-5'
+            }`}
+          >
+            {painelFiltros}
+          </aside>
+          <div className="min-w-0 space-y-8">
 
         {destaques.erro ? (
           <ErroApi erro={destaques.erro} onTentar={destaques.recarregar} />
@@ -386,21 +292,17 @@ export default function Home() {
         ) : (
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {destaques.dados.conteudo.map((receita, indice) => {
-              const destaque =
-                indice === 0 && destaques.dados!.conteudo.length > 2
-
+              const destaque = indice === 0 && destaques.dados!.conteudo.length > 2
               return (
-                <Reveal
-                  key={receita.id}
-                  delay={(indice % 3) * 0.08}
-                  className={destaque ? 'sm:col-span-2' : ''}
-                >
+                <Reveal key={receita.id} delay={(indice % 3) * 0.08} className={destaque ? 'sm:col-span-2' : ''}>
                   <RecipeCard receita={receita} featured={destaque} />
                 </Reveal>
               )
             })}
           </div>
         )}
+          </div>
+        </div>
       </section>
 
       <section id="restaurantes" className="space-y-5" aria-labelledby="rest-t">

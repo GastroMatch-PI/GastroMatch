@@ -54,7 +54,7 @@ export default function Restaurantes() {
             acao={filtrando ? { onClick: () => { setLocal({ texto: '', cidade: '', estado: '', bairro: '' }); setParams(new URLSearchParams()) }, rotulo: 'Limpar filtros' } : { to: '/onboarding', rotulo: 'Cadastrar restaurante' }}
           />
         ) : (
-          <div className={`grid gap-5 sm:grid-cols-2 lg:grid-cols-3 transition-opacity ${carregando ? 'opacity-60' : ''}`}>{dados.conteudo.map((r) => <CardRestaurante key={r.id} restaurante={r} />)}</div>
+          <div className={`space-y-6 transition-opacity ${carregando ? 'opacity-60' : ''}`}>{dados.conteudo.map((r) => <CardRestaurante key={r.id} restaurante={r} gradienteLaranja />)}</div>
         )}
       <Paginacao pagina={pagina} total={dados?.totalPaginas ?? 1} onMudar={(p) => { const n = new URLSearchParams(params); if (p === 1) n.delete('pagina'); else n.set('pagina', String(p)); setParams(n) }} />
     </div>

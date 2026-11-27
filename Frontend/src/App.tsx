@@ -23,7 +23,7 @@ export default function App() {
     <div className="flex min-h-screen flex-col">
       <a href="#conteudo" className="skip-link">Pular para o conteúdo</a>
       <Header />
-      <main id="conteudo" tabIndex={-1} className="mx-auto w-full max-w-6xl flex-1 px-4 pb-20 pt-6 outline-none">
+      <main id="conteudo" tabIndex={-1} className="mx-auto w-full max-w-screen-2xl flex-1 px-4 pb-20 pt-6 outline-none sm:px-6">
         <PageTransition>
           <Route path="/" element={<Home />} />
           <Route path="/receitas" element={<Receitas />} />
