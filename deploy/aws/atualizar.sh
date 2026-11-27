@@ -76,6 +76,7 @@ principal() {
 
   echo "Publicando ${novo:0:7} ($BRANCH)"
   git -C "$DIR" checkout -qf -B "$BRANCH" "$novo"
+  export VERSAO=$novo
 
   # Se a montagem falhar, a versão anterior continua no ar.
   if ! compose build; then
