@@ -1,0 +1,38 @@
+# GastroMatch no EC2: o front (Caddy) e a API. Banco e imagens continuam no Supabase.
+# Usado pelo atualizar.sh. Os valores vêm de /etc/gastromatch.env, que fica só no servidor.
+name: gastromatch
+
+services:
+  api:
+    build: ../../Backend
+    restart: unless-stopped
+    env_file: ${ENV_FILE:-/etc/gastromatch.env}
+    environment:
+      CORS_ORIGINS: ${CORS_ORIGINS:-https://${SITE_ADDRESS}}
+    # O Java usa 75% deste limite; o resto do servidor fica para o Caddy, o Docker e as montagens.
+    mem_limit: 1g
+    # Sem SUPABASE_URL as imagens ficam aqui e precisam sobreviver às atualizações.
+    volumes:
+      - uploads:/app/uploads
+
+  web:
+    build: ../../Frontend
+    restart: unless-stopped
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:?defina SITE_ADDRESS}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      # A pasta inteira, e não o arquivo, para o container enxergar a versão nova depois do git.
+      - ./caddy:/etc/caddy:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - api
+
+volumes:
+  # Guarda os certificados HTTPS entre as atualizações.
+  caddy-data:
+  caddy-config:
+  uploads:

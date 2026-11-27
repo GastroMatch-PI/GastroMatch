@@ -15,6 +15,8 @@ FROM eclipse-temurin:21-jre
 WORKDIR /app
 COPY --from=build /app/target/*.jar app.jar
 RUN useradd --system app
+# Pasta das imagens quando não há Supabase Storage: o usuário app precisa poder gravar nela.
+RUN mkdir uploads && chown app uploads
 USER app
 ENV SPRING_PROFILES_ACTIVE=prod
 EXPOSE 8080
