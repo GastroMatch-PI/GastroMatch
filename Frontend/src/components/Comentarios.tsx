@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/Auth'
 import { del, get, mensagem, post, put, urlImagem } from '../lib/api'
-import type { Comentario, Pagina } from '../lib/apiTipos'
+import type { Comentario, ComentariosDaReceita } from '../lib/apiTipos'
 import { dataRelativa, fmtNum } from '../lib/format'
 import { useConfirmar, useToast } from './Feedback'
 import { Avatar } from './Photo'
@@ -52,7 +52,8 @@ export default function Comentarios({ receitaId }: { receitaId: number }) {
   const carregar = async (p: number) => {
     setCarregando(true); setErro(null)
     try {
-      const pg = await get<Pagina<Comentario>>(`/receitas/${receitaId}/comentarios?pagina=${p}&tamanho=${TAMANHO}`)
+      const r = await get<ComentariosDaReceita>(`/receitas/${receitaId}/comentarios?pagina=${p}&tamanho=${TAMANHO}`)
+      const pg = r.comentarios
       setLista((l) => (p === 0 ? pg.conteudo : [...l, ...pg.conteudo]))
       setTotal(pg.totalElementos)
       setPagina(p)
