@@ -1,0 +1,14 @@
+# Detecção de segredos no pipeline (gitleaks).
+[extend]
+useDefault = true
+
+# Valores falsos, usados só em testes e exemplos. Conferidos em 27/11/2026.
+[allowlist]
+description = "Testes, exemplos e pastas geradas"
+paths = [
+  '''Backend/src/test/''',
+  '''Backend/\.env\.example''',
+  '''KB/Conceitos/Controller\.md''',
+  '''node_modules/''',
+  '''target/''',
+]

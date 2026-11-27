@@ -2,6 +2,11 @@
 {$SITE_ADDRESS} {
 	encode zstd gzip
 
+	# Qual versão está publicada (commit do GitHub).
+	handle /versao {
+		respond "{$VERSAO}"
+	}
+
 	# /api/receitas chega na API como /receitas.
 	handle_path /api/* {
 		reverse_proxy api:8080

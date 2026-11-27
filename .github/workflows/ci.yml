@@ -98,6 +98,14 @@ jobs:
 
       - run: npm ci
 
+      - name: Análise estática (lint)
+        run: npm run lint
+
+      # Só avisa: um alerta novo numa biblioteca não deve travar a publicação sem a equipe decidir.
+      - name: Vulnerabilidades nas dependências
+        run: npm audit --audit-level=high
+        continue-on-error: true
+
       # Falha de teste ou cobertura abaixo de 80% em src/lib bloqueia o PR.
       - name: Testes unitários com cobertura
         run: npm run coverage
@@ -110,3 +118,50 @@ jobs:
         with:
           name: cobertura-frontend
           path: Frontend/coverage
+
+  dados:
+    name: Dados e indicadores
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Testes de validação, tratamento e cálculo
+        run: node --test Data/indicadores/indicadores.test.mjs
+
+      # Recalcula a partir da amostra versionada: o relatório tem de ser exatamente o mesmo.
+      - name: Relatório reproduzível
+        run: |
+          node Data/indicadores/indicadores.mjs --amostra
+          git diff --exit-code -- docs/evidencias/indicadores.md
+
+  segredos:
+    name: Detecção de segredos
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      # Confere os arquivos atuais (o histórico antigo é tratado no plano do projeto).
+      - name: Gitleaks
+        run: |
+          docker run --rm -v "$PWD:/repo:ro" ghcr.io/gitleaks/gitleaks:v8.21.2 \
+            dir /repo --config /repo/.gitleaks.toml --redact --no-banner
+
+  imagens:
+    name: Imagens Docker (artefato)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      # As mesmas receitas usadas na AWS e no Render, marcadas com o commit.
+      - name: Montar a imagem da API
+        run: docker build -t gastromatch-api:${{ github.sha }} Backend
+
+      - name: Montar a imagem do front
+        run: docker build -t gastromatch-web:${{ github.sha }} Frontend
