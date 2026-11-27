@@ -1,6 +1,6 @@
 import { ArrowDown, ArrowUp, Check, Plus, Trash2 } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Campo, Opcoes } from '../components/Campo'
 import { useConfirmar, useToast } from '../components/Feedback'
 import Protegida from '../components/Protegida'
@@ -126,7 +126,8 @@ export default function NovaReceita() {
     return { porcao: kcal / (Number(d.geral.n) || 1), fora }
   }, [d.itens, d.geral.n, porId])
 
-  if (!usuario) return <Navigate to="/login" replace state={{ from: '/publicar' }} />
+  // Sem usuário: a Protegida espera a sessão ser restaurada antes de mandar para o login.
+  if (!usuario) return <Protegida>{null}</Protegida>
   const ehChef = perfil?.papel === 'CHEF'
   const dono = editId && existente.dados && ehChef && perfil.dados.id === existente.dados.chef.id
 
