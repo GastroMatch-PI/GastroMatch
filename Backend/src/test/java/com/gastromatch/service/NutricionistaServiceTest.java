@@ -9,6 +9,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.util.List;
 import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -17,10 +18,13 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import com.gastromatch.dto.CadastroNutricionistaRequest;
 import com.gastromatch.dto.NutricionistaResponse;
+import com.gastromatch.dto.NutricionistaResumoResponse;
 import com.gastromatch.entity.Nutricionista;
 import com.gastromatch.entity.Profissional;
 import com.gastromatch.entity.Usuario;
@@ -92,6 +96,46 @@ class NutricionistaServiceTest {
                 .thenReturn(Optional.empty());
 
         assertThrows(RecursoNaoEncontradoException.class, () -> service.buscar(3));
+    }
+
+    private static Usuario conta(int idProfissional, String username, String capa) {
+        Usuario u = new Usuario();
+        u.setIdProfissional(idProfissional);
+        u.setUsername(username);
+        u.setCapa(capa);
+        return u;
+    }
+
+    @Test
+    void diretorioTrazUsernameEFotoDaConta() {
+        Nutricionista comConta = new Nutricionista(profissional(7), "CRN-3/11111");
+        Nutricionista semConta = new Nutricionista(profissional(8), "CRN-3/22222");
+        when(nutricionistaRepository.findByStatusVerificacao(eq(StatusVerificacao.APROVADO), any()))
+                .thenReturn(new PageImpl<>(List.of(comConta, semConta)));
+        when(usuarioRepository.findByIdProfissionalIn(List.of(7, 8)))
+                .thenReturn(List.of(conta(7, "nutri_ana", "https://exemplo.com/ana.jpg")));
+
+        List<NutricionistaResumoResponse> itens = service.listar(PageRequest.of(0, 12)).conteudo();
+
+        assertEquals("nutri_ana", itens.get(0).username());
+        assertEquals("https://exemplo.com/ana.jpg", itens.get(0).foto());
+        // Perfil sem conta (dado de exemplo) aparece sem nome e sem foto, sem quebrar a lista.
+        assertNull(itens.get(1).username());
+        assertNull(itens.get(1).foto());
+    }
+
+    @Test
+    void perfilPublicoTrazFotoDaConta() {
+        Nutricionista n = new Nutricionista(profissional(7), "CRN-3/11111");
+        when(nutricionistaRepository.findByIdAndStatusVerificacao(3, StatusVerificacao.APROVADO))
+                .thenReturn(Optional.of(n));
+        when(usuarioRepository.findByIdProfissional(7))
+                .thenReturn(Optional.of(conta(7, "nutri_ana", "https://exemplo.com/ana.jpg")));
+
+        NutricionistaResumoResponse resposta = service.buscar(3);
+
+        assertEquals("nutri_ana", resposta.username());
+        assertEquals("https://exemplo.com/ana.jpg", resposta.foto());
     }
 
     private Nutricionista perfilDaConta() {

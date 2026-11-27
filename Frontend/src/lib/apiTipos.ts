@@ -48,7 +48,7 @@ export type ComentariosDaReceita = { comentarios: Pagina<Comentario>; avaliacao:
 // Perfis profissionais
 export type ChefPerfil = { id: number; username: string; foto?: string | null; bio?: string | null; especializacao?: Especializacao | null; idRestaurante?: number | null; nomeRestaurante?: string | null }
 export type ChefMe = { id: number; idProfissional: number; bio?: string | null; especializacao?: Especializacao | null; idRestaurante?: number | null }
-export type NutricionistaResumo = { id: number; username: string; bio?: string | null; crn: string }
+export type NutricionistaResumo = { id: number; username: string; foto?: string | null; bio?: string | null; crn: string }
 export type NutricionistaMe = { id: number; idProfissional: number; bio?: string | null; crn: string; statusVerificacao: string }
 export type EnderecoRestaurante = {
   nome: string; bio?: string | null; numero?: number | null; rua?: string | null; cep?: string | null
