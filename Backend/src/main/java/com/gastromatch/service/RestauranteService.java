@@ -120,9 +120,15 @@ public class RestauranteService {
     @Transactional(readOnly = true)
     public PaginaResponse<RestauranteResumoResponse> listar(String texto, String cidade, String bairro,
                                                             String estado, Pageable pageable) {
-        return PaginaResponse.de(restauranteRepository
-                .findAll(RestauranteSpecs.comFiltros(texto, cidade, bairro, estado), pageable)
-                .map(RestauranteResumoResponse::de));
+        var pagina = restauranteRepository.findAll(
+                RestauranteSpecs.comFiltros(texto, cidade, bairro, estado), pageable);
+        List<Restaurante> restaurantes = pagina.getContent();
+        Map<Integer, Usuario> usuarios = usuariosPorProfissional(restaurantes.stream()
+                .map(r -> r.getProfissional().getId()).toList());
+        return PaginaResponse.de(pagina.map(r -> {
+            Usuario usuario = usuarios.get(r.getProfissional().getId());
+            return RestauranteResumoResponse.de(r, usuario == null ? null : usuario.getCapa());
+        }));
     }
 
     /** Página do restaurante com os chefs que trabalham nele. */
@@ -137,6 +143,14 @@ public class RestauranteService {
         List<ChefResumoResponse> resumos = chefs.stream()
                 .map(c -> ChefResumoResponse.de(c, usernames.get(c.getProfissional().getId())))
                 .toList();
-        return RestauranteDetalheResponse.de(RestauranteResumoResponse.de(restaurante), resumos);
+        Usuario dono = usuarioRepository.findByIdProfissional(restaurante.getProfissional().getId()).orElse(null);
+        return RestauranteDetalheResponse.de(
+                RestauranteResumoResponse.de(restaurante, dono == null ? null : dono.getCapa()), resumos);
+    }
+
+    private Map<Integer, Usuario> usuariosPorProfissional(List<Integer> ids) {
+        if (ids.isEmpty()) return Map.of();
+        return usuarioRepository.findByIdProfissionalIn(ids).stream()
+                .collect(java.util.stream.Collectors.toMap(Usuario::getIdProfissional, u -> u));
     }
 }

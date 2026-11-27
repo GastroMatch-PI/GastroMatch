@@ -57,7 +57,7 @@ export default function Header() {
   return (
     <>
       <header role="banner" className="sticky top-0 z-30 border-b border-line/60 bg-cream/70 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-3">
+        <div className="mx-auto flex max-w-screen-2xl items-center gap-3 px-4 py-3 sm:px-6">
           <Link to="/" className="flex items-center gap-2 font-display text-2xl font-extrabold tracking-tight text-terra">
             <span className="hidden min-[380px]:inline">GastroMatch</span>
           </Link>

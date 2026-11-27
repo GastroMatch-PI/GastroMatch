@@ -51,7 +51,7 @@ export type ChefMe = { id: number; idProfissional: number; bio?: string | null; 
 export type NutricionistaResumo = { id: number; username: string; foto?: string | null; bio?: string | null; crn: string }
 export type NutricionistaMe = { id: number; idProfissional: number; bio?: string | null; crn: string; statusVerificacao: string }
 export type EnderecoRestaurante = {
-  nome: string; bio?: string | null; numero?: number | null; rua?: string | null; cep?: string | null
+  nome: string; bio?: string | null; imagem?: string | null; numero?: number | null; rua?: string | null; cep?: string | null
   bairro?: string | null; cidade?: string | null; estado?: string | null; latitude?: number | null; longitude?: number | null
 }
 export type RestauranteResumo = EnderecoRestaurante & { id: number }

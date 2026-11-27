@@ -7,6 +7,7 @@ public record RestauranteResumoResponse(
         Integer id,
         String nome,
         String bio,
+        String imagem,
         Integer numero,
         String rua,
         String cep,
@@ -17,8 +18,12 @@ public record RestauranteResumoResponse(
         Double longitude
 ) {
     public static RestauranteResumoResponse de(Restaurante r) {
+        return de(r, null);
+    }
+
+    public static RestauranteResumoResponse de(Restaurante r, String imagem) {
         return new RestauranteResumoResponse(
-                r.getId(), r.getNome(), r.getBio(), r.getNumero(), r.getRua(), r.getCep(),
+                r.getId(), r.getNome(), r.getBio(), imagem, r.getNumero(), r.getRua(), r.getCep(),
                 r.getBairro(), r.getCidade(), r.getEstado(), r.getLatitude(), r.getLongitude());
     }
 }
